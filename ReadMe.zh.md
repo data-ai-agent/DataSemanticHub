@@ -1,4 +1,5 @@
 # DataSemanticHub
+[English](ReadMe.md) | 中文
 
 > **DataSemanticHub 是一款以语义为核心的数据语义治理平台**，
 > 通过字段级语义裁决与语义版本化机制，

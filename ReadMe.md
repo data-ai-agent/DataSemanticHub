@@ -1,4 +1,5 @@
 # DataSemanticHub
+English | [中文](ReadMe.zh.md)
 
 > **DataSemanticHub is a semantics-first data governance platform**.
 > Through field-level semantic adjudication and semantic versioning,
