@@ -1,0 +1,109 @@
+{
+  "title": "语义协同中心",
+  "summary": {
+    "objectScale": {
+      "total": 9,
+      "published": 8,
+      "draft": 1,
+      "archived": 0
+    },
+    "candidates": {
+      "total": 4,
+      "pending": 3,
+      "confirmed": 0,
+      "ignored": 1
+    },
+    "conflicts": {
+      "total": 5,
+      "open": 4,
+      "resolved": 1,
+      "severity": {
+        "critical": 2,
+        "warning": 2,
+        "info": 1
+      }
+    },
+    "collaborationIndex": {
+      "value": 33,
+      "coverageRate": 0.56,
+      "kpiConsistencyRate": 0.67,
+      "mappingRate": 0.89
+    }
+  },
+  "businessView": {
+    "goals": {
+      "total": 3,
+      "planning": 1,
+      "modeling": 1,
+      "implemented": 1
+    },
+    "goalCoverageRate": 0.56,
+    "kpiCoverage": {
+      "total": 6,
+      "defined": 4
+    },
+    "scenarios": {
+      "total": 4,
+      "active": 2,
+      "draft": 2
+    },
+    "hotObjects": [
+      "供应商 (Supplier)",
+      "采购订单 (PO)",
+      "库存 (Inventory)",
+      "物流运单 (Delivery)",
+      "新生儿 (Newborn)"
+    ]
+  },
+  "governanceView": {
+    "dataSources": {
+      "total": 7,
+      "connected": 5,
+      "scanning": 1,
+      "error": 1
+    },
+    "tables": {
+      "count": 740,
+      "scanResults": 16
+    },
+    "mapping": {
+      "mappedObjects": 8,
+      "unmappedObjects": 1,
+      "missingObjects": ["库存 (Inventory)"]
+    },
+    "quality": {
+      "namingComplianceRate": 0.82,
+      "conflicts": 5
+    },
+    "release": {
+      "publishCount": 8,
+      "successRate": 0.95,
+      "rollbackCount": 1
+    }
+  },
+  "collaboration": {
+    "metrics": {
+      "goalCoverageRate": 0.56,
+      "kpiConsistencyRate": 0.67,
+      "mappingRate": 0.89
+    },
+    "flow": [
+      "业务目标",
+      "KPI口径",
+      "业务对象",
+      "映射",
+      "资产/服务"
+    ],
+    "example": {
+      "goal": "出生一件事高效办成",
+      "kpis": ["出生证办理时效", "申领完成率"],
+      "objects": ["新生儿", "出生医学证明"],
+      "mappings": ["t_pop_base_info_2024", "t_med_birth_cert"]
+    }
+  },
+  "riskAndTodo": {
+    "business": ["未绑定目标", "未定义口径", "场景缺口"],
+    "governance": ["未映射对象", "冲突未解决", "低质量对象"],
+    "actions": ["去绑定目标", "去定义口径", "去处理映射"]
+  }
+}

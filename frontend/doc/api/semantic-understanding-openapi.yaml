@@ -1,0 +1,1412 @@
+openapi: 3.0.3
+info:
+  title: Semantic Understanding API
+  version: "2026-01-17"
+  description: APIs for semantic understanding workflow.
+servers:
+  - url: /api/semantic
+tags:
+  - name: data
+    description: Data sources and assets
+  - name: analysis
+    description: Semantic analysis tasks
+  - name: run
+    description: Suggestion generation runs
+  - name: rules
+    description: Rule gate and evidence
+  - name: fields
+    description: Field-level overrides and conflicts
+  - name: relationships
+    description: Relationship graph
+  - name: ontology
+    description: Ontology build agent and knowledge network
+  - name: terms
+    description: Standard terminology
+  - name: upgrade
+    description: Upgrade suggestions and history
+  - name: mapping
+    description: Business object mapping
+  - name: audit
+    description: Export and audit logs
+paths:
+  /data-sources:
+    get:
+      tags: [data]
+      summary: List data sources
+      parameters:
+        - $ref: "#/components/parameters/EnvParam"
+        - $ref: "#/components/parameters/TypeParam"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DataSourceListResponse"
+  /assets:
+    get:
+      tags: [data]
+      summary: List assets with filters
+      parameters:
+        - name: sourceId
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/AssetStatus"
+        - name: governanceStatus
+          in: query
+          schema:
+            $ref: "#/components/schemas/GovernanceStatus"
+        - name: keyword
+          in: query
+          schema:
+            type: string
+        - name: pendingReviewMin
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+        - name: gateFailedMin
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+        - name: riskMin
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+        - name: sortBy
+          in: query
+          schema:
+            $ref: "#/components/schemas/AssetSortField"
+        - name: sortOrder
+          in: query
+          schema:
+            type: string
+            enum: [asc, desc]
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PageSizeParam"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssetListResponse"
+  /assets/{table}/schema:
+    get:
+      tags: [data]
+      summary: Get table schema
+      parameters:
+        - name: table
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TableSchemaResponse"
+  /analysis/start:
+    post:
+      tags: [analysis]
+      summary: Start single-table analysis
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnalysisStartRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalysisStartResponse"
+  /analysis/progress/{taskId}:
+    get:
+      tags: [analysis]
+      summary: Get analysis progress
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalysisProgressResponse"
+  /analysis/result/{taskId}:
+    get:
+      tags: [analysis]
+      summary: Get analysis result
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalysisResultResponse"
+  /analysis/save:
+    post:
+      tags: [analysis]
+      summary: Save analysis result
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnalysisSaveRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BaseResponse"
+  /analysis/ignore:
+    post:
+      tags: [analysis]
+      summary: Ignore analysis result
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnalysisIgnoreRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BaseResponse"
+  /analysis/batch/start:
+    post:
+      tags: [analysis]
+      summary: Start batch analysis (legacy)
+      deprecated: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BatchStartRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BatchStartResponse"
+  /analysis/batch/progress/{batchId}:
+    get:
+      tags: [analysis]
+      summary: Get batch progress
+      parameters:
+        - name: batchId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BatchProgressResponse"
+  /analysis/batch/result/{batchId}:
+    get:
+      tags: [analysis]
+      summary: Get batch results
+      parameters:
+        - name: batchId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BatchResultResponse"
+  /analysis/runs:
+    post:
+      tags: [run]
+      summary: Create suggestion generation run (batch)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RunStartRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RunStartResponse"
+    get:
+      tags: [run]
+      summary: List runs
+      parameters:
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/RunStatus"
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PageSizeParam"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RunListResponse"
+  /analysis/runs/{runId}:
+    get:
+      tags: [run]
+      summary: Get run detail
+      parameters:
+        - name: runId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RunDetailResponse"
+  /analysis/runs/{runId}/items:
+    get:
+      tags: [run]
+      summary: List run items
+      parameters:
+        - name: runId
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PageSizeParam"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RunItemListResponse"
+  /rules/gatekeeper:
+    post:
+      tags: [rules]
+      summary: Run gatekeeper rules
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GatekeeperRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GatekeeperResponse"
+  /rules/evidence:
+    get:
+      tags: [rules]
+      summary: Get grouped rule evidence
+      parameters:
+        - name: table
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RuleEvidenceResponse"
+  /fields/override-role:
+    post:
+      tags: [fields]
+      summary: Override field semantic role
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FieldRoleOverrideRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BaseResponse"
+  /fields/override-sensitivity:
+    post:
+      tags: [fields]
+      summary: Override field sensitivity
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FieldSensitivityOverrideRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BaseResponse"
+  /fields/resolve-conflict:
+    post:
+      tags: [fields]
+      summary: Resolve field conflict
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FieldConflictResolveRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BaseResponse"
+  /relationships:
+    get:
+      tags: [relationships]
+      summary: Get relationships
+      parameters:
+        - name: table
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RelationshipListResponse"
+    post:
+      tags: [relationships]
+      summary: Create relationship
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RelationshipSaveRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BaseResponse"
+  /relationships/{id}:
+    put:
+      tags: [relationships]
+      summary: Update relationship
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RelationshipSaveRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BaseResponse"
+    delete:
+      tags: [relationships]
+      summary: Delete relationship
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BaseResponse"
+  /ontology/agent/build:
+    post:
+      tags: [ontology]
+      summary: Build ontology graph from prompt
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OntologyBuildRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OntologyBuildResponse"
+  /ontology/graphs/{graphId}:
+    get:
+      tags: [ontology]
+      summary: Get ontology graph
+      parameters:
+        - name: graphId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OntologyGraphResponse"
+  /ontology/nodes/{nodeId}/term:
+    put:
+      tags: [terms]
+      summary: Bind or create standard term for node
+      parameters:
+        - name: nodeId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NodeTermBindRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BaseResponse"
+  /terms:
+    get:
+      tags: [terms]
+      summary: List standard terms
+      parameters:
+        - name: keyword
+          in: query
+          schema:
+            type: string
+        - name: objectType
+          in: query
+          schema:
+            $ref: "#/components/schemas/ObjectType"
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/PageSizeParam"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TermListResponse"
+    post:
+      tags: [terms]
+      summary: Create standard term
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TermCreateRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TermCreateResponse"
+  /upgrade/suggestions:
+    get:
+      tags: [upgrade]
+      summary: Get upgrade suggestions
+      parameters:
+        - name: table
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UpgradeSuggestionResponse"
+  /upgrade/decision:
+    post:
+      tags: [upgrade]
+      summary: Submit upgrade decision
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpgradeDecisionRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BaseResponse"
+  /upgrade/history:
+    get:
+      tags: [upgrade]
+      summary: Get upgrade history
+      parameters:
+        - name: table
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UpgradeHistoryResponse"
+  /upgrade/rollback:
+    post:
+      tags: [upgrade]
+      summary: Rollback upgrade
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpgradeRollbackRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BaseResponse"
+  /mapping/bo:
+    get:
+      tags: [mapping]
+      summary: Get business object mapping
+      parameters:
+        - name: table
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MappingGetResponse"
+    post:
+      tags: [mapping]
+      summary: Save business object mapping
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MappingSaveRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BaseResponse"
+  /export/report:
+    get:
+      tags: [audit]
+      summary: Export semantic report
+      parameters:
+        - name: table
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: format
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [pdf, png]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BaseResponse"
+  /audit/logs:
+    get:
+      tags: [audit]
+      summary: Get audit logs
+      parameters:
+        - name: table
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuditLogResponse"
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+  parameters:
+    EnvParam:
+      name: env
+      in: query
+      schema:
+        type: string
+    TypeParam:
+      name: type
+      in: query
+      schema:
+        type: string
+    PageParam:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    PageSizeParam:
+      name: pageSize
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 10
+  schemas:
+    BaseResponse:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+        data:
+          type: object
+      required: [code, message]
+    DataSource:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        type: { type: string }
+    DataSourceListResponse:
+      allOf:
+        - $ref: "#/components/schemas/BaseResponse"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/DataSource"
+    AssetStatus:
+      type: string
+      enum: [scanned, analyzed, pending_review, pending, ignored]
+    GovernanceStatus:
+      type: string
+      description: S0 未理解 / S1 建议已生成 / S3 已确认生效
+      enum: [S0, S1, S3]
+    AssetSortField:
+      type: string
+      enum: [updateTime, pendingReviewFields, gateFailedItems, riskItems]
+    ReviewStats:
+      type: object
+      properties:
+        pendingReviewFields: { type: integer }
+        gateFailedItems: { type: integer }
+        riskItems: { type: integer }
+    RunStatus:
+      type: string
+      enum: [queued, running, success, failed]
+    RunSummary:
+      type: object
+      properties:
+        runId: { type: string }
+        status: { $ref: "#/components/schemas/RunStatus" }
+        startedAt: { type: string }
+        finishedAt: { type: string }
+        sampleRows: { type: integer }
+        ruleVersion: { type: string }
+        modelVersion: { type: string }
+        queueInfo: { type: string }
+        estimateTime: { type: string }
+    RunRecord:
+      type: object
+      properties:
+        runId: { type: string }
+        status: { $ref: "#/components/schemas/RunStatus" }
+        createdBy: { type: string }
+        createdAt: { type: string }
+        startedAt: { type: string }
+        finishedAt: { type: string }
+        tablesCount: { type: integer }
+        sampleRows: { type: integer }
+        ruleVersion: { type: string }
+        modelVersion: { type: string }
+        queueInfo: { type: string }
+        estimateTime: { type: string }
+        errorReason: { type: string }
+    RunStartRequest:
+      type: object
+      properties:
+        tables:
+          type: array
+          items: { type: string }
+        sampleRows: { type: integer }
+        ruleVersion: { type: string }
+        modelVersion: { type: string }
+        concurrency: { type: integer }
+        queue: { type: string }
+      required: [tables]
+    RunStartResponse:
+      allOf:
+        - $ref: "#/components/schemas/BaseResponse"
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                runId: { type: string }
+                status: { $ref: "#/components/schemas/RunStatus" }
+                queuedCount: { type: integer }
+                estimateTime: { type: string }
+    RunListResponse:
+      allOf:
+        - $ref: "#/components/schemas/BaseResponse"
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                total: { type: integer }
+                list:
+                  type: array
+                  items: { $ref: "#/components/schemas/RunRecord" }
+    RunDetailResponse:
+      allOf:
+        - $ref: "#/components/schemas/BaseResponse"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/RunRecord"
+    RunItem:
+      type: object
+      properties:
+        table: { type: string }
+        status: { $ref: "#/components/schemas/RunStatus" }
+        governanceStatus: { $ref: "#/components/schemas/GovernanceStatus" }
+        reviewStats: { $ref: "#/components/schemas/ReviewStats" }
+        startedAt: { type: string }
+        finishedAt: { type: string }
+        errorReason: { type: string }
+    RunItemListResponse:
+      allOf:
+        - $ref: "#/components/schemas/BaseResponse"
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                total: { type: integer }
+                list:
+                  type: array
+                  items: { $ref: "#/components/schemas/RunItem" }
+    AssetItem:
+      type: object
+      properties:
+        table: { type: string }
+        comment: { type: string }
+        sourceId: { type: string }
+        sourceType: { type: string }
+        status: { $ref: "#/components/schemas/AssetStatus" }
+        semanticAnalysisId: { type: string }
+        governanceStatus: { $ref: "#/components/schemas/GovernanceStatus" }
+        reviewStats: { $ref: "#/components/schemas/ReviewStats" }
+        lastRun: { $ref: "#/components/schemas/RunSummary" }
+    AssetListResponse:
+      allOf:
+        - $ref: "#/components/schemas/BaseResponse"
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                total: { type: integer }
+                list:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/AssetItem"
+    TableSchemaResponse:
+      allOf:
+        - $ref: "#/components/schemas/BaseResponse"
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                table: { type: string }
+                comment: { type: string }
+                fields:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/FieldSchema"
+    FieldSchema:
+      type: object
+      properties:
+        name: { type: string }
+        type: { type: string }
+        comment: { type: string }
+    AnalysisStartRequest:
+      type: object
+      properties:
+        table: { type: string }
+        sourceId: { type: string }
+        options:
+          type: object
+          properties:
+            useAI: { type: boolean }
+            useRules: { type: boolean }
+            saveResult: { type: boolean }
+      required: [table, sourceId]
+    AnalysisStartResponse:
+      allOf:
+        - $ref: "#/components/schemas/BaseResponse"
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                taskId: { type: string }
+                status: { type: string }
+    AnalysisProgressResponse:
+      allOf:
+        - $ref: "#/components/schemas/BaseResponse"
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                taskId: { type: string }
+                status: { type: string }
+                step: { type: string }
+                percent: { type: integer }
+                logs:
+                  type: array
+                  items: { type: string }
+    SemanticRole:
+      type: string
+      enum: [Identifier, BusAttr, ForeignKey, Status, EventHint, Audit]
+    SensitivityLevel:
+      type: string
+      enum: [L1, L2, L3, L4]
+    GateResultType:
+      type: string
+      enum: [PASS, REVIEW, REJECT]
+    FieldSemanticProfile:
+      type: object
+      properties:
+        fieldName: { type: string }
+        dataType: { type: string }
+        role: { $ref: "#/components/schemas/SemanticRole" }
+        roleConfidence: { type: number }
+        sensitivity: { $ref: "#/components/schemas/SensitivityLevel" }
+        quality: { type: string }
+        businessTerm: { type: string }
+        businessDefinition: { type: string }
+        logicalType: { type: string }
+        unit: { type: string }
+        governanceStatus: { $ref: "#/components/schemas/GovernanceStatus" }
+    GateResult:
+      type: object
+      properties:
+        result: { $ref: "#/components/schemas/GateResultType" }
+        details:
+          type: object
+        reasons:
+          type: array
+          items: { type: string }
+    RuleScore:
+      type: object
+      properties:
+        naming: { type: number }
+        behavior: { type: number }
+        comment: { type: number }
+        total: { type: number }
+    ScoreBreakdown:
+      type: object
+      properties:
+        rule: { type: number }
+        field: { type: number }
+        ai: { type: number }
+    EvidenceItem:
+      type: object
+      properties:
+        field: { type: string }
+        reason: { type: string }
+        weight: { type: number }
+    ObjectType:
+      type: string
+      enum: [entity, event, state, rule, attribute]
+    DataLayer:
+      type: string
+      enum: [ODS, DWD, DWS, ADS, DIM, 其他]
+    UpdateStrategy:
+      type: string
+      enum: [增量追加, 全量覆盖, 缓慢变化维]
+    Relationship:
+      type: object
+      properties:
+        targetTable: { type: string }
+        type: { type: string }
+        key: { type: string }
+        description: { type: string }
+    ObjectTypeStyle:
+      type: object
+      properties:
+        objectType: { $ref: "#/components/schemas/ObjectType" }
+        label: { type: string }
+        color: { type: string }
+        description: { type: string }
+    OntologyNode:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        objectType: { $ref: "#/components/schemas/ObjectType" }
+        termId: { type: string }
+        termName: { type: string }
+        description: { type: string }
+    OntologyEdge:
+      type: object
+      properties:
+        id: { type: string }
+        sourceId: { type: string }
+        targetId: { type: string }
+        relation: { type: string }
+        description: { type: string }
+    OntologyGraph:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        description: { type: string }
+        objectTypeStyles:
+          type: array
+          items: { $ref: "#/components/schemas/ObjectTypeStyle" }
+        nodes:
+          type: array
+          items: { $ref: "#/components/schemas/OntologyNode" }
+        edges:
+          type: array
+          items: { $ref: "#/components/schemas/OntologyEdge" }
+    OntologyBuildRequest:
+      type: object
+      properties:
+        prompt: { type: string }
+        graphId: { type: string }
+        options:
+          type: object
+          properties:
+            includeRelations: { type: boolean }
+            includeAttributes: { type: boolean }
+      required: [prompt]
+    OntologyBuildResponse:
+      allOf:
+        - $ref: "#/components/schemas/BaseResponse"
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                graph: { $ref: "#/components/schemas/OntologyGraph" }
+    OntologyGraphResponse:
+      allOf:
+        - $ref: "#/components/schemas/BaseResponse"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/OntologyGraph"
+    Term:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        objectType: { $ref: "#/components/schemas/ObjectType" }
+        definition: { type: string }
+        synonyms:
+          type: array
+          items: { type: string }
+        tags:
+          type: array
+          items: { type: string }
+    TermListResponse:
+      allOf:
+        - $ref: "#/components/schemas/BaseResponse"
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                total: { type: integer }
+                list:
+                  type: array
+                  items: { $ref: "#/components/schemas/Term" }
+    TermCreateRequest:
+      type: object
+      properties:
+        name: { type: string }
+        objectType: { $ref: "#/components/schemas/ObjectType" }
+        definition: { type: string }
+        synonyms:
+          type: array
+          items: { type: string }
+        tags:
+          type: array
+          items: { type: string }
+      required: [name, objectType]
+    TermCreateResponse:
+      allOf:
+        - $ref: "#/components/schemas/BaseResponse"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/Term"
+    NodeTermBindRequest:
+      type: object
+      properties:
+        termId: { type: string }
+        term:
+          $ref: "#/components/schemas/TermCreateRequest"
+      oneOf:
+        - required: [termId]
+        - required: [term]
+    TableSemanticProfile:
+      type: object
+      properties:
+        tableName: { type: string }
+        gateResult: { $ref: "#/components/schemas/GateResult" }
+        ruleScore: { $ref: "#/components/schemas/RuleScore" }
+        aiScore: { type: number }
+        fieldScore: { type: number }
+        finalScore: { type: number }
+        scoreBreakdown: { $ref: "#/components/schemas/ScoreBreakdown" }
+        businessName: { type: string }
+        description: { type: string }
+        tags:
+          type: array
+          items: { type: string }
+        aiEvidence:
+          type: array
+          items: { type: string }
+        aiEvidenceItems:
+          type: array
+          items: { $ref: "#/components/schemas/EvidenceItem" }
+        ruleEvidence:
+          type: array
+          items: { type: string }
+        objectType: { $ref: "#/components/schemas/ObjectType" }
+        objectTypeReason: { type: string }
+        businessDomain: { type: string }
+        dataGrain: { type: string }
+        dataLayer: { $ref: "#/components/schemas/DataLayer" }
+        updateStrategy: { $ref: "#/components/schemas/UpdateStrategy" }
+        retentionPeriod: { type: string }
+        securityLevel: { $ref: "#/components/schemas/SensitivityLevel" }
+        relationships:
+          type: array
+          items: { $ref: "#/components/schemas/Relationship" }
+        fields:
+          type: array
+          items: { $ref: "#/components/schemas/FieldSemanticProfile" }
+        governanceStatus: { $ref: "#/components/schemas/GovernanceStatus" }
+        reviewStats: { $ref: "#/components/schemas/ReviewStats" }
+        lastRun: { $ref: "#/components/schemas/RunSummary" }
+    AnalysisResultResponse:
+      allOf:
+        - $ref: "#/components/schemas/BaseResponse"
+        - type: object
+          properties:
+            data:
+              $ref: "#/components/schemas/TableSemanticProfile"
+    AnalysisSaveRequest:
+      type: object
+      properties:
+        table: { type: string }
+        semanticProfile:
+          $ref: "#/components/schemas/TableSemanticProfile"
+      required: [table, semanticProfile]
+    AnalysisIgnoreRequest:
+      type: object
+      properties:
+        table: { type: string }
+        reason: { type: string }
+      required: [table]
+    BatchStartRequest:
+      type: object
+      properties:
+        tables:
+          type: array
+          items: { type: string }
+        options:
+          type: object
+          properties:
+            useAI: { type: boolean }
+            useRules: { type: boolean }
+      required: [tables]
+    BatchStartResponse:
+      allOf:
+        - $ref: "#/components/schemas/BaseResponse"
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                batchId: { type: string }
+    BatchProgressResponse:
+      allOf:
+        - $ref: "#/components/schemas/BaseResponse"
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                current: { type: integer }
+                total: { type: integer }
+                status: { type: string }
+    BatchResultItem:
+      type: object
+      properties:
+        tableId: { type: string }
+        tableName: { type: string }
+        scorePercent: { type: number }
+        needsReview: { type: boolean }
+        lowConfidenceReasons:
+          type: array
+          items: { type: string }
+    BatchResultResponse:
+      allOf:
+        - $ref: "#/components/schemas/BaseResponse"
+        - type: object
+          properties:
+            data:
+              type: array
+              items: { $ref: "#/components/schemas/BatchResultItem" }
+    GatekeeperRequest:
+      type: object
+      properties:
+        table: { type: string }
+        fields:
+          type: array
+          items: { $ref: "#/components/schemas/FieldSchema" }
+      required: [table, fields]
+    GatekeeperResponse:
+      allOf:
+        - $ref: "#/components/schemas/BaseResponse"
+        - type: object
+          properties:
+            data: { $ref: "#/components/schemas/GateResult" }
+    RuleEvidenceResponse:
+      allOf:
+        - $ref: "#/components/schemas/BaseResponse"
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                groups:
+                  type: object
+                  additionalProperties:
+                    type: array
+                    items: { type: string }
+    FieldRoleOverrideRequest:
+      type: object
+      properties:
+        table: { type: string }
+        field: { type: string }
+        role: { $ref: "#/components/schemas/SemanticRole" }
+        source:
+          type: string
+          enum: [rule, ai]
+      required: [table, field, role]
+    FieldSensitivityOverrideRequest:
+      type: object
+      properties:
+        table: { type: string }
+        field: { type: string }
+        sensitivity: { $ref: "#/components/schemas/SensitivityLevel" }
+      required: [table, field, sensitivity]
+    FieldConflictResolveRequest:
+      type: object
+      properties:
+        table: { type: string }
+        field: { type: string }
+        choice:
+          type: string
+          enum: [rule, ai]
+      required: [table, field, choice]
+    RelationshipSaveRequest:
+      type: object
+      properties:
+        table: { type: string }
+        targetTable: { type: string }
+        type: { type: string }
+        key: { type: string }
+        description: { type: string }
+      required: [table, targetTable, type, key]
+    RelationshipListResponse:
+      allOf:
+        - $ref: "#/components/schemas/BaseResponse"
+        - type: object
+          properties:
+            data:
+              type: array
+              items: { $ref: "#/components/schemas/Relationship" }
+    UpgradeSuggestionResponse:
+      allOf:
+        - $ref: "#/components/schemas/BaseResponse"
+        - type: object
+          properties:
+            data:
+              type: object
+              properties:
+                beforeState: { type: object }
+                afterState: { type: object }
+                reason: { type: string }
+    UpgradeDecisionRequest:
+      type: object
+      properties:
+        table: { type: string }
+        decision:
+          type: string
+          enum: [accepted, rejected, later]
+        rejectReason: { type: string }
+      required: [table, decision]
+    UpgradeHistoryItem:
+      type: object
+      properties:
+        id: { type: string }
+        tableId: { type: string }
+        tableName: { type: string }
+        beforeState: { type: object }
+        afterState: { type: object }
+        timestamp: { type: string }
+        rolledBack: { type: boolean }
+    UpgradeHistoryResponse:
+      allOf:
+        - $ref: "#/components/schemas/BaseResponse"
+        - type: object
+          properties:
+            data:
+              type: array
+              items: { $ref: "#/components/schemas/UpgradeHistoryItem" }
+    UpgradeRollbackRequest:
+      type: object
+      properties:
+        historyId: { type: string }
+      required: [historyId]
+    MappingGetResponse:
+      allOf:
+        - $ref: "#/components/schemas/BaseResponse"
+        - type: object
+          properties:
+            data:
+              type: object
+    MappingSaveRequest:
+      type: object
+      properties:
+        table: { type: string }
+        boId: { type: string }
+        mapping:
+          type: object
+          additionalProperties: true
+      required: [table, boId, mapping]
+    AuditLogItem:
+      type: object
+      properties:
+        id: { type: string }
+        table: { type: string }
+        action: { type: string }
+        operator: { type: string }
+        timestamp: { type: string }
+        detail: { type: string }
+    AuditLogResponse:
+      allOf:
+        - $ref: "#/components/schemas/BaseResponse"
+        - type: object
+          properties:
+            data:
+              type: array
+              items: { $ref: "#/components/schemas/AuditLogItem" }
+security:
+  - BearerAuth: []

@@ -1,0 +1,622 @@
+import { AnalysisResultVNext } from '../types/analysisVNext';
+
+export const mockAnalysisResultVNext: AnalysisResultVNext = {
+    header: {
+        scenario_id: "scn_edu_enrollment_primary_001",
+        scenario_name: "上学一件事（小学入学）",
+        model_version: "sem-topdown-vnext-0.3",
+        confidence_overall: 0.87,
+        coverage_score: 92,
+        risk_flags: []
+    },
+    source_text: "监护人在政务服务平台提交小学入学申请，填写学生及监护人信息，选择意向学校并授权核验户籍、房产（或居住证）、监护关系、预防接种等信息。教育部门在规定时限内完成资格审核；材料不全的通知补正。审核通过后进行学位分配并发送录取通知，家长按要求完成线上确认与线下报到。",
+    elements: {
+        business_objects: {
+            primary_object: {
+                item_id: "bo_001",
+                type: "BO",
+                label: "入学申请",
+                normalized_name: "EnrollmentApplication",
+                source_span: "提交小学入学申请",
+                confidence: 0.93,
+                status: "accepted",
+                mapping: {
+                    object_id: "bo.EnrollmentApplication",
+                    object_category: "application"
+                },
+                comments: ""
+            },
+            related_objects: [
+                {
+                    item_id: "bo_002",
+                    type: "BO",
+                    label: "学生",
+                    normalized_name: "Student",
+                    source_span: "填写学生…信息",
+                    confidence: 0.91,
+                    status: "accepted",
+                    mapping: { object_id: "bo.Student", object_category: "party" }
+                },
+                {
+                    item_id: "bo_003",
+                    type: "BO",
+                    label: "监护人",
+                    normalized_name: "Guardian",
+                    source_span: "监护人…提交…填写…监护人信息",
+                    confidence: 0.92,
+                    status: "accepted",
+                    mapping: { object_id: "bo.Guardian", object_category: "party" }
+                },
+                {
+                    item_id: "bo_004",
+                    type: "BO",
+                    label: "资格核验结果",
+                    normalized_name: "EligibilityCheckResult",
+                    source_span: "授权核验户籍、房产…监护关系、预防接种",
+                    confidence: 0.86,
+                    status: "accepted",
+                    mapping: { object_id: "bo.EligibilityCheckResult", object_category: "decision" }
+                },
+                {
+                    item_id: "bo_005",
+                    type: "BO",
+                    label: "学位分配",
+                    normalized_name: "Allocation",
+                    source_span: "进行学位分配",
+                    confidence: 0.84,
+                    status: "accepted",
+                    mapping: { object_id: "bo.Allocation", object_category: "decision" }
+                },
+                {
+                    item_id: "bo_006",
+                    type: "BO",
+                    label: "录取通知",
+                    normalized_name: "AdmissionNotice",
+                    source_span: "发送录取通知",
+                    confidence: 0.82,
+                    status: "accepted",
+                    mapping: { object_id: "bo.AdmissionNotice", object_category: "artifact" }
+                },
+                {
+                    item_id: "bo_007",
+                    type: "BO",
+                    label: "报到记录",
+                    normalized_name: "RegistrationRecord",
+                    source_span: "线下报到",
+                    confidence: 0.80,
+                    status: "accepted",
+                    mapping: { object_id: "bo.RegistrationRecord", object_category: "event" }
+                }
+            ],
+            object_fields_suggested: [
+                {
+                    object: "EnrollmentApplication",
+                    fields: [
+                        { field_name: "application_id", field_type: "string", required: true, source: "system", privacy_level: "L2" },
+                        { field_name: "stage", field_type: "enum", required: true, source: "user_input", privacy_level: "L1" },
+                        { field_name: "student_id", field_type: "string", required: true, source: "relation", privacy_level: "L2" },
+                        { field_name: "guardian_ids", field_type: "array<string>", required: true, source: "relation", privacy_level: "L2" },
+                        { field_name: "preferred_schools", field_type: "array<string>", required: false, source: "user_input", privacy_level: "L1" },
+                        { field_name: "submit_time", field_type: "datetime", required: false, source: "system", privacy_level: "L1" },
+                        { field_name: "current_state", field_type: "enum", required: true, source: "system", privacy_level: "L1" },
+                        { field_name: "eligibility_summary", field_type: "enum", required: false, source: "computed", privacy_level: "L1" },
+                        { field_name: "reject_reason_code", field_type: "string", required: false, source: "computed", privacy_level: "L1" }
+                    ]
+                },
+                {
+                    object: "EligibilityCheckItem",
+                    fields: [
+                        { field_name: "check_type", field_type: "enum", required: true, source: "system", privacy_level: "L1" },
+                        { field_name: "data_source_org", field_type: "string", required: true, source: "system", privacy_level: "L1" },
+                        { field_name: "access_mode", field_type: "enum", required: true, source: "system", privacy_level: "L1" },
+                        { field_name: "status", field_type: "enum", required: true, source: "computed", privacy_level: "L1" },
+                        { field_name: "fail_reason_code", field_type: "string", required: false, source: "computed", privacy_level: "L1" }
+                    ]
+                }
+            ],
+            object_relations: [
+                { from_object: "EnrollmentApplication", relation: "1-1", to_object: "Student" },
+                { from_object: "EnrollmentApplication", relation: "1-n", to_object: "Guardian" },
+                { from_object: "EnrollmentApplication", relation: "1-n", to_object: "EligibilityCheckItem" },
+                { from_object: "EnrollmentApplication", relation: "1-1", to_object: "Allocation" },
+                { from_object: "EnrollmentApplication", relation: "1-1", to_object: "AdmissionNotice" },
+                { from_object: "EnrollmentApplication", relation: "1-1", to_object: "RegistrationRecord" }
+            ]
+        },
+        roles: {
+            roles: [
+                {
+                    item_id: "role_001",
+                    type: "ROLE",
+                    label: "申请人",
+                    normalized_name: "Applicant",
+                    source_span: "监护人…提交…",
+                    confidence: 0.92,
+                    status: "accepted",
+                    mapping: { actor_type: "person", org_unit: "", responsibility: ["申请提交", "补正", "确认", "报到"] }
+                },
+                {
+                    item_id: "role_002",
+                    type: "ROLE",
+                    label: "服务对象",
+                    normalized_name: "Student",
+                    source_span: "学生",
+                    confidence: 0.90,
+                    status: "accepted",
+                    mapping: { actor_type: "person", org_unit: "", responsibility: ["被审核", "被分配"] }
+                },
+                {
+                    item_id: "role_003",
+                    type: "ROLE",
+                    label: "主管部门",
+                    normalized_name: "EducationAuthority",
+                    source_span: "教育部门…完成资格审核…学位分配…发送通知",
+                    confidence: 0.88,
+                    status: "accepted",
+                    mapping: { actor_type: "org", org_unit: "教育局", responsibility: ["资格审核", "学位分配", "结果通知"] }
+                },
+                {
+                    item_id: "role_004",
+                    type: "ROLE",
+                    label: "协同部门-公安",
+                    normalized_name: "PublicSecurity",
+                    source_span: "核验户籍",
+                    confidence: 0.85,
+                    status: "accepted",
+                    mapping: { actor_type: "org", org_unit: "公安", responsibility: ["户籍核验"] }
+                },
+                {
+                    item_id: "role_005",
+                    type: "ROLE",
+                    label: "协同部门-住建/不动产",
+                    normalized_name: "HousingOrProperty",
+                    source_span: "核验房产（或居住证）",
+                    confidence: 0.83,
+                    status: "accepted",
+                    mapping: { actor_type: "org", org_unit: "住建/不动产", responsibility: ["房产/居住核验"] }
+                },
+                {
+                    item_id: "role_006",
+                    type: "ROLE",
+                    label: "协同部门-民政",
+                    normalized_name: "CivilAffairs",
+                    source_span: "核验监护关系",
+                    confidence: 0.82,
+                    status: "accepted",
+                    mapping: { actor_type: "org", org_unit: "民政", responsibility: ["监护关系核验"] }
+                },
+                {
+                    item_id: "role_007",
+                    type: "ROLE",
+                    label: "协同部门-卫健",
+                    normalized_name: "HealthCommission",
+                    source_span: "核验预防接种",
+                    confidence: 0.82,
+                    status: "accepted",
+                    mapping: { actor_type: "org", org_unit: "卫健", responsibility: ["接种核验"] }
+                }
+            ]
+        },
+        actions: {
+            actions: [
+                {
+                    item_id: "act_001",
+                    type: "ACTION",
+                    label: "提交申请",
+                    normalized_name: "SubmitApplication",
+                    source_span: "提交小学入学申请",
+                    confidence: 0.92,
+                    status: "accepted",
+                    mapping: {
+                        action_category: "application",
+                        actor_role: "Applicant",
+                        target_object: "EnrollmentApplication",
+                        post_state: "SUBMITTED"
+                    }
+                },
+                {
+                    item_id: "act_002",
+                    type: "ACTION",
+                    label: "授权核验",
+                    normalized_name: "AuthorizeChecks",
+                    source_span: "授权核验户籍、房产…监护关系、预防接种",
+                    confidence: 0.88,
+                    status: "accepted",
+                    mapping: {
+                        action_category: "verification",
+                        actor_role: "Applicant",
+                        target_object: "EnrollmentApplication",
+                        post_state: "VERIFYING"
+                    }
+                },
+                {
+                    item_id: "act_003",
+                    type: "ACTION",
+                    label: "资格审核",
+                    normalized_name: "EligibilityReview",
+                    source_span: "完成资格审核",
+                    confidence: 0.86,
+                    status: "accepted",
+                    mapping: {
+                        action_category: "approval",
+                        actor_role: "EducationAuthority",
+                        target_object: "EnrollmentApplication",
+                        post_state: "PENDING_ALLOCATION"
+                    }
+                },
+                {
+                    item_id: "act_004",
+                    type: "ACTION",
+                    label: "通知补正",
+                    normalized_name: "RequestSupplement",
+                    source_span: "材料不全的通知补正",
+                    confidence: 0.84,
+                    status: "accepted",
+                    mapping: {
+                        action_category: "exception",
+                        actor_role: "EducationAuthority",
+                        target_object: "EnrollmentApplication",
+                        post_state: "NEED_SUPPLEMENT"
+                    }
+                },
+                {
+                    item_id: "act_005",
+                    type: "ACTION",
+                    label: "学位分配",
+                    normalized_name: "AllocateQuota",
+                    source_span: "进行学位分配",
+                    confidence: 0.83,
+                    status: "accepted",
+                    mapping: {
+                        action_category: "decision",
+                        actor_role: "EducationAuthority",
+                        target_object: "Allocation",
+                        post_state: "ADMITTED"
+                    }
+                },
+                {
+                    item_id: "act_006",
+                    type: "ACTION",
+                    label: "发送录取通知",
+                    normalized_name: "SendAdmissionNotice",
+                    source_span: "发送录取通知",
+                    confidence: 0.82,
+                    status: "accepted",
+                    mapping: {
+                        action_category: "notification",
+                        actor_role: "EducationAuthority",
+                        target_object: "AdmissionNotice"
+
+                    }
+                },
+                {
+                    item_id: "act_007",
+                    type: "ACTION",
+                    label: "线上确认",
+                    normalized_name: "ConfirmAdmission",
+                    source_span: "完成线上确认",
+                    confidence: 0.80,
+                    status: "accepted",
+                    mapping: {
+                        action_category: "confirmation",
+                        actor_role: "Applicant",
+                        target_object: "EnrollmentApplication",
+                        post_state: "CONFIRMED"
+                    }
+                },
+                {
+                    item_id: "act_008",
+                    type: "ACTION",
+                    label: "线下报到",
+                    normalized_name: "OfflineRegistration",
+                    source_span: "线下报到",
+                    confidence: 0.79,
+                    status: "accepted",
+                    mapping: {
+                        action_category: "fulfillment",
+                        actor_role: "Applicant",
+                        target_object: "RegistrationRecord",
+                        post_state: "REGISTERED"
+                    }
+                }
+            ]
+        },
+        artifacts: {
+            materials: [
+                {
+                    item_id: "mat_001",
+                    type: "ARTIFACT",
+                    label: "居住类证明（备选）",
+                    normalized_name: "ResidenceProof",
+                    source_span: "房产（或居住证）",
+                    confidence: 0.72,
+                    status: "suggested",
+                    mapping: {
+                        material_type: "statutory_or_alternative",
+                        required: "conditional",
+                        format: ["image", "pdf", "e_credential"],
+                        privacy_level: "L3",
+                        mapped_to_object_field: "EnrollmentApplication.residence_proof_ref"
+                    },
+                    comments: "建议在地区规则确定后，拆为：房产证/租赁备案/居住证三项"
+                }
+            ],
+            data_checks: [
+                {
+                    item_id: "chk_001",
+                    type: "ARTIFACT",
+                    label: "户籍核验",
+                    normalized_name: "HukouCheck",
+                    source_span: "核验户籍",
+                    confidence: 0.90,
+                    status: "accepted",
+                    mapping: {
+                        check_type: "HUKOU",
+                        data_source_org: "公安",
+                        data_source_system: "共享交换/人口库",
+                        access_mode: "authorized_query",
+                        result_schema: ["PENDING", "PASS", "FAIL", "NEED_MATERIAL"],
+                        mapped_to_check_item: "EligibilityCheckItem.check_type=HUKOU"
+                    }
+                },
+                {
+                    item_id: "chk_002",
+                    type: "ARTIFACT",
+                    label: "房产/居住核验",
+                    normalized_name: "ResidenceOrPropertyCheck",
+                    source_span: "核验房产（或居住证）",
+                    confidence: 0.86,
+                    status: "accepted",
+                    mapping: {
+                        check_type: "RESIDENCE_OR_PROPERTY",
+                        data_source_org: "住建/不动产",
+                        data_source_system: "不动产登记/住建接口",
+                        access_mode: "authorized_query",
+                        result_schema: ["PENDING", "PASS", "FAIL", "NEED_MATERIAL"],
+                        mapped_to_check_item: "EligibilityCheckItem.check_type=RESIDENCE_OR_PROPERTY"
+                    }
+                },
+                {
+                    item_id: "chk_003",
+                    type: "ARTIFACT",
+                    label: "监护关系核验",
+                    normalized_name: "GuardianshipCheck",
+                    source_span: "核验监护关系",
+                    confidence: 0.85,
+                    status: "accepted",
+                    mapping: {
+                        check_type: "GUARDIANSHIP",
+                        data_source_org: "民政",
+                        data_source_system: "婚姻/监护关系库",
+                        access_mode: "authorized_query",
+                        result_schema: ["PENDING", "PASS", "FAIL", "NEED_MATERIAL"],
+                        mapped_to_check_item: "EligibilityCheckItem.check_type=GUARDIANSHIP"
+                    }
+                },
+                {
+                    item_id: "chk_004",
+                    type: "ARTIFACT",
+                    label: "预防接种核验",
+                    normalized_name: "VaccineCheck",
+                    source_span: "核验预防接种",
+                    confidence: 0.84,
+                    status: "accepted",
+                    mapping: {
+                        check_type: "VACCINE",
+                        data_source_org: "卫健",
+                        data_source_system: "免疫规划系统",
+                        access_mode: "authorized_query",
+                        result_schema: ["PENDING", "PASS", "FAIL", "NEED_MATERIAL"],
+                        mapped_to_check_item: "EligibilityCheckItem.check_type=VACCINE"
+                    }
+                }
+            ]
+        },
+        state_machine: {
+            primary_object: "EnrollmentApplication",
+            states: [
+                { state_code: "DRAFT", state_name: "草稿", is_terminal: false, confidence: 0.92 },
+                { state_code: "SUBMITTED", state_name: "已提交", is_terminal: false, confidence: 0.90 },
+                { state_code: "VERIFYING", state_name: "核验中", is_terminal: false, confidence: 0.88 },
+                { state_code: "NEED_SUPPLEMENT", state_name: "待补正", is_terminal: false, confidence: 0.84 },
+                { state_code: "PENDING_REVIEW", state_name: "待审核", is_terminal: false, confidence: 0.82 },
+                { state_code: "PENDING_ALLOCATION", state_name: "待分配", is_terminal: false, confidence: 0.80 },
+                { state_code: "ADMITTED", state_name: "已录取", is_terminal: false, confidence: 0.78 },
+                { state_code: "REJECTED", state_name: "未通过", is_terminal: true, confidence: 0.78 },
+                { state_code: "CONFIRMED", state_name: "已确认", is_terminal: false, confidence: 0.76 },
+                { state_code: "REGISTERED", state_name: "已报到", is_terminal: true, confidence: 0.76 }
+            ],
+            transitions: [
+                {
+                    from_state: "DRAFT",
+                    to_state: "SUBMITTED",
+                    trigger_action: "SubmitApplication",
+                    guard_conditions: [],
+                    sla_deadline_ref: "tl_001"
+                },
+                {
+                    from_state: "SUBMITTED",
+                    to_state: "VERIFYING",
+                    trigger_action: "AuthorizeChecks",
+                    guard_conditions: [],
+                    sla_deadline_ref: "tl_001"
+                },
+                {
+                    from_state: "VERIFYING",
+                    to_state: "NEED_SUPPLEMENT",
+                    trigger_action: "RequestSupplement",
+                    guard_conditions: ["any(check.status == 'NEED_MATERIAL' or check.status == 'FAIL')"],
+                    sla_deadline_ref: "tl_002"
+                },
+                {
+                    from_state: "VERIFYING",
+                    to_state: "PENDING_REVIEW",
+                    trigger_action: "EligibilityReview",
+                    guard_conditions: ["all(check.status == 'PASS')"]
+                },
+                {
+                    from_state: "PENDING_REVIEW",
+                    to_state: "PENDING_ALLOCATION",
+                    trigger_action: "EligibilityReview",
+                    guard_conditions: ["eligibility_pass == true"]
+                },
+                {
+                    from_state: "PENDING_REVIEW",
+                    to_state: "REJECTED",
+                    trigger_action: "EligibilityReview",
+                    guard_conditions: ["eligibility_pass == false"]
+                },
+                {
+                    from_state: "PENDING_ALLOCATION",
+                    to_state: "ADMITTED",
+                    trigger_action: "AllocateQuota",
+                    guard_conditions: ["quota_available == true"]
+                },
+                {
+                    from_state: "ADMITTED",
+                    to_state: "CONFIRMED",
+                    trigger_action: "ConfirmAdmission",
+                    guard_conditions: [],
+                    sla_deadline_ref: "tl_003"
+                },
+                {
+                    from_state: "CONFIRMED",
+                    to_state: "REGISTERED",
+                    trigger_action: "OfflineRegistration",
+                    guard_conditions: [],
+                    sla_deadline_ref: "tl_004"
+                }
+            ]
+        },
+        constraints: {
+            time_limits: [
+                {
+                    item_id: "tl_001",
+                    type: "CONSTRAINT",
+                    label: "审核承诺时限",
+                    normalized_name: "ReviewSLA",
+                    source_span: "在规定时限内完成资格审核",
+                    confidence: 0.78,
+                    status: "suggested",
+                    mapping: {
+                        duration: 5,
+                        unit: "workday",
+                        start_event: "SUBMITTED",
+                        breach_action: "alert_and_escalate"
+                    },
+                    comments: "具体天数需按地区事项清单配置"
+                },
+                {
+                    item_id: "tl_002",
+                    type: "CONSTRAINT",
+                    label: "补正时限",
+                    normalized_name: "SupplementDeadline",
+                    source_span: "通知补正",
+                    confidence: 0.72,
+                    status: "suggested",
+                    mapping: {
+                        duration: 7,
+                        unit: "day",
+                        start_event: "NEED_SUPPLEMENT",
+                        breach_action: "auto_cancel_or_reject"
+                    }
+                },
+                {
+                    item_id: "tl_003",
+                    type: "CONSTRAINT",
+                    label: "确认截止",
+                    normalized_name: "ConfirmDeadline",
+                    source_span: "完成线上确认",
+                    confidence: 0.70,
+                    status: "suggested",
+                    mapping: {
+                        duration: 3,
+                        unit: "day",
+                        start_event: "ADMITTED",
+                        breach_action: "release_quota"
+                    }
+                },
+                {
+                    item_id: "tl_004",
+                    type: "CONSTRAINT",
+                    label: "报到截止",
+                    normalized_name: "RegisterDeadline",
+                    source_span: "线下报到",
+                    confidence: 0.68,
+                    status: "suggested",
+                    mapping: {
+                        duration: 10,
+                        unit: "day",
+                        start_event: "CONFIRMED",
+                        breach_action: "mark_no_show"
+                    }
+                }
+            ],
+            eligibility_rules: [
+                {
+                    item_id: "er_001",
+                    type: "CONSTRAINT",
+                    label: "基本资格：核验全部通过",
+                    normalized_name: "EligibilityAllPass",
+                    source_span: "授权核验…教育部门…资格审核",
+                    confidence: 0.78,
+                    status: "accepted",
+                    mapping: {
+                        rule_expression: "all(check.status == 'PASS')",
+                        inputs: ["EligibilityCheckItem.status"],
+                        outputs: ["EnrollmentApplication.eligibility_summary", "EnrollmentApplication.current_state"],
+                        reason_code: "ELIGIBILITY_CHECK_FAILED"
+                    }
+                }
+            ],
+            priority_rules: [
+                {
+                    item_id: "pr_001",
+                    type: "CONSTRAINT",
+                    label: "学位分配：按规则版本执行",
+                    normalized_name: "AllocationRulePack",
+                    source_span: "进行学位分配",
+                    confidence: 0.70,
+                    status: "suggested",
+                    mapping: {
+                        rule_version: "alloc_primary_v1",
+                        inputs: ["hukou", "residence_or_property", "policy_flags", "preferred_schools", "quota"],
+                        outputs: ["Allocation.assigned_school_id", "Allocation.status"],
+                        reason_code: "NO_QUOTA_AVAILABLE"
+                    }
+                }
+            ],
+            exceptions: [
+                {
+                    item_id: "ex_001",
+                    type: "CONSTRAINT",
+                    label: "材料不全触发补正",
+                    normalized_name: "NeedSupplementWhenMissing",
+                    source_span: "材料不全的通知补正",
+                    confidence: 0.82,
+                    status: "accepted",
+                    mapping: {
+                        rule_expression: "any(check.status in ['NEED_MATERIAL','FAIL'])",
+                        inputs: ["EligibilityCheckItem.status"],
+                        outputs: ["EnrollmentApplication.current_state=NEED_SUPPLEMENT"],
+                        reason_code: "MATERIAL_INCOMPLETE_OR_CHECK_FAIL"
+                    }
+                }
+            ]
+        }
+    },
+    outputs: {
+        namespace: "gov.edu.enrollment",
+        version: "v0.1",
+        publish_mode: "draft",
+        artifacts: [
+            { name: "business_object_schema", enabled: true },
+            { name: "state_machine", enabled: true },
+            { name: "checklist_model", enabled: true },
+            { name: "rule_pack", enabled: true },
+            { name: "data_mapping", enabled: false },
+            { name: "glossary_terms", enabled: false }
+        ],
+        generate_preview_ready: true
+    }
+}
