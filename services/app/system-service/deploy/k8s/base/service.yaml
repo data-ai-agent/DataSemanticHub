@@ -1,0 +1,36 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: system-service-api
+  labels:
+    app: system-service
+    component: api
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8888
+      targetPort: 8888
+      protocol: TCP
+      name: http
+  selector:
+    app: system-service
+    component: api
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: system-service-api-nodeport
+  labels:
+    app: system-service
+    component: api
+spec:
+  type: NodePort
+  ports:
+    - port: 8888
+      targetPort: 8888
+      nodePort: 30888
+      protocol: TCP
+      name: http
+  selector:
+    app: system-service
+    component: api

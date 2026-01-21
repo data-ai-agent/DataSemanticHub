@@ -1,0 +1,10 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: system-service-api-pdb
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: system-service
+      component: api

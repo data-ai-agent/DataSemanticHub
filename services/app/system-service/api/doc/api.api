@@ -1,0 +1,32 @@
+syntax = "v1"
+
+info (
+	title:   "system-service API"
+	desc:    "system-service API 服务"
+	version: "v1"
+)
+
+// 引入通用类型
+import "base.api"
+// ============================================
+// 在此处引入各模块 API 文件
+// 示例: import "user/user.api"
+// ============================================
+import "user/auth.api"
+
+// 定义 service 名称为 "api"
+// goctl 会生成: api.go + etc/api.yaml
+@server (
+	prefix: /api/v1
+)
+service api {
+	// 健康检查 (示例)
+	@handler HealthCheck
+	get /health returns (HealthResp)
+}
+
+// 健康检查响应
+type HealthResp {
+	Status string `json:"status"`
+}
+

@@ -1,0 +1,89 @@
+syntax = "v1"
+
+info(
+    title: "用户认证 API"
+    desc: "用户注册、登录、获取信息、退出登录"
+    version: "v1"
+)
+
+// 引入通用类型
+import "../base.api"
+
+type (
+    // === 注册请求 ===
+    RegisterReq {
+        FirstName       string `json:"first_name" validate:"required,min=1,max=50"`
+        LastName        string `json:"last_name" validate:"required,min=1,max=50"`
+        Email           string `json:"email" validate:"required,email"`
+        Organization    string `json:"organization" validate:"max=100"`
+        Password        string `json:"password" validate:"required,min=8,max=128"`
+        ConfirmPassword string `json:"confirm_password" validate:"required"`
+        AgreeTerms      bool   `json:"agree_terms" validate:"required"`
+    }
+    
+    // === 注册响应 ===
+    RegisterResp {
+        Id        string `json:"id"`
+        FirstName string `json:"first_name"`
+        LastName  string `json:"last_name"`
+        Email     string `json:"email"`
+        Token     string `json:"token"`
+    }
+    
+    // === 登录请求 ===
+    LoginReq {
+        Email      string `json:"email" validate:"required,email"`
+        Password   string `json:"password" validate:"required"`
+        RememberMe bool   `json:"remember_me"`
+    }
+    
+    // === 登录响应 ===
+    LoginResp {
+        Token        string    `json:"token"`
+        RefreshToken string    `json:"refresh_token,optional"`
+        ExpiresIn    int64     `json:"expires_in"`
+        UserInfo     UserInfo  `json:"user_info"`
+    }
+    
+    // === 用户信息 ===
+    UserInfo {
+        Id           string `json:"id"`
+        FirstName    string `json:"first_name"`
+        LastName     string `json:"last_name"`
+        Email        string `json:"email"`
+        Organization string `json:"organization,optional"`
+    }
+    
+    // === 获取用户信息响应 ===
+    GetUserInfoResp {
+        UserInfo UserInfo `json:"user_info"`
+    }
+    
+    // === 退出登录响应 ===
+    LogoutResp {
+        Message string `json:"message"`
+    }
+)
+
+@server(
+    prefix: /api/v1
+    group: user
+    jwt: Auth
+)
+service api {
+    @doc "用户注册"
+    @handler Register
+    post /user/register (RegisterReq) returns (RegisterResp)
+    
+    @doc "用户登录"
+    @handler Login
+    post /user/login (LoginReq) returns (LoginResp)
+    
+    @doc "获取当前用户信息"
+    @handler GetUserInfo
+    get /user/info returns (GetUserInfoResp)
+    
+    @doc "退出登录"
+    @handler Logout
+    post /user/logout returns (LogoutResp)
+}
