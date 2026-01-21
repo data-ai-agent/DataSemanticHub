@@ -494,12 +494,13 @@ const MenuManagementView = () => {
                     <p className="text-slate-500 mt-1">维护平台菜单结构与权限映射，保证导航一致性。</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <button
+                    {/* Sync functionality hidden as requested
+                        <button
                         onClick={() => setSyncModalOpen(true)}
                         className="px-4 py-2 rounded-lg border border-slate-200 text-slate-600 hover:text-slate-800 hover:border-slate-300"
                     >
                         <Settings size={14} className="inline mr-1" /> 同步菜单
-                    </button>
+                    </button> */}
                     <button
                         onClick={openCreateModal}
                         className="px-4 py-2 bg-indigo-600 text-white rounded-lg flex items-center gap-2 hover:bg-indigo-700"
@@ -509,24 +510,24 @@ const MenuManagementView = () => {
                 </div>
             </div>
 
-            <div className="grid gap-4 px-1 md:grid-cols-4">
+            <div className="grid gap-3 px-1 md:grid-cols-6">
                 {[
                     { label: '菜单总数', value: `${totalCount}`, note: '含目录与页面', color: 'indigo' },
                     { label: '启用菜单', value: `${enabledCount}`, note: '当前可访问', color: 'emerald' },
                     { label: '隐藏菜单', value: `${hiddenCount}`, note: '不对外展示', color: 'amber' },
                     { label: '未绑定权限', value: `${unlinkedCount}`, note: '高危风险', color: 'rose' }
                 ].map((item) => (
-                    <div key={item.label} className="bg-white rounded-lg border border-slate-200 p-4 shadow-sm">
+                    <div key={item.label} className="bg-white rounded-lg border border-slate-200 p-3 shadow-sm">
                         <div className="flex items-center justify-between">
-                            <p className="text-sm text-slate-500">{item.label}</p>
+                            <p className="text-xs text-slate-500">{item.label}</p>
                         </div>
-                        <div className={`mt-2 text-2xl font-semibold text-${item.color}-600`}>{item.value}</div>
+                        <div className={`mt-1 text-xl font-semibold text-${item.color}-600`}>{item.value}</div>
                         <div className="mt-1 text-xs text-slate-400">{item.note}</div>
                     </div>
                 ))}
             </div>
 
-            <div className="grid gap-6 px-1 lg:grid-cols-[1.1fr_1.3fr]">
+            <div className="grid gap-6 px-1 lg:grid-cols-[0.50fr_2.0fr]">
                 <section className="bg-white rounded-lg border border-slate-200 shadow-sm p-4">
                     <div className="flex flex-wrap items-center gap-3">
                         <div className="flex items-center gap-2 flex-1">
@@ -538,60 +539,7 @@ const MenuManagementView = () => {
                                 className="w-full text-sm text-slate-700 placeholder-slate-400 border-none outline-none"
                             />
                         </div>
-                        <div className="flex items-center gap-2 text-xs text-slate-500">
-                            {/* View Mode Toggle */}
-                            <div className="flex items-center bg-slate-100 rounded-lg p-1 mr-2">
-                                <button
-                                    onClick={() => setViewMode('tree')}
-                                    className={`p-1 rounded ${viewMode === 'tree' ? 'bg-white shadow text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
-                                    title="树形视图"
-                                >
-                                    <List size={14} />
-                                </button>
-                                <button
-                                    onClick={() => setViewMode('list')}
-                                    className={`p-1 rounded ${viewMode === 'list' ? 'bg-white shadow text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
-                                    title="列表视图"
-                                >
-                                    <Search size={14} />
-                                </button>
-                            </div>
 
-                            <Filter size={14} />
-                            <select
-                                value={groupFilter}
-                                onChange={(event) => setGroupFilter(event.target.value)}
-                                className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-600"
-                            >
-                                <option value="all">全部分组</option>
-                                {groups.map((item) => (
-                                    <option key={item} value={item}>
-                                        {item}
-                                    </option>
-                                ))}
-                            </select>
-                            <select
-                                value={typeFilter}
-                                onChange={(event) => setTypeFilter(event.target.value as 'all' | MenuType)}
-                                className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-600"
-                            >
-                                <option value="all">全部类型</option>
-                                <option value="目录">目录</option>
-                                <option value="页面">页面</option>
-                                <option value="操作">操作</option>
-                                <option value="外链">外链</option>
-                            </select>
-                            <select
-                                value={statusFilter}
-                                onChange={(event) => setStatusFilter(event.target.value as 'all' | MenuStatus)}
-                                className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-600"
-                            >
-                                <option value="all">全部状态</option>
-                                <option value="启用">启用</option>
-                                <option value="隐藏">隐藏</option>
-                                <option value="停用">停用</option>
-                            </select>
-                        </div>
                     </div>
 
                     <div className="mt-4 space-y-2">
@@ -625,9 +573,7 @@ const MenuManagementView = () => {
 
                                                 <div className="flex-1 min-w-0">
                                                     <div className="flex items-center gap-2">
-                                                        {item.type === '目录' && <Folder size={14} className="text-amber-500 fill-amber-100" />}
-                                                        {item.type === '页面' && <FileText size={14} className="text-slate-400" />}
-                                                        {item.type === '外链' && <Link2 size={14} className="text-blue-400" />}
+
 
                                                         <span className={`text-sm font-semibold truncate ${isActive ? 'text-indigo-900' : 'text-slate-700'}`}>
                                                             {item.name}
@@ -639,11 +585,7 @@ const MenuManagementView = () => {
                                                             </div>
                                                         )}
                                                     </div>
-                                                    <div className="mt-1 flex items-center gap-2 text-xs text-slate-500">
-                                                        {item.type === '页面' && <span className="font-mono bg-slate-100 px-1 rounded">{item.path}</span>}
-                                                        {item.type === '外链' && <span className="font-mono bg-blue-50 text-blue-600 px-1 rounded truncate max-w-[150px]">{item.url}</span>}
-                                                        {item.code && <span>{item.code}</span>}
-                                                    </div>
+
                                                 </div>
                                             </div>
 
