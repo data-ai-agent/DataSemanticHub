@@ -327,6 +327,40 @@ export const mockPhysicalTables = [
             { name: 'memory_gb', type: 'int', semanticStatus: 'DECIDED', riskLevel: 'LOW', role: 'Measure', term: '内存大小' },
             { name: 'purchase_date', type: 'date', semanticStatus: 'DECIDED', riskLevel: 'LOW', role: 'Time', term: '采购日期' }
         ]
+    },
+    // 4️⃣ Demo: 综合场景表 (Relationship Graph 演示)
+    {
+        id: 'TBL_ECOMMERCE_ORDER',
+        name: 't_ecommerce_order_composite',
+        source: 'Biz_DB (MySQL)',
+        scannedAt: '2026-01-21 17:00:00',
+        rows: '150,000',
+        status: 'analyzed',
+        semanticStage: 'READY_FOR_OBJECT',
+        relationships: [
+            { targetTable: 't_user_base', type: 'BelongsTo', key: 'user_id', description: '下单用户' },
+            { targetTable: 't_store_info', type: 'BelongsTo', key: 'store_id', description: '所属店铺' }
+        ],
+        fields: [
+            // Order Object
+            { name: 'order_id', type: 'bigint', key: 'PK', semanticStatus: 'DECIDED', role: 'Identifier', tags: ['BO:电商订单'], aiSuggestion: '订单编号' },
+            { name: 'user_id', type: 'bigint', semanticStatus: 'DECIDED', role: 'ForeignKey', tags: ['BO:电商订单'], aiSuggestion: '用户ID' },
+            { name: 'store_id', type: 'bigint', semanticStatus: 'DECIDED', role: 'ForeignKey', tags: ['BO:电商订单'], aiSuggestion: '店铺ID' },
+            { name: 'total_amount', type: 'decimal(12,2)', semanticStatus: 'DECIDED', role: 'Measure', tags: ['BO:电商订单'], aiSuggestion: '订单总额' },
+            { name: 'order_status', type: 'int', semanticStatus: 'DECIDED', role: 'Status', tags: ['BO:电商订单'], aiSuggestion: '订单状态' },
+            { name: 'created_time', type: 'datetime', semanticStatus: 'DECIDED', role: 'Time', tags: ['BO:电商订单'], aiSuggestion: '下单时间' },
+
+            // Payment Object (Split from same table)
+            { name: 'payment_id', type: 'varchar(64)', semanticStatus: 'SUGGESTED', role: 'Identifier', tags: ['BO:支付信息'], aiSuggestion: '支付流水号' },
+            { name: 'payment_method', type: 'varchar(20)', semanticStatus: 'SUGGESTED', role: 'Attribute', tags: ['BO:支付信息'], aiSuggestion: '支付方式' },
+            { name: 'payment_time', type: 'datetime', semanticStatus: 'SUGGESTED', role: 'Time', tags: ['BO:支付信息'], aiSuggestion: '支付时间' },
+            { name: 'payment_status', type: 'int', semanticStatus: 'SUGGESTED', role: 'Status', tags: ['BO:支付信息'], aiSuggestion: '支付状态' },
+
+            // Logistics Object (Split)
+            { name: 'logistics_code', type: 'varchar(64)', semanticStatus: 'SUGGESTED', role: 'Identifier', tags: ['BO:物流信息'], aiSuggestion: '物流单号' },
+            { name: 'logistics_company', type: 'varchar(50)', semanticStatus: 'SUGGESTED', role: 'Attribute', tags: ['BO:物流信息'], aiSuggestion: '物流公司' },
+            { name: 'receiver_address', type: 'varchar(255)', semanticStatus: 'SUGGESTED', role: 'Attribute', tags: ['BO:物流信息'], aiSuggestion: '收货地址' }
+        ]
     }
 ];
 
@@ -1360,9 +1394,11 @@ export const mockScanResults = [
             { name: 'update_time', type: 'datetime', comment: '更新时间' }
         ]
     },
+
+    ...mockPhysicalTables,
     {
-        table: 'V_CITIZEN_INFO',
-        sourceId: 'DS_002',
+        id: 'TBL_ORC_001',
+        name: 'V_CITIZEN_INFO',
         sourceName: '市人口库_主库',
         sourceType: 'Oracle',
         rows: '8.2M',

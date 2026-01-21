@@ -101,9 +101,28 @@ export const SemanticAssistBar: React.FC<SemanticAssistBarProps> = ({
                     </button>
 
                     {/* 采样比例 */}
-                    <div className="flex items-center gap-1.5 text-xs text-slate-600">
+                    <div className="flex items-center gap-1.5 text-xs text-slate-600 group relative cursor-help">
                         <span className="text-slate-400">采样:</span>
-                        <span className="font-medium">{assist.runtimeConfig.sampleRatio}%</span>
+                        <span className="font-medium">{assist.runtimeConfig.sampleRatio}%<span className="scale-90 opacity-80 ml-0.5">（语义辅助）</span></span>
+
+                        {/* Hover 提示 */}
+                        <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-max max-w-[280px] p-2 bg-slate-800 text-white text-xs rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 pointer-events-none text-center">
+                            <div className="text-slate-200 leading-relaxed">
+                                用于计算字段分布与一致性信号，<br />
+                                不影响原始数据与质量检测结果
+                            </div>
+                            <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-slate-800 rotate-45" />
+                        </div>
+                    </div>
+
+                    {/* 信号来源状态 */}
+                    <div className="flex items-center gap-1.5 text-xs px-2 py-0.5 bg-slate-100 rounded text-slate-500">
+                        <div className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                        <span>
+                            {assist.sourceInfo?.fromQuality
+                                ? '信号来源：复用质量检测 + 语义辅助采样'
+                                : '信号来源：尚未计算语义辅助信号'}
+                        </span>
                     </div>
 
                     {/* 状态指示 */}

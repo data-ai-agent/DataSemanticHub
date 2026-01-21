@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X, AlertCircle, CheckCircle, ChevronDown, ChevronRight, Info } from 'lucide-react';
+import { TemplateExplanationDrawer } from './TemplateExplanationDrawer';
 
 export interface BatchSemanticConfig {
     enableAuxDetection: boolean;
@@ -24,6 +25,7 @@ export const BatchSemanticConfigModal: React.FC<BatchSemanticConfigModalProps> =
     const [sampleRatio, setSampleRatio] = useState<0.5 | 1 | 5>(1);
     const [forceRecalculate, setForceRecalculate] = useState(false);
     const [showAdvanced, setShowAdvanced] = useState(false);
+    const [showTemplateDrawer, setShowTemplateDrawer] = useState(false);
 
     if (!open) return null;
 
@@ -56,7 +58,7 @@ export const BatchSemanticConfigModal: React.FC<BatchSemanticConfigModalProps> =
                 {/* Header */}
                 <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
                     <div>
-                        <h2 className="text-xl font-bold text-slate-800">批量语义理解</h2>
+                        <h2 className="text-xl font-bold text-slate-800">批量生成语义建议</h2>
                         <div className="flex items-center gap-3 mt-1 text-sm text-slate-500">
                             <span>已选表：<span className="font-medium text-blue-600">{selectedTables.length}</span></span>
                             <span className="w-px h-3 bg-slate-300" />
@@ -77,7 +79,7 @@ export const BatchSemanticConfigModal: React.FC<BatchSemanticConfigModalProps> =
                     <div className="border border-slate-200 rounded-xl p-5 bg-slate-50/50">
                         <h3 className="text-base font-bold text-slate-800 mb-1">语义理解辅助检测</h3>
                         <p className="text-xs text-slate-500 mb-4">
-                            用于提升语义建议准确性，仅作为辅助信号，不影响语义裁决
+                            用于提升语义建议准确性，仅作为辅助信号，不影响语义裁决（不产生质量通过/失败结论）
                         </p>
 
                         {/* 辅助检测开关 */}
@@ -95,7 +97,7 @@ export const BatchSemanticConfigModal: React.FC<BatchSemanticConfigModalProps> =
                                 {!enableAuxDetection && (
                                     <div className="text-xs text-amber-600 mt-1 flex items-center gap-1">
                                         <AlertCircle size={12} />
-                                        关闭后仍可生成语义建议，但置信度可能降低
+                                        关闭后仍可生成语义建议，但将缺少数据分布与一致性辅助信号
                                     </div>
                                 )}
                             </div>
@@ -106,14 +108,19 @@ export const BatchSemanticConfigModal: React.FC<BatchSemanticConfigModalProps> =
                                 {/* 检测模板 */}
                                 <div className="bg-white border border-slate-200 rounded-lg p-3">
                                     <div className="text-xs text-slate-500 mb-1">检测模板</div>
-                                    <div className="text-sm font-mono font-medium text-slate-700 bg-slate-100 px-2 py-1 rounded inline-block">
+                                    <div
+                                        className="text-sm font-mono font-medium text-blue-700 bg-blue-50 px-2 py-1 rounded inline-flex items-center gap-2 cursor-pointer hover:bg-blue-100 transition-colors"
+                                        onClick={() => setShowTemplateDrawer(true)}
+                                    >
                                         SEMANTIC_MIN
+                                        <Info size={14} className="opacity-70" />
                                     </div>
                                 </div>
 
                                 {/* 采样比例 */}
                                 <div>
-                                    <div className="text-sm font-medium text-slate-700 mb-2">数据采样比例</div>
+                                    <div className="text-sm font-medium text-slate-700 mb-1">用于语义理解的采样比例</div>
+                                    <div className="text-xs text-slate-500 mb-3">用于计算字段分布特征，不影响原始数据与质量结果</div>
                                     <div className="flex gap-3">
                                         {[0.5, 1, 5].map((ratio) => (
                                             <label
@@ -155,6 +162,7 @@ export const BatchSemanticConfigModal: React.FC<BatchSemanticConfigModalProps> =
                                     <li>• 本次操作仅生成语义建议，不自动生效</li>
                                     <li>• 语义裁决仍需人工确认</li>
                                     <li>• 执行过程中不会影响现有语义版本</li>
+                                    <li>• 不会修改现有质量规则或质量检测结果</li>
                                 </ul>
                             </div>
                         </div>
@@ -178,6 +186,11 @@ export const BatchSemanticConfigModal: React.FC<BatchSemanticConfigModalProps> =
                     </button>
                 </div>
             </div>
+
+            <TemplateExplanationDrawer
+                open={showTemplateDrawer}
+                onClose={() => setShowTemplateDrawer(false)}
+            />
         </div>
     );
 };

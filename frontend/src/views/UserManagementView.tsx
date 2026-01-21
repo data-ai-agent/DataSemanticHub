@@ -18,10 +18,21 @@ import {
     Check,
     Users,
     FileSpreadsheet,
-    Download
+    Download,
+    Lock,
+    Unlock,
+    MoreHorizontal,
+    Clock,
+    Shield,
+    AlertTriangle,
+    Info,
+    History,
+    UserPlus,
+    Briefcase
 } from 'lucide-react';
 
-type UserStatus = '启用' | '停用' | '锁定';
+
+type UserStatus = '未激活' | '启用' | '停用' | '锁定' | '归档';
 
 type Department = {
     id: string;
@@ -30,19 +41,29 @@ type Department = {
     order: number;
 };
 
+type RoleBinding = {
+    orgId: string;
+    position?: string;  // 岗位职责
+    permissionRole?: string;  // 权限角色
+};
+
 type UserItem = {
     id: string;
     name: string;
     email: string;
     phone: string;
-    deptId: string;
-    role: string;
+    deptId: string;  // Primary org
+    roleBindings: RoleBinding[];
     status: UserStatus;
+    accountSource: '本地' | 'SSO';
     lastLogin: string;
     createdAt: string;
+    lockReason?: string;
+    lockTime?: string;
+    lockBy?: string;
 };
 
-type SortField = 'name' | 'role' | 'status' | 'createdAt' | null;
+type SortField = 'name' | 'status' | 'createdAt' | null;
 type SortOrder = 'asc' | 'desc';
 
 const departments: Department[] = [
@@ -57,7 +78,8 @@ const departments: Department[] = [
 
 const rootDeptIds = departments.filter((dept) => !dept.parentId).map((dept) => dept.id);
 
-const roles = [
+// 岗位职责 (Org-scoped responsibilities)
+const positions = [
     '语义治理负责人',
     '语义治理专员',
     '版本委员会成员',
@@ -67,6 +89,14 @@ const roles = [
     '业务分析师'
 ];
 
+// 权限角色 (RBAC Permission Roles)
+const permissionRoles = [
+    '平台管理员',
+    '审批人',
+    '编辑者',
+    '只读用户'
+];
+
 const initialUsers: UserItem[] = [
     {
         id: 'user_01',
@@ -74,8 +104,11 @@ const initialUsers: UserItem[] = [
         email: 'wangning@company.com',
         phone: '13800001111',
         deptId: 'dept_root',
-        role: '语义治理负责人',
+        roleBindings: [
+            { orgId: 'dept_root', position: '语义治理负责人', permissionRole: '平台管理员' }
+        ],
         status: '启用',
+        accountSource: '本地',
         lastLogin: '2024-06-28 09:32',
         createdAt: '2023-11-12'
     },
@@ -85,8 +118,11 @@ const initialUsers: UserItem[] = [
         email: 'chenying@company.com',
         phone: '13800002222',
         deptId: 'dept_semantic_ops',
-        role: '语义治理专员',
+        roleBindings: [
+            { orgId: 'dept_semantic_ops', position: '语义治理专员', permissionRole: '编辑者' }
+        ],
         status: '启用',
+        accountSource: '本地',
         lastLogin: '2024-06-28 08:15',
         createdAt: '2024-01-08'
     },
@@ -96,8 +132,11 @@ const initialUsers: UserItem[] = [
         email: 'liuyang@company.com',
         phone: '13800003333',
         deptId: 'dept_version_council',
-        role: '版本委员会成员',
+        roleBindings: [
+            { orgId: 'dept_version_council', position: '版本委员会成员', permissionRole: '审批人' }
+        ],
         status: '启用',
+        accountSource: 'SSO',
         lastLogin: '2024-06-27 17:40',
         createdAt: '2023-10-05'
     },
@@ -107,8 +146,11 @@ const initialUsers: UserItem[] = [
         email: 'zhangqian@company.com',
         phone: '13800004444',
         deptId: 'dept_security',
-        role: '安全审计',
+        roleBindings: [
+            { orgId: 'dept_security', position: '安全审计', permissionRole: '审批人' }
+        ],
         status: '启用',
+        accountSource: 'SSO',
         lastLogin: '2024-06-27 16:22',
         createdAt: '2023-09-21'
     },
@@ -118,8 +160,11 @@ const initialUsers: UserItem[] = [
         email: 'lichen@company.com',
         phone: '13800005555',
         deptId: 'dept_quality',
-        role: '数据质量管理员',
+        roleBindings: [
+            { orgId: 'dept_quality', position: '数据质量管理员', permissionRole: '编辑者' }
+        ],
         status: '启用',
+        accountSource: '本地',
         lastLogin: '2024-06-27 15:02',
         createdAt: '2023-12-18'
     },
@@ -129,8 +174,11 @@ const initialUsers: UserItem[] = [
         email: 'zhaomin@company.com',
         phone: '13800006666',
         deptId: 'dept_data_service',
-        role: '数据服务运营',
+        roleBindings: [
+            { orgId: 'dept_data_service', position: '数据服务运营', permissionRole: '编辑者' }
+        ],
         status: '停用',
+        accountSource: '本地',
         lastLogin: '2024-06-20 11:30',
         createdAt: '2024-02-09'
     },
@@ -140,10 +188,28 @@ const initialUsers: UserItem[] = [
         email: 'zhouqi@company.com',
         phone: '13800007777',
         deptId: 'dept_scene',
-        role: '业务分析师',
+        roleBindings: [
+            { orgId: 'dept_scene', position: '业务分析师', permissionRole: '只读用户' }
+        ],
         status: '锁定',
+        accountSource: '本地',
         lastLogin: '2024-06-19 14:20',
-        createdAt: '2024-03-14'
+        createdAt: '2024-03-14',
+        lockReason: '多次登录失败',
+        lockTime: '2024-06-20 10:00',
+        lockBy: '系统'
+    },
+    {
+        id: 'user_08',
+        name: '孙浩',
+        email: 'sunhao@company.com',
+        phone: '13800008888',
+        deptId: 'dept_root',
+        roleBindings: [],
+        status: '未激活',
+        accountSource: 'SSO',
+        lastLogin: '-',
+        createdAt: '2024-06-25'
     }
 ];
 
@@ -164,7 +230,7 @@ const UserManagementView = () => {
     const [activeUserId, setActiveUserId] = useState<string>('');
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState<'all' | UserStatus>('all');
-    const [roleFilter, setRoleFilter] = useState('all');
+    const [positionFilter, setPositionFilter] = useState('all');
     const [modalOpen, setModalOpen] = useState(false);
     const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
     const [draftUser, setDraftUser] = useState<UserItem | null>(null);
@@ -199,9 +265,10 @@ const UserManagementView = () => {
         let result = users.filter((user) => {
             const matchesSearch = `${user.name}${user.email}${user.phone}`.toLowerCase().includes(debouncedSearchTerm.toLowerCase());
             const matchesStatus = statusFilter === 'all' || user.status === statusFilter;
-            const matchesRole = roleFilter === 'all' || user.role === roleFilter;
+            const userPositions = user.roleBindings.map(rb => rb.position).filter(Boolean);
+            const matchesPosition = positionFilter === 'all' || userPositions.includes(positionFilter);
             const matchesDept = activeDeptId === 'all' || user.deptId === activeDeptId;
-            return matchesSearch && matchesStatus && matchesRole && matchesDept;
+            return matchesSearch && matchesStatus && matchesPosition && matchesDept;
         });
 
         if (sortField) {
@@ -214,7 +281,7 @@ const UserManagementView = () => {
         }
 
         return result;
-    }, [users, debouncedSearchTerm, statusFilter, roleFilter, activeDeptId, sortField, sortOrder]);
+    }, [users, debouncedSearchTerm, statusFilter, positionFilter, activeDeptId, sortField, sortOrder]);
 
     const paginatedUsers = useMemo(() => {
         const start = (currentPage - 1) * pageSize;
@@ -227,6 +294,10 @@ const UserManagementView = () => {
     const totalUsers = users.length;
     const enabledUsers = users.filter((user) => user.status === '启用').length;
     const lockedUsers = users.filter((user) => user.status === '锁定').length;
+    // Governance KPIs
+    const inactiveUsers = users.filter((user) => user.status === '未激活').length;
+    const noOrgUsers = users.filter((user) => !user.deptId || !departments.find(d => d.id === user.deptId)).length;
+    const noPermissionUsers = users.filter((user) => user.roleBindings.length === 0 || !user.roleBindings.some(rb => rb.permissionRole)).length;
 
     const showToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'info') => {
         const id = Date.now().toString();
@@ -244,8 +315,9 @@ const UserManagementView = () => {
             email: '',
             phone: '',
             deptId: activeDeptId === 'all' ? departments[0]?.id ?? '' : activeDeptId,
-            role: roles[0],
+            roleBindings: [],
             status: '启用',
+            accountSource: '本地',
             lastLogin: '-',
             createdAt: formatDate()
         });
@@ -400,11 +472,10 @@ const UserManagementView = () => {
                     <button
                         type="button"
                         onClick={() => setActiveDeptId(dept.id)}
-                        className={`w-full flex items-center gap-2 rounded-lg px-3 py-2 text-xs transition ${
-                            isActive
-                                ? 'bg-indigo-50 text-indigo-600 font-medium'
-                                : 'text-slate-600 hover:bg-slate-50'
-                        }`}
+                        className={`w-full flex items-center gap-2 rounded-lg px-3 py-2 text-xs transition ${isActive
+                            ? 'bg-indigo-50 text-indigo-600 font-medium'
+                            : 'text-slate-600 hover:bg-slate-50'
+                            }`}
                         style={{ paddingLeft: `${12 + level * 16}px` }}
                     >
                         {hasChildren ? (
@@ -455,11 +526,11 @@ const UserManagementView = () => {
             </div>
             <h3 className="text-base font-semibold text-slate-700 mb-2">暂无用户数据</h3>
             <p className="text-sm text-slate-500 mb-6">
-                {debouncedSearchTerm || statusFilter !== 'all' || roleFilter !== 'all' || activeDeptId !== 'all'
+                {debouncedSearchTerm || statusFilter !== 'all' || positionFilter !== 'all' || activeDeptId !== 'all'
                     ? '尝试调整筛选条件或清除搜索'
                     : '点击下方按钮创建第一个用户'}
             </p>
-            {!debouncedSearchTerm && statusFilter === 'all' && roleFilter === 'all' && activeDeptId === 'all' && (
+            {!debouncedSearchTerm && statusFilter === 'all' && positionFilter === 'all' && activeDeptId === 'all' && (
                 <button
                     onClick={openCreateModal}
                     className="px-4 py-2 bg-indigo-600 text-white rounded-lg flex items-center gap-2 hover:bg-indigo-700"
@@ -485,13 +556,12 @@ const UserManagementView = () => {
                 {toasts.map((toast) => (
                     <div
                         key={toast.id}
-                        className={`px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 min-w-[280px] ${
-                            toast.type === 'success'
-                                ? 'bg-emerald-600 text-white'
-                                : toast.type === 'error'
-                                  ? 'bg-rose-600 text-white'
-                                  : 'bg-slate-800 text-white'
-                        }`}
+                        className={`px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 min-w-[280px] ${toast.type === 'success'
+                            ? 'bg-emerald-600 text-white'
+                            : toast.type === 'error'
+                                ? 'bg-rose-600 text-white'
+                                : 'bg-slate-800 text-white'
+                            }`}
                     >
                         {toast.type === 'success' && <Check size={18} />}
                         {toast.type === 'error' && <X size={18} />}
@@ -526,14 +596,19 @@ const UserManagementView = () => {
             </div>
 
             {/* 统计卡片 */}
-            <div className="grid gap-4 px-1 md:grid-cols-3">
+            <div className="grid gap-4 px-1 md:grid-cols-5">
                 {[
-                    { label: '用户总数', value: `${totalUsers}`, note: '平台用户', color: 'indigo' },
-                    { label: '启用用户', value: `${enabledUsers}`, note: '可登录使用', color: 'emerald' },
-                    { label: '锁定用户', value: `${lockedUsers}`, note: '安全冻结', color: 'rose' }
+                    { label: '用户总数', value: `${totalUsers}`, note: '平台用户', color: 'indigo', icon: Users },
+                    { label: '启用用户', value: `${enabledUsers}`, note: '可登录使用', color: 'emerald', icon: Check },
+                    { label: '锁定用户', value: `${lockedUsers}`, note: '安全冻结', color: 'rose', icon: Lock },
+                    { label: '未激活', value: `${inactiveUsers}`, note: '待邀请确认', color: 'amber', icon: Clock },
+                    { label: '无权限用户', value: `${noPermissionUsers}`, note: '缺少角色绑定', color: 'slate', icon: AlertTriangle }
                 ].map((item) => (
                     <div key={item.label} className="bg-white rounded-lg border border-slate-200 p-4 shadow-sm">
-                        <p className="text-sm text-slate-500">{item.label}</p>
+                        <div className="flex items-center justify-between">
+                            <p className="text-sm text-slate-500">{item.label}</p>
+                            <item.icon size={16} className={`text-${item.color}-400`} />
+                        </div>
                         <div className={`mt-2 text-2xl font-semibold text-${item.color}-600`}>{item.value}</div>
                         <div className="mt-1 text-xs text-slate-400">{item.note}</div>
                     </div>
@@ -551,11 +626,10 @@ const UserManagementView = () => {
                         <button
                             type="button"
                             onClick={() => setActiveDeptId('all')}
-                            className={`w-full flex items-center gap-2 rounded-lg px-3 py-2 text-xs transition ${
-                                activeDeptId === 'all'
-                                    ? 'bg-indigo-50 text-indigo-600 font-medium'
-                                    : 'text-slate-600 hover:bg-slate-50'
-                            }`}
+                            className={`w-full flex items-center gap-2 rounded-lg px-3 py-2 text-xs transition ${activeDeptId === 'all'
+                                ? 'bg-indigo-50 text-indigo-600 font-medium'
+                                : 'text-slate-600 hover:bg-slate-50'
+                                }`}
                         >
                             <Building2 size={14} />
                             <span>全部组织</span>
@@ -598,14 +672,14 @@ const UserManagementView = () => {
                                 <option value="锁定">锁定</option>
                             </select>
                             <select
-                                value={roleFilter}
-                                onChange={(event) => setRoleFilter(event.target.value)}
+                                value={positionFilter}
+                                onChange={(event) => setPositionFilter(event.target.value)}
                                 className="rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-600 focus:border-indigo-500 focus:outline-none"
                             >
-                                <option value="all">全部角色</option>
-                                {roles.map((role) => (
-                                    <option key={role} value={role}>
-                                        {role}
+                                <option value="all">全部岗位</option>
+                                {positions.map((pos: string) => (
+                                    <option key={pos} value={pos}>
+                                        {pos}
                                     </option>
                                 ))}
                             </select>
@@ -621,21 +695,33 @@ const UserManagementView = () => {
                             <div className="flex items-center gap-2">
                                 <button
                                     onClick={() => handleBatchToggleStatus('启用')}
-                                    className="px-3 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 rounded-lg hover:bg-emerald-100"
+                                    className="px-3 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 rounded-lg hover:bg-emerald-100 flex items-center gap-1"
                                 >
-                                    批量启用
+                                    <Eye size={12} /> 批量启用
                                 </button>
                                 <button
                                     onClick={() => handleBatchToggleStatus('停用')}
-                                    className="px-3 py-1.5 text-xs font-medium text-slate-700 bg-slate-100 rounded-lg hover:bg-slate-200"
+                                    className="px-3 py-1.5 text-xs font-medium text-slate-700 bg-slate-100 rounded-lg hover:bg-slate-200 flex items-center gap-1"
                                 >
-                                    批量停用
+                                    <EyeOff size={12} /> 批量停用
+                                </button>
+                                <button
+                                    onClick={() => handleBatchToggleStatus('锁定')}
+                                    className="px-3 py-1.5 text-xs font-medium text-amber-700 bg-amber-50 rounded-lg hover:bg-amber-100 flex items-center gap-1"
+                                >
+                                    <Lock size={12} /> 批量锁定
+                                </button>
+                                <button
+                                    onClick={() => showToast(`已导出 ${selectedUserIds.size} 个用户`, 'success')}
+                                    className="px-3 py-1.5 text-xs font-medium text-indigo-700 bg-indigo-100 rounded-lg hover:bg-indigo-200 flex items-center gap-1"
+                                >
+                                    <Download size={12} /> 导出所选
                                 </button>
                                 <button
                                     onClick={handleBatchDelete}
-                                    className="px-3 py-1.5 text-xs font-medium text-rose-700 bg-rose-50 rounded-lg hover:bg-rose-100"
+                                    className="px-3 py-1.5 text-xs font-medium text-rose-700 bg-rose-50 rounded-lg hover:bg-rose-100 flex items-center gap-1"
                                 >
-                                    批量删除
+                                    <Trash2 size={12} /> 批量删除
                                 </button>
                                 <button
                                     onClick={() => setSelectedUserIds(new Set())}
@@ -679,16 +765,14 @@ const UserManagementView = () => {
                                     <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">
                                         手机号
                                     </th>
-                                    <th className="px-4 py-3 text-left">
-                                        <button
-                                            onClick={() => handleSort('role')}
-                                            className="flex items-center gap-1 text-xs font-semibold text-slate-600 hover:text-indigo-600"
-                                        >
-                                            角色 <SortIcon field="role" />
-                                        </button>
+                                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">
+                                        岗位职责
                                     </th>
                                     <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">
-                                            所属组织
+                                        权限角色
+                                    </th>
+                                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600">
+                                        所属组织
                                     </th>
                                     <th className="px-4 py-3 text-left">
                                         <button
@@ -718,9 +802,8 @@ const UserManagementView = () => {
                                         return (
                                             <tr
                                                 key={user.id}
-                                                className={`border-b border-slate-100 hover:bg-indigo-50/30 transition ${
-                                                    isSelected ? 'bg-indigo-50/50' : ''
-                                                }`}
+                                                className={`border-b border-slate-100 hover:bg-indigo-50/30 transition ${isSelected ? 'bg-indigo-50/50' : ''
+                                                    }`}
                                             >
                                                 <td className="px-4 py-3">
                                                     <input
@@ -740,20 +823,34 @@ const UserManagementView = () => {
                                                     <span className="text-xs text-slate-600">{user.phone}</span>
                                                 </td>
                                                 <td className="px-4 py-3">
-                                                    <span className="text-xs text-slate-600">{user.role}</span>
+                                                    <div className="flex flex-wrap gap-1">
+                                                        {user.roleBindings.length > 0 ? user.roleBindings.map((rb, idx) => (
+                                                            <span key={idx} className="text-xs bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded">
+                                                                {rb.position || '-'}
+                                                            </span>
+                                                        )) : <span className="text-xs text-slate-400">无岗位</span>}
+                                                    </div>
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <div className="flex flex-wrap gap-1">
+                                                        {user.roleBindings.length > 0 ? user.roleBindings.map((rb, idx) => (
+                                                            <span key={idx} className="text-xs bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded">
+                                                                {rb.permissionRole || '-'}
+                                                            </span>
+                                                        )) : <span className="text-xs text-slate-400">无权限</span>}
+                                                    </div>
                                                 </td>
                                                 <td className="px-4 py-3">
                                                     <span className="text-xs text-slate-600">{getDeptName(user.deptId)}</span>
                                                 </td>
                                                 <td className="px-4 py-3">
                                                     <span
-                                                        className={`text-xs px-2 py-1 rounded-full font-medium ${
-                                                            user.status === '启用'
-                                                                ? 'bg-emerald-50 text-emerald-600'
-                                                                : user.status === '锁定'
-                                                                    ? 'bg-rose-50 text-rose-600'
-                                                                    : 'bg-slate-100 text-slate-500'
-                                                        }`}
+                                                        className={`text-xs px-2 py-1 rounded-full font-medium ${user.status === '启用'
+                                                            ? 'bg-emerald-50 text-emerald-600'
+                                                            : user.status === '锁定'
+                                                                ? 'bg-rose-50 text-rose-600'
+                                                                : 'bg-slate-100 text-slate-500'
+                                                            }`}
                                                     >
                                                         {user.status}
                                                     </span>
@@ -921,13 +1018,43 @@ const UserManagementView = () => {
                                         </select>
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-xs font-semibold text-slate-600">角色</label>
+                                        <label className="text-xs font-semibold text-slate-600">岗位职责</label>
                                         <select
-                                            value={draftUser.role}
-                                            onChange={(event) => setDraftUser({ ...draftUser, role: event.target.value })}
+                                            value={draftUser.roleBindings[0]?.position || ''}
+                                            onChange={(event) => setDraftUser({
+                                                ...draftUser,
+                                                roleBindings: [{
+                                                    orgId: draftUser.deptId,
+                                                    position: event.target.value,
+                                                    permissionRole: draftUser.roleBindings[0]?.permissionRole
+                                                }]
+                                            })}
                                             className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none"
                                         >
-                                            {roles.map((role) => (
+                                            <option value="">请选择岗位</option>
+                                            {positions.map((pos: string) => (
+                                                <option key={pos} value={pos}>
+                                                    {pos}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-semibold text-slate-600">权限角色</label>
+                                        <select
+                                            value={draftUser.roleBindings[0]?.permissionRole || ''}
+                                            onChange={(event) => setDraftUser({
+                                                ...draftUser,
+                                                roleBindings: [{
+                                                    orgId: draftUser.deptId,
+                                                    position: draftUser.roleBindings[0]?.position,
+                                                    permissionRole: event.target.value
+                                                }]
+                                            })}
+                                            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none"
+                                        >
+                                            <option value="">请选择权限</option>
+                                            {permissionRoles.map((role: string) => (
                                                 <option key={role} value={role}>
                                                     {role}
                                                 </option>
@@ -989,16 +1116,20 @@ const UserManagementView = () => {
                             <div className="flex items-start justify-between">
                                 <div>
                                     <h4 className="text-xl font-semibold text-slate-800">{activeUser.name}</h4>
-                                    <p className="text-sm text-slate-500 mt-1">{activeUser.role}</p>
+                                    <p className="text-sm text-slate-500 mt-1">
+                                        {activeUser.roleBindings.length > 0
+                                            ? activeUser.roleBindings.map(rb => rb.position).filter(Boolean).join(', ')
+                                            : '无岗位'
+                                        }
+                                    </p>
                                 </div>
                                 <span
-                                    className={`text-sm px-3 py-1 rounded-full font-medium ${
-                                        activeUser.status === '启用'
-                                            ? 'bg-emerald-50 text-emerald-600'
-                                            : activeUser.status === '锁定'
-                                                ? 'bg-rose-50 text-rose-600'
-                                                : 'bg-slate-100 text-slate-500'
-                                    }`}
+                                    className={`text-sm px-3 py-1 rounded-full font-medium ${activeUser.status === '启用'
+                                        ? 'bg-emerald-50 text-emerald-600'
+                                        : activeUser.status === '锁定'
+                                            ? 'bg-rose-50 text-rose-600'
+                                            : 'bg-slate-100 text-slate-500'
+                                        }`}
                                 >
                                     {activeUser.status}
                                 </span>
@@ -1009,8 +1140,9 @@ const UserManagementView = () => {
                                     { label: '邮箱', value: activeUser.email, icon: Mail },
                                     { label: '手机号', value: activeUser.phone, icon: Phone },
                                     { label: '所属组织', value: getDeptName(activeUser.deptId), icon: Building2 },
-                                    { label: '创建时间', value: activeUser.createdAt, icon: BadgeCheck },
-                                    { label: '最近登录', value: activeUser.lastLogin, icon: null }
+                                    { label: '账号来源', value: activeUser.accountSource, icon: Shield },
+                                    { label: '创建时间', value: activeUser.createdAt, icon: Clock },
+                                    { label: '最近登录', value: activeUser.lastLogin, icon: History }
                                 ].map((item) => (
                                     <div key={item.label} className="rounded-lg border border-slate-200 p-4">
                                         <div className="flex items-center justify-between text-xs text-slate-500">
@@ -1021,6 +1153,81 @@ const UserManagementView = () => {
                                     </div>
                                 ))}
                             </div>
+
+                            {/* 角色绑定区 */}
+                            <div className="border-t border-slate-200 pt-4">
+                                <h5 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+                                    <Briefcase size={14} /> 组织与职责绑定
+                                </h5>
+                                {activeUser.roleBindings.length > 0 ? (
+                                    <div className="space-y-2">
+                                        {activeUser.roleBindings.map((rb, idx) => (
+                                            <div key={idx} className="rounded-lg border border-slate-200 p-3 bg-slate-50">
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-xs font-medium text-slate-600">{getDeptName(rb.orgId)}</span>
+                                                </div>
+                                                <div className="flex gap-2 mt-2">
+                                                    {rb.position && (
+                                                        <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded">{rb.position}</span>
+                                                    )}
+                                                    {rb.permissionRole && (
+                                                        <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded">{rb.permissionRole}</span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="text-xs text-slate-400">无角色绑定</p>
+                                )}
+                            </div>
+
+                            {/* 锁定信息区 (仅锁定用户显示) */}
+                            {activeUser.status === '锁定' && activeUser.lockReason && (
+                                <div className="border-t border-slate-200 pt-4">
+                                    <h5 className="text-sm font-semibold text-rose-600 mb-3 flex items-center gap-2">
+                                        <Lock size={14} /> 锁定信息
+                                    </h5>
+                                    <div className="rounded-lg border border-rose-200 p-3 bg-rose-50">
+                                        <div className="text-xs text-rose-700 space-y-1">
+                                            <p><strong>锁定原因：</strong>{activeUser.lockReason}</p>
+                                            <p><strong>锁定时间：</strong>{activeUser.lockTime || '-'}</p>
+                                            <p><strong>操作者：</strong>{activeUser.lockBy || '-'}</p>
+                                        </div>
+                                        <button
+                                            onClick={() => {
+                                                handleToggleStatus(activeUser);
+                                                closeDrawer();
+                                            }}
+                                            className="mt-3 w-full px-3 py-2 text-xs font-medium text-white bg-rose-600 rounded-lg hover:bg-rose-700 flex items-center justify-center gap-1"
+                                        >
+                                            <Unlock size={12} /> 解锁用户
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* 审计日志区 (Mock) */}
+                            <div className="border-t border-slate-200 pt-4">
+                                <h5 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+                                    <History size={14} /> 变更记录
+                                </h5>
+                                <div className="space-y-2 text-xs text-slate-500">
+                                    <div className="flex justify-between py-2 border-b border-slate-100">
+                                        <span>状态变更为"启用"</span>
+                                        <span className="text-slate-400">系统 · 2024-06-28</span>
+                                    </div>
+                                    <div className="flex justify-between py-2 border-b border-slate-100">
+                                        <span>修改了权限角色</span>
+                                        <span className="text-slate-400">王宁 · 2024-06-20</span>
+                                    </div>
+                                    <div className="flex justify-between py-2">
+                                        <span>账号创建</span>
+                                        <span className="text-slate-400">系统 · {activeUser.createdAt}</span>
+                                    </div>
+                                </div>
+                            </div>
+
 
                             <div className="border-t border-slate-200 pt-4">
                                 <h5 className="text-sm font-semibold text-slate-700 mb-3">快捷操作</h5>

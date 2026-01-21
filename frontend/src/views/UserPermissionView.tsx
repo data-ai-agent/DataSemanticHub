@@ -14,13 +14,22 @@ import {
     Trash2,
     X
 } from 'lucide-react';
+import RoleChangeConfirmModal from './components/RoleChangeConfirmModal';
+import { EffectivePermissionPreviewModal } from './components/EffectivePermissionPreviewModal';
+
+type ScopeType = 'Global' | 'Tenant' | 'Organization' | 'Domain';
+
+type Scope = {
+    type: ScopeType;
+    ids: string[]; // e.g., ['*'], ['org_1'], ['domain_sales']
+};
 
 type Role = {
     id: string;
     name: string;
     code: string;
     description: string;
-    scope: string[];
+    scope: Scope;
     users: number;
     status: '启用' | '停用';
     builtIn: boolean;
@@ -30,6 +39,7 @@ type Role = {
 type PermissionItem = {
     module: string;
     actions: string[];
+    operationPoints?: string[]; // Granular permissions e.g. ['approve', 'rollback']
     note: string;
 };
 
@@ -39,7 +49,7 @@ const initialRoles: Role[] = [
         name: '平台管理员',
         code: 'platform_admin',
         description: '负责平台配置、权限策略与跨域治理。',
-        scope: ['集团', '全部数据域', '所有租户'],
+        scope: { type: 'Global', ids: ['*'] },
         users: 6,
         status: '启用',
         builtIn: true,
@@ -50,7 +60,7 @@ const initialRoles: Role[] = [
         name: '语义治理负责人',
         code: 'semantic_owner',
         description: '主导语义裁决、版本发布与审批流程。',
-        scope: ['集团', '语义资产', '版本中心'],
+        scope: { type: 'Organization', ids: ['org_group'] },
         users: 14,
         status: '启用',
         builtIn: true,
@@ -61,7 +71,7 @@ const initialRoles: Role[] = [
         name: '数据服务运营',
         code: 'data_service_ops',
         description: '保障问数、找数与数据服务的稳定运营。',
-        scope: ['数据服务', '问数', '找数'],
+        scope: { type: 'Domain', ids: ['domain_service', 'domain_search'] },
         users: 23,
         status: '启用',
         builtIn: false,
@@ -72,7 +82,7 @@ const initialRoles: Role[] = [
         name: '安全审计',
         code: 'security_auditor',
         description: '审阅语义变更、权限使用与合规日志。',
-        scope: ['数据安全', '审计中心'],
+        scope: { type: 'Tenant', ids: ['tenant_default'] },
         users: 5,
         status: '启用',
         builtIn: true,
@@ -120,6 +130,23 @@ const permissionCatalog: PermissionItem[] = [
     { module: '资源知识网络', actions: [], note: '关系维护' }
 ];
 
+const operationPointDefinitions: Record<string, { label: string; key: string; parentAction: string }[]> = {
+    '语义资产': [
+        { label: '强制解锁', key: 'force_unlock', parentAction: '管理' },
+        { label: '变更历史回滚', key: 'revert_history', parentAction: '编辑' },
+        { label: '批量下架', key: 'batch_offline', parentAction: '发布' }
+    ],
+    '语义版本': [
+        { label: '版本审批', key: 'approve_version', parentAction: '发布' },
+        { label: '版本回滚', key: 'rollback_version', parentAction: '管理' },
+        { label: '强制发布', key: 'force_publish', parentAction: '管理' }
+    ],
+    '数据安全': [
+        { label: '审计日志导出', key: 'export_audit', parentAction: '管理' },
+        { label: '敏感级调整', key: 'adjust_sensitivity', parentAction: '编辑' }
+    ]
+};
+
 const scopeOptions = [
     '集团',
     '语义资产',
@@ -160,6 +187,8 @@ const UserPermissionView = () => {
     const [draftRole, setDraftRole] = useState<Role | null>(null);
     const [draftPermissions, setDraftPermissions] = useState<PermissionItem[]>([]);
     const [draftTemplateId, setDraftTemplateId] = useState('blank');
+    const [showAdvancedPermissions, setShowAdvancedPermissions] = useState(false);
+    const [showPreviewModal, setShowPreviewModal] = useState(false);
 
     const templateOptions = useMemo(() => {
         const builtInTemplates = rolesState.filter((role) => role.builtIn);
@@ -211,7 +240,7 @@ const UserPermissionView = () => {
             name: '',
             code: '',
             description: '',
-            scope: [],
+            scope: { type: 'Global', ids: ['*'] },
             users: 0,
             status: '启用',
             builtIn: false,
@@ -239,7 +268,9 @@ const UserPermissionView = () => {
         setDraftRole(null);
     };
 
-    const handleSaveRole = () => {
+    const [confirmModalOpen, setConfirmModalOpen] = useState(false);
+
+    const handleCheckBeforeSave = () => {
         if (!draftRole) {
             return;
         }
@@ -247,6 +278,12 @@ const UserPermissionView = () => {
             alert('请填写角色名称与编码。');
             return;
         }
+        setConfirmModalOpen(true);
+    };
+
+    const finalizeSave = () => {
+        if (!draftRole) return;
+
         const nextRole = { ...draftRole, updatedAt: formatDate() };
         if (modalMode === 'create') {
             setRolesState((prev) => [nextRole, ...prev]);
@@ -258,6 +295,7 @@ const UserPermissionView = () => {
             ...prev,
             [nextRole.id]: draftPermissions
         }));
+        setConfirmModalOpen(false);
         closeModal();
     };
 
@@ -293,16 +331,7 @@ const UserPermissionView = () => {
         }
     };
 
-    const toggleScope = (scope: string) => {
-        if (!draftRole) {
-            return;
-        }
-        const hasScope = draftRole.scope.includes(scope);
-        setDraftRole({
-            ...draftRole,
-            scope: hasScope ? draftRole.scope.filter((item) => item !== scope) : [...draftRole.scope, scope]
-        });
-    };
+    // Old toggleScope redundant, new logic is inline in ScopeSelector
 
     const togglePermissionAction = (module: string, action: string) => {
         setDraftPermissions((prev) =>
@@ -319,6 +348,21 @@ const UserPermissionView = () => {
         );
     };
 
+    const toggleOperationPoint = (module: string, pointKey: string) => {
+        setDraftPermissions((prev) =>
+            prev.map((item) => {
+                if (item.module !== module) return item;
+                const currentPoints = item.operationPoints || [];
+                return {
+                    ...item,
+                    operationPoints: currentPoints.includes(pointKey)
+                        ? currentPoints.filter(p => p !== pointKey)
+                        : [...currentPoints, pointKey]
+                };
+            })
+        );
+    };
+
     return (
         <div className="space-y-6 h-full flex flex-col pt-6 pb-2 px-1">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between px-1">
@@ -332,6 +376,12 @@ const UserPermissionView = () => {
                     </p>
                 </div>
                 <div className="flex items-center gap-3">
+                    <button
+                        onClick={() => setShowPreviewModal(true)}
+                        className="px-4 py-2 rounded-lg border border-slate-200 text-slate-600 hover:text-slate-800 hover:border-slate-300 flex items-center gap-2"
+                    >
+                        <ShieldCheck size={16} /> 有效权限预览
+                    </button>
                     <button
                         onClick={() => openCreateModal(templateOptions[1]?.id ?? 'blank')}
                         className="px-4 py-2 rounded-lg border border-slate-200 text-slate-600 hover:text-slate-800 hover:border-slate-300"
@@ -383,11 +433,10 @@ const UserPermissionView = () => {
                                 <button
                                     key={role.id}
                                     onClick={() => setActiveRoleId(role.id)}
-                                    className={`w-full text-left rounded-xl border p-4 transition ${
-                                        isActive
-                                            ? 'border-indigo-200 bg-indigo-50 shadow-sm'
-                                            : 'border-slate-200 hover:border-indigo-200 hover:bg-slate-50'
-                                    }`}
+                                    className={`w-full text-left rounded-xl border p-4 transition ${isActive
+                                        ? 'border-indigo-200 bg-indigo-50 shadow-sm'
+                                        : 'border-slate-200 hover:border-indigo-200 hover:bg-slate-50'
+                                        }`}
                                 >
                                     <div className="flex items-start justify-between">
                                         <div>
@@ -402,11 +451,10 @@ const UserPermissionView = () => {
                                             <p className="mt-1 text-xs text-slate-500">{role.description}</p>
                                         </div>
                                         <span
-                                            className={`text-xs px-2 py-0.5 rounded-full ${
-                                                role.status === '启用'
-                                                    ? 'bg-emerald-50 text-emerald-600'
-                                                    : 'bg-slate-100 text-slate-500'
-                                            }`}
+                                            className={`text-xs px-2 py-0.5 rounded-full ${role.status === '启用'
+                                                ? 'bg-emerald-50 text-emerald-600'
+                                                : 'bg-slate-100 text-slate-500'
+                                                }`}
                                         >
                                             {role.status}
                                         </span>
@@ -416,7 +464,8 @@ const UserPermissionView = () => {
                                             <Users size={14} /> {role.users} 人
                                         </span>
                                         <span className="flex items-center gap-1">
-                                            <Layers size={14} /> {role.scope.length} 范围
+                                            <Layers size={14} />
+                                            {role.scope.type === 'Global' ? '全平台' : `${role.scope.type} (${role.scope.ids.length})`}
                                         </span>
                                         <span className="flex items-center gap-1">
                                             <Sparkles size={14} /> {role.updatedAt}
@@ -450,11 +499,10 @@ const UserPermissionView = () => {
                             <button
                                 onClick={() => activeRole && handleDeleteRole(activeRole.id)}
                                 disabled={activeRole?.builtIn}
-                                className={`px-3 py-1.5 rounded-lg border text-xs flex items-center gap-1 ${
-                                    activeRole?.builtIn
-                                        ? 'border-slate-100 text-slate-300 cursor-not-allowed'
-                                        : 'border-rose-200 text-rose-600 hover:text-rose-700 hover:border-rose-300'
-                                }`}
+                                className={`px-3 py-1.5 rounded-lg border text-xs flex items-center gap-1 ${activeRole?.builtIn
+                                    ? 'border-slate-100 text-slate-300 cursor-not-allowed'
+                                    : 'border-rose-200 text-rose-600 hover:text-rose-700 hover:border-rose-300'
+                                    }`}
                             >
                                 <Trash2 size={14} /> 删除
                             </button>
@@ -464,7 +512,7 @@ const UserPermissionView = () => {
                     <div className="grid gap-3 sm:grid-cols-3">
                         {[
                             { label: '角色成员', value: `${activeRole?.users ?? 0} 人`, icon: Users },
-                            { label: '覆盖范围', value: `${activeRole?.scope.length ?? 0} 类`, icon: Layers },
+                            { label: '覆盖范围', value: activeRole?.scope.type === 'Global' ? '全平台' : `${activeRole?.scope.ids.length ?? 0} 个对象`, icon: Layers },
                             { label: '更新时间', value: activeRole?.updatedAt ?? '-', icon: UserCog }
                         ].map((item) => (
                             <div key={item.label} className="rounded-xl border border-slate-200 p-3">
@@ -480,15 +528,20 @@ const UserPermissionView = () => {
                     <div>
                         <p className="text-sm font-semibold text-slate-700">授权范围</p>
                         <div className="mt-2 flex flex-wrap gap-2">
-                            {activeRole?.scope?.length ? (
-                                activeRole.scope.map((scope) => (
-                                    <span
-                                        key={scope}
-                                        className="rounded-full border border-indigo-100 bg-indigo-50 px-3 py-1 text-xs text-indigo-600"
-                                    >
-                                        {scope}
+                            {activeRole?.scope ? (
+                                <div className="flex flex-wrap gap-2 items-center">
+                                    <span className="px-2 py-0.5 rounded text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                                        {activeRole.scope.type}
                                     </span>
-                                ))
+                                    {activeRole.scope.ids.map((id) => (
+                                        <span
+                                            key={id}
+                                            className="rounded-full border border-indigo-100 bg-indigo-50 px-3 py-1 text-xs text-indigo-600"
+                                        >
+                                            {id === '*' ? '所有资源' : id}
+                                        </span>
+                                    ))}
+                                </div>
                             ) : (
                                 <span className="text-xs text-slate-400">未设置范围</span>
                             )}
@@ -515,9 +568,8 @@ const UserPermissionView = () => {
                             {permissionItems.map((item, index) => (
                                 <div
                                     key={item.module}
-                                    className={`grid grid-cols-[1.1fr_repeat(4,0.7fr)_1fr] text-xs text-slate-600 ${
-                                        index % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'
-                                    }`}
+                                    className={`grid grid-cols-[1.1fr_repeat(4,0.7fr)_1fr] text-xs text-slate-600 ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'
+                                        }`}
                                 >
                                     <div className="px-4 py-3 font-semibold text-slate-700">{item.module}</div>
                                     {actionLabels.map((label) => (
@@ -570,175 +622,290 @@ const UserPermissionView = () => {
                 <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/40">
                     <div className="min-h-screen p-4 flex items-start justify-center">
                         <div className="w-full max-w-4xl rounded-2xl bg-white shadow-2xl flex max-h-[92vh] flex-col">
-                        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
-                            <div>
-                                <h3 className="text-lg font-semibold text-slate-800">
-                                    {modalMode === 'create' ? '新建角色' : '编辑角色'}
-                                </h3>
-                                <p className="text-xs text-slate-500">
-                                    配置角色信息、授权范围与权限策略。
-                                </p>
+                            <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+                                <div>
+                                    <h3 className="text-lg font-semibold text-slate-800">
+                                        {modalMode === 'create' ? '新建角色' : '编辑角色'}
+                                    </h3>
+                                    <p className="text-xs text-slate-500">
+                                        配置角色信息、授权范围与权限策略。
+                                    </p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={closeModal}
+                                    className="rounded-full border border-slate-200 p-2 text-slate-500 hover:text-slate-700"
+                                >
+                                    <X size={16} />
+                                </button>
                             </div>
-                            <button
-                                type="button"
-                                onClick={closeModal}
-                                className="rounded-full border border-slate-200 p-2 text-slate-500 hover:text-slate-700"
-                            >
-                                <X size={16} />
-                            </button>
-                        </div>
-                        <div className="space-y-6 px-6 py-6 overflow-y-auto">
-                            <div className="grid gap-4 md:grid-cols-2">
-                                <div className="space-y-2">
-                                    <label className="text-xs font-semibold text-slate-600">角色名称</label>
-                                    <input
-                                        value={draftRole.name}
-                                        onChange={(event) =>
-                                            setDraftRole({ ...draftRole, name: event.target.value })
-                                        }
-                                        placeholder="例如：语义治理负责人"
-                                        className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-xs font-semibold text-slate-600">角色编码</label>
-                                    <input
-                                        value={draftRole.code}
-                                        onChange={(event) =>
-                                            setDraftRole({ ...draftRole, code: event.target.value })
-                                        }
-                                        placeholder="semantic_owner"
-                                        className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none"
-                                    />
-                                </div>
-                                <div className="space-y-2 md:col-span-2">
-                                    <label className="text-xs font-semibold text-slate-600">角色描述</label>
-                                    <textarea
-                                        value={draftRole.description}
-                                        onChange={(event) =>
-                                            setDraftRole({ ...draftRole, description: event.target.value })
-                                        }
-                                        placeholder="描述该角色在语义治理流程中的职责"
-                                        className="h-20 w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-xs font-semibold text-slate-600">状态</label>
-                                    <select
-                                        value={draftRole.status}
-                                        onChange={(event) =>
-                                            setDraftRole({
-                                                ...draftRole,
-                                                status: event.target.value as Role['status']
-                                            })
-                                        }
-                                        className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none"
-                                    >
-                                        <option value="启用">启用</option>
-                                        <option value="停用">停用</option>
-                                    </select>
-                                </div>
-                                {modalMode === 'create' && (
+                            <div className="space-y-6 px-6 py-6 overflow-y-auto">
+                                <div className="grid gap-4 md:grid-cols-2">
                                     <div className="space-y-2">
-                                        <label className="text-xs font-semibold text-slate-600">权限模板</label>
+                                        <label className="text-xs font-semibold text-slate-600">角色名称</label>
+                                        <input
+                                            value={draftRole.name}
+                                            onChange={(event) =>
+                                                setDraftRole({ ...draftRole, name: event.target.value })
+                                            }
+                                            placeholder="例如：语义治理负责人"
+                                            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-semibold text-slate-600">角色编码</label>
+                                        <input
+                                            value={draftRole.code}
+                                            onChange={(event) =>
+                                                setDraftRole({ ...draftRole, code: event.target.value })
+                                            }
+                                            placeholder="semantic_owner"
+                                            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none"
+                                        />
+                                    </div>
+                                    <div className="space-y-2 md:col-span-2">
+                                        <label className="text-xs font-semibold text-slate-600">角色描述</label>
+                                        <textarea
+                                            value={draftRole.description}
+                                            onChange={(event) =>
+                                                setDraftRole({ ...draftRole, description: event.target.value })
+                                            }
+                                            placeholder="描述该角色在语义治理流程中的职责"
+                                            className="h-20 w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-semibold text-slate-600">状态</label>
                                         <select
-                                            value={draftTemplateId}
-                                            onChange={(event) => setDraftTemplateId(event.target.value)}
+                                            value={draftRole.status}
+                                            onChange={(event) =>
+                                                setDraftRole({
+                                                    ...draftRole,
+                                                    status: event.target.value as Role['status']
+                                                })
+                                            }
                                             className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none"
                                         >
-                                            {templateOptions.map((option) => (
-                                                <option key={option.id} value={option.id}>
-                                                    {option.label}
-                                                </option>
-                                            ))}
+                                            <option value="启用">启用</option>
+                                            <option value="停用">停用</option>
                                         </select>
-                                        <p className="text-xs text-slate-400">{activeTemplate?.description}</p>
                                     </div>
-                                )}
-                            </div>
-
-                            <div>
-                                <p className="text-sm font-semibold text-slate-700">授权范围</p>
-                                <div className="mt-3 flex flex-wrap gap-2">
-                                    {scopeOptions.map((scope) => {
-                                        const active = draftRole.scope.includes(scope);
-                                        return (
-                                            <button
-                                                key={scope}
-                                                type="button"
-                                                onClick={() => toggleScope(scope)}
-                                                className={`rounded-full border px-3 py-1 text-xs transition ${
-                                                    active
-                                                        ? 'border-indigo-200 bg-indigo-50 text-indigo-600'
-                                                        : 'border-slate-200 text-slate-500 hover:border-indigo-200 hover:text-slate-700'
-                                                }`}
+                                    {modalMode === 'create' && (
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-semibold text-slate-600">权限模板</label>
+                                            <select
+                                                value={draftTemplateId}
+                                                onChange={(event) => setDraftTemplateId(event.target.value)}
+                                                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none"
                                             >
-                                                {scope}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-
-                            <div>
-                                <p className="text-sm font-semibold text-slate-700">权限策略</p>
-                                <div className="mt-3 overflow-hidden rounded-lg border border-slate-200">
-                                    <div className="grid grid-cols-[1.1fr_repeat(4,0.7fr)_1fr] bg-slate-50 text-xs font-semibold text-slate-500">
-                                        <div className="px-4 py-2">治理模块</div>
-                                        {actionLabels.map((label) => (
-                                            <div key={label} className="px-3 py-2 text-center">
-                                                {label}
-                                            </div>
-                                        ))}
-                                        <div className="px-4 py-2">说明</div>
-                                    </div>
-                                    {draftPermissions.map((item, index) => (
-                                        <div
-                                            key={item.module}
-                                            className={`grid grid-cols-[1.1fr_repeat(4,0.7fr)_1fr] text-xs text-slate-600 ${
-                                                index % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'
-                                            }`}
-                                        >
-                                            <div className="px-4 py-3 font-semibold text-slate-700">{item.module}</div>
-                                            {actionLabels.map((label) => (
-                                                <label
-                                                    key={label}
-                                                    className="px-3 py-3 text-center"
-                                                >
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={item.actions.includes(label)}
-                                                        onChange={() => togglePermissionAction(item.module, label)}
-                                                        className="h-4 w-4 accent-indigo-600"
-                                                    />
-                                                </label>
-                                            ))}
-                                            <div className="px-4 py-3 text-slate-500">{item.note}</div>
+                                                {templateOptions.map((option) => (
+                                                    <option key={option.id} value={option.id}>
+                                                        {option.label}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <p className="text-xs text-slate-400">{activeTemplate?.description}</p>
                                         </div>
-                                    ))}
+                                    )}
+                                </div>
+
+                                <div>
+                                    <p className="text-sm font-semibold text-slate-700">授权范围</p>
+                                    <div className="mt-3 grid gap-4 p-4 rounded-xl border border-slate-200 bg-slate-50/50">
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-semibold text-slate-600">范围类型</label>
+                                            <div className="flex flex-wrap gap-2">
+                                                {(['Global', 'Tenant', 'Organization', 'Domain'] as ScopeType[]).map((type) => {
+                                                    const isActive = draftRole.scope.type === type;
+                                                    return (
+                                                        <button
+                                                            key={type}
+                                                            type="button"
+                                                            onClick={() => setDraftRole({
+                                                                ...draftRole,
+                                                                scope: { type, ids: type === 'Global' ? ['*'] : [] }
+                                                            })}
+                                                            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${isActive
+                                                                ? 'bg-indigo-600 text-white shadow-sm'
+                                                                : 'bg-white border border-slate-200 text-slate-600 hover:border-slate-300'
+                                                                }`}
+                                                        >
+                                                            {type === 'Global' && '全平台'}
+                                                            {type === 'Tenant' && '指定租户'}
+                                                            {type === 'Organization' && '指定组织'}
+                                                            {type === 'Domain' && '数据域'}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+
+                                        {draftRole.scope.type !== 'Global' && (
+                                            <div className="space-y-2">
+                                                <label className="text-xs font-semibold text-slate-600">
+                                                    选择{draftRole.scope.type === 'Tenant' ? '租户' :
+                                                        draftRole.scope.type === 'Organization' ? '组织' : '数据域'}
+                                                </label>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {/* Mock Options based on type */}
+                                                    {(draftRole.scope.type === 'Tenant' ? ['tenant_default', 'tenant_a', 'tenant_b'] :
+                                                        draftRole.scope.type === 'Organization' ? ['org_group', 'org_hr', 'org_tech'] :
+                                                            ['domain_service', 'domain_search', 'domain_quality']).map((id) => {
+                                                                const isSelected = draftRole.scope.ids.includes(id);
+                                                                return (
+                                                                    <button
+                                                                        key={id}
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            const currentIds = draftRole.scope.ids;
+                                                                            const newIds = currentIds.includes(id)
+                                                                                ? currentIds.filter(i => i !== id)
+                                                                                : [...currentIds, id];
+                                                                            setDraftRole({
+                                                                                ...draftRole,
+                                                                                scope: { ...draftRole.scope, ids: newIds }
+                                                                            });
+                                                                        }}
+                                                                        className={`rounded-full border px-3 py-1 text-xs transition ${isSelected
+                                                                            ? 'border-indigo-200 bg-indigo-50 text-indigo-600'
+                                                                            : 'border-slate-200 text-slate-500 hover:border-indigo-200 hover:text-slate-700'
+                                                                            }`}
+                                                                    >
+                                                                        {id}
+                                                                    </button>
+                                                                );
+                                                            })}
+                                                </div>
+                                                {draftRole.scope.ids.length === 0 && (
+                                                    <p className="text-xs text-rose-500 flex items-center gap-1">
+                                                        <X size={12} /> 请至少选择一个范围
+                                                    </p>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <div className="flex items-center justify-between">
+                                        <p className="text-sm font-semibold text-slate-700">权限策略</p>
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowAdvancedPermissions(!showAdvancedPermissions)}
+                                            className={`text-xs flex items-center gap-1 ${showAdvancedPermissions ? 'text-indigo-600 font-medium' : 'text-slate-500'}`}
+                                        >
+                                            <Sparkles size={12} />
+                                            {showAdvancedPermissions ? '隐藏高级权限点' : '显示高级权限点'}
+                                        </button>
+                                    </div>
+                                    <div className="mt-3 overflow-hidden rounded-lg border border-slate-200">
+                                        <div className="grid grid-cols-[1.1fr_repeat(4,0.7fr)_1fr] bg-slate-50 text-xs font-semibold text-slate-500">
+                                            <div className="px-4 py-2">治理模块</div>
+                                            {actionLabels.map((label) => (
+                                                <div key={label} className="px-3 py-2 text-center">
+                                                    {label}
+                                                </div>
+                                            ))}
+                                            <div className="px-4 py-2">说明</div>
+                                        </div>
+                                        {draftPermissions.map((item, index) => {
+                                            const ops = operationPointDefinitions[item.module];
+                                            const hasOps = ops && ops.length > 0;
+                                            return (
+                                                <div key={item.module} className={`${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}>
+                                                    <div className="grid grid-cols-[1.1fr_repeat(4,0.7fr)_1fr] text-xs text-slate-600">
+                                                        <div className="px-4 py-3 font-semibold text-slate-700 flex flex-col justify-center">
+                                                            {item.module}
+                                                            {showAdvancedPermissions && hasOps && (
+                                                                <span className="text-[10px] font-normal text-slate-400 mt-0.5">
+                                                                    包含 {ops.length} 个细分权限点
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        {actionLabels.map((label) => (
+                                                            <label
+                                                                key={label}
+                                                                className="px-3 py-3 text-center flex items-center justify-center cursor-pointer hover:bg-slate-100/50"
+                                                            >
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={item.actions.includes(label)}
+                                                                    onChange={() => togglePermissionAction(item.module, label)}
+                                                                    className="h-4 w-4 accent-indigo-600 rounded"
+                                                                />
+                                                            </label>
+                                                        ))}
+                                                        <div className="px-4 py-3 text-slate-500 flex items-center">{item.note}</div>
+                                                    </div>
+
+                                                    {/* Advanced Operation Points Sub-row */}
+                                                    {showAdvancedPermissions && hasOps && (
+                                                        <div className="px-4 pb-3 pt-0 border-t border-slate-100 bg-slate-50/30">
+                                                            <div className="mt-2 flex flex-wrap gap-x-6 gap-y-2">
+                                                                {ops.map(op => (
+                                                                    <label key={op.key} className="flex items-center gap-2 cursor-pointer group">
+                                                                        <input
+                                                                            type="checkbox"
+                                                                            checked={(item.operationPoints || []).includes(op.key)}
+                                                                            onChange={() => toggleOperationPoint(item.module, op.key)}
+                                                                            className="h-3 w-3 accent-indigo-500 rounded-sm"
+                                                                        />
+                                                                        <div className="flex flex-col">
+                                                                            <span className="text-xs text-slate-600 group-hover:text-indigo-600">{op.label}</span>
+                                                                            <span className="text-[10px] text-slate-400 scale-90 origin-top-left">
+                                                                                归属: {op.parentAction}
+                                                                            </span>
+                                                                        </div>
+                                                                    </label>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        <div className="flex items-center justify-end gap-3 border-t border-slate-200 px-6 py-4">
-                            <button
-                                type="button"
-                                onClick={closeModal}
-                                className="rounded-lg border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:text-slate-800"
-                            >
-                                取消
-                            </button>
-                            <button
-                                type="button"
-                                onClick={handleSaveRole}
-                                className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
-                            >
-                                {modalMode === 'create' ? '创建角色' : '保存修改'}
-                            </button>
-                        </div>
+                            <div className="flex items-center justify-end gap-3 border-t border-slate-200 px-6 py-4">
+                                <button
+                                    type="button"
+                                    onClick={closeModal}
+                                    className="rounded-lg border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:text-slate-800"
+                                >
+                                    取消
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleCheckBeforeSave}
+                                    className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+                                >
+                                    {modalMode === 'create' ? '创建角色' : '保存修改'}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
             )}
+            {modalOpen && draftRole && (
+                <RoleChangeConfirmModal
+                    isOpen={confirmModalOpen}
+                    onClose={() => setConfirmModalOpen(false)}
+                    onConfirm={finalizeSave}
+                    draftRole={draftRole}
+                    originalRole={modalMode === 'edit' ? rolesState.find(r => r.id === draftRole.id) || null : null}
+                    permissions={draftPermissions}
+                />
+            )}
+
+            <EffectivePermissionPreviewModal
+                isOpen={showPreviewModal}
+                onClose={() => setShowPreviewModal(false)}
+                allRoles={rolesState.map(r => ({
+                    ...r,
+                    permissions: rolePermissionsState[r.id] || []
+                }))}
+            />
         </div>
     );
 };

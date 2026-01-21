@@ -18,6 +18,7 @@ import { UpgradeSuggestionCard, generateUpgradeSuggestion } from './semantic/Upg
 import { OverviewTab } from './semantic/tabs/OverviewTab';
 import { EvidenceTab } from './semantic/tabs/EvidenceTab';
 import { LogsTab } from './semantic/tabs/LogsTab';
+import { RelationshipGraphTab } from './semantic/tabs/RelationshipGraphTab';
 import { BatchOperationBar } from './semantic/components/BatchOperationBar';
 import { AnalysisProgressPanel } from './semantic/AnalysisProgressPanel';
 import { StreamingProgressPanel } from './semantic/StreamingProgressPanel';
@@ -30,7 +31,8 @@ import { BatchSemanticResultModal } from './semantic/components/BatchSemanticRes
 import { SemanticAssistBatchModal } from './semantic/components/SemanticAssistBatchModal';
 import { SemanticAssistBatchRunConfig, DEFAULT_SEMANTIC_ASSIST, SemanticAssist } from '../types/semanticAssist';
 import { SemanticAssistBar } from './semantic/components/SemanticAssistBar';
-import { SemanticAssistTemplateInfo } from './semantic/components/SemanticAssistTemplateInfo';
+import { TemplateExplanationDrawer } from './semantic/components/TemplateExplanationDrawer';
+import { SemanticAssistConfigPanel } from './semantic/components/SemanticAssistConfigPanel';
 
 
 interface DataSemanticUnderstandingViewProps {
@@ -131,6 +133,7 @@ const DataSemanticUnderstandingView = ({
 
     // Semantic Assist State (Moved from GovernanceTopBar)
     const [isAssistEnabled, setIsAssistEnabled] = useState(true);
+    const [showAssistConfig, setShowAssistConfig] = useState(false);
     const [assistSettings, setAssistSettings] = useState({
         template: 'SEMANTIC_MIN',
         sampleRatio: 0.01,
@@ -228,7 +231,7 @@ const DataSemanticUnderstandingView = ({
             const governanceStatus = resolveGovernanceStatus(asset);
             const reviewStats = governanceStatus === 'S0'
                 ? null
-                : (asset.reviewStats || buildReviewStats(asset.table, asset.fields || [], asset.comment));
+                : (asset.reviewStats || buildReviewStats(asset.table || asset.name, asset.fields || [], asset.comment));
             const lastRun = asset.lastRun || asset.semanticAnalysis?.lastRun || null;
 
             // V2.4: Derive Semantic Stage
@@ -250,8 +253,9 @@ const DataSemanticUnderstandingView = ({
         const keyword = searchTerm.trim().toLowerCase();
         const filtered = listAssets.filter(asset => {
             const matchesSource = selectedDataSourceId ? asset.sourceId === selectedDataSourceId : true;
+            const tableName = asset.table || asset.name || '';
             const matchesSearch = keyword === '' ||
-                asset.table.toLowerCase().includes(keyword) ||
+                tableName.toLowerCase().includes(keyword) ||
                 (asset.comment || '').toLowerCase().includes(keyword) ||
                 (asset.semanticAnalysis?.businessName || '').toLowerCase().includes(keyword);
             const stats = asset.reviewStats as ReviewStats | null;
@@ -534,7 +538,8 @@ const DataSemanticUnderstandingView = ({
                 ...emptyProfile,
                 tableName: tableId,
                 analysisStep: 'idle',
-                relationships: [],
+                relationships: asset.relationships || [],
+                fields: asset.fields || [],
                 governanceStatus: 'S0'
             });
             setFieldViewMode('structure');
@@ -1243,7 +1248,7 @@ const DataSemanticUnderstandingView = ({
                                                                 <Table size={14} className="text-blue-600" />
                                                             </div>
                                                             <div className="min-w-0">
-                                                                <div className="font-mono text-blue-600 font-semibold text-sm truncate group-hover:text-blue-700">{asset.table}</div>
+                                                                <div className="font-mono text-blue-600 font-semibold text-sm truncate group-hover:text-blue-700">{asset.table || asset.name || 'Unknown Table'}</div>
                                                                 {asset.comment && <div className="text-xs text-slate-400 truncate max-w-[180px]">{asset.comment}</div>}
                                                             </div>
                                                         </div>
@@ -1362,7 +1367,8 @@ const DataSemanticUnderstandingView = ({
                                                         <button
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
-                                                                handleTableClick(asset.table);
+                                                                // Handle both traditional table ID and internal ID
+                                                                handleTableClick(asset.table || asset.name || asset.id);
                                                                 // CTA 统一进入语义理解模式
                                                                 setPageMode('SEMANTIC');
                                                             }}
@@ -1503,8 +1509,7 @@ const DataSemanticUnderstandingView = ({
                                             setIsAssistEnabled(enabled);
                                         }}
                                         onOpenConfig={() => {
-                                            // Open settings popover/modal if needed, currently just log or we can re-implement SemanticSettingsPopover here
-                                            console.log('Open config panel');
+                                            setShowAssistConfig(true);
                                         }}
                                         onOpenTemplateInfo={() => {
                                             setShowTemplateInfo(true);
@@ -3590,11 +3595,43 @@ const DataSemanticUnderstandingView = ({
             />
 
             {/* 模板说明抽屉 */}
-            <SemanticAssistTemplateInfo
-                template="SEMANTIC_MIN"
+            <TemplateExplanationDrawer
                 open={showTemplateInfo}
                 onClose={() => setShowTemplateInfo(false)}
             />
+
+            {/* 语义理解配置面板 */}
+            {showAssistConfig && (
+                <SemanticAssistConfigPanel
+                    assist={{
+                        ...DEFAULT_SEMANTIC_ASSIST,
+                        enabled: isAssistEnabled,
+                        template: assistSettings.template,
+                        runtimeConfig: {
+                            ...DEFAULT_SEMANTIC_ASSIST.runtimeConfig,
+                            sampleRatio: assistSettings.sampleRatio * 100
+                        },
+                        systemConfig: {
+                            maxRows: assistSettings.maxRows,
+                            ttlHours: parseInt(assistSettings.ttl)
+                        },
+                        scope: 'TABLE'
+                    }}
+                    onClose={() => setShowAssistConfig(false)}
+                    onApply={(newConfig) => {
+                        setAssistSettings(prev => ({
+                            ...prev,
+                            sampleRatio: newConfig.runtimeConfig?.sampleRatio ? newConfig.runtimeConfig.sampleRatio / 100 : prev.sampleRatio
+                            // Note: template, maxRows, ttl are currently fixed in UI updates but could be mapped here if editable
+                        }));
+                        if (newConfig.enabled !== undefined) {
+                            setIsAssistEnabled(newConfig.enabled);
+                        }
+                        setShowAssistConfig(false);
+                    }}
+                    asModal={true}
+                />
+            )}
             {/* Relationship Edit Modal */}
             {
                 showRelModal && (

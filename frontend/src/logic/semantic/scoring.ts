@@ -18,7 +18,7 @@ export const calculateTableRuleScore = (tableName: string, fields: any[], commen
         total: 0
     };
     const evidence: string[] = [];
-    const name = tableName.toLowerCase();
+    const name = (tableName || '').toLowerCase();
 
     // T-01: Table Name Naming
     const prefixMatched = NAMING_PREFIX.some(p => p.test(name));

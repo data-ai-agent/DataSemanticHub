@@ -5,6 +5,7 @@ import {
     DEFAULT_SEMANTIC_ASSIST
 } from '../../../types/semanticAssist';
 import { X, CheckCircle, Info, AlertTriangle } from 'lucide-react';
+import { TemplateExplanationDrawer } from './TemplateExplanationDrawer';
 
 interface SemanticAssistBatchModalProps {
     open: boolean;
@@ -37,6 +38,7 @@ export const SemanticAssistBatchModal: React.FC<SemanticAssistBatchModalProps> =
     const [sampleRatio, setSampleRatio] = useState<0.5 | 1 | 5>(
         defaultAssist.runtimeConfig.sampleRatio
     );
+    const [showTemplateDrawer, setShowTemplateDrawer] = useState(false);
 
     if (!open) return null;
 
@@ -64,7 +66,7 @@ export const SemanticAssistBatchModal: React.FC<SemanticAssistBatchModalProps> =
                 {/* Header */}
                 <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
                     <div>
-                        <h3 className="text-xl font-bold text-slate-800">批量语义理解</h3>
+                        <h3 className="text-xl font-bold text-slate-800">批量生成语义建议</h3>
                         <div className="flex items-center gap-3 mt-1 text-sm text-slate-500">
                             <span>
                                 已选表：
@@ -91,7 +93,7 @@ export const SemanticAssistBatchModal: React.FC<SemanticAssistBatchModalProps> =
                     <div className="border border-slate-200 rounded-xl p-5 bg-slate-50/50">
                         <h4 className="text-base font-bold text-slate-800 mb-1">语义理解辅助检测</h4>
                         <p className="text-xs text-slate-500 mb-4">
-                            用于提升语义建议准确性，仅作为辅助信号，不影响语义裁决
+                            用于提升语义建议准确性，仅作为辅助信号，不影响语义裁决（不产生质量通过/失败结论）
                         </p>
 
                         {/* 辅助检测开关 */}
@@ -109,7 +111,7 @@ export const SemanticAssistBatchModal: React.FC<SemanticAssistBatchModalProps> =
                                 {!enabled && (
                                     <div className="text-xs text-amber-600 mt-1 flex items-center gap-1">
                                         <AlertTriangle size={12} />
-                                        关闭后仍可生成语义建议，但置信度可能降低
+                                        关闭后仍可生成语义建议，但将缺少数据分布与一致性辅助信号
                                     </div>
                                 )}
                             </div>
@@ -120,21 +122,26 @@ export const SemanticAssistBatchModal: React.FC<SemanticAssistBatchModalProps> =
                                 {/* 检测模板（只读） */}
                                 <div className="bg-white border border-slate-200 rounded-lg p-3 mb-4">
                                     <div className="text-xs text-slate-500 mb-1">检测模板</div>
-                                    <div className="text-sm font-mono font-medium text-slate-700 bg-slate-100 px-2 py-1 rounded inline-block">
+                                    <div
+                                        className="text-sm font-mono font-medium text-blue-700 bg-blue-50 px-2 py-1 rounded inline-flex items-center gap-2 cursor-pointer hover:bg-blue-100 transition-colors"
+                                        onClick={() => setShowTemplateDrawer(true)}
+                                    >
                                         SEMANTIC_MIN
+                                        <Info size={14} className="opacity-70" />
                                     </div>
                                 </div>
 
                                 {/* 采样比例 */}
                                 <div>
-                                    <div className="text-sm font-medium text-slate-700 mb-2">数据采样比例</div>
+                                    <div className="text-sm font-medium text-slate-700 mb-1">用于语义理解的采样比例</div>
+                                    <div className="text-xs text-slate-500 mb-3">用于计算字段分布特征，不影响原始数据与质量结果</div>
                                     <div className="flex gap-3">
                                         {([0.5, 1, 5] as const).map((ratio) => (
                                             <label
                                                 key={ratio}
                                                 className={`flex-1 p-3 border-2 rounded-lg cursor-pointer transition-all ${sampleRatio === ratio
-                                                        ? 'border-blue-500 bg-blue-50'
-                                                        : 'border-slate-200 bg-white hover:border-slate-300'
+                                                    ? 'border-blue-500 bg-blue-50'
+                                                    : 'border-slate-200 bg-white hover:border-slate-300'
                                                     }`}
                                             >
                                                 <input
@@ -168,6 +175,7 @@ export const SemanticAssistBatchModal: React.FC<SemanticAssistBatchModalProps> =
                                     <li>• 本次操作仅生成语义建议，不自动生效</li>
                                     <li>• 语义裁决仍需人工确认</li>
                                     <li>• 执行过程中不会影响现有语义版本</li>
+                                    <li>• 不会修改现有质量规则或质量检测结果</li>
                                 </ul>
                             </div>
                         </div>
@@ -186,15 +194,20 @@ export const SemanticAssistBatchModal: React.FC<SemanticAssistBatchModalProps> =
                         onClick={handleStart}
                         disabled={selectedTables.length === 0}
                         className={`px-6 py-2 text-sm font-medium rounded-lg shadow-sm hover:shadow transition-all flex items-center gap-2 ${selectedTables.length > 0
-                                ? 'bg-blue-600 text-white hover:bg-blue-700'
-                                : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                            ? 'bg-blue-600 text-white hover:bg-blue-700'
+                            : 'bg-slate-100 text-slate-400 cursor-not-allowed'
                             }`}
                     >
                         <CheckCircle size={16} />
-                        开始理解
+                        开始生成
                     </button>
                 </div>
             </div>
+
+            <TemplateExplanationDrawer
+                open={showTemplateDrawer}
+                onClose={() => setShowTemplateDrawer(false)}
+            />
         </div>
     );
 };

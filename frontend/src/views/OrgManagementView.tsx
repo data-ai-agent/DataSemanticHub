@@ -11,7 +11,21 @@ import {
     MapPin,
     BadgeCheck,
     EyeOff,
-    Eye
+    Eye,
+    List,
+    AlignLeft,
+    ChevronRight,
+    ChevronDown,
+    MoreHorizontal,
+
+    AlertTriangle,
+    ShieldAlert,
+    ArrowRight,
+    Info,
+    CheckCircle,
+    UserPlus,
+    Settings,
+    Briefcase
 } from 'lucide-react';
 
 type OrgStatus = '启用' | '停用';
@@ -26,10 +40,10 @@ type Department = {
     status: OrgStatus;
     region: string;
     order: number;
-    roles: string[];
-    description: string;
-    builtIn: boolean;
     updatedAt: string;
+    description?: string;
+    builtIn?: boolean; // built-in nodes
+    functions?: string[]; // Governance functions assigned to this org
 };
 
 type Member = {
@@ -37,10 +51,29 @@ type Member = {
     name: string;
     title: string;
     role: string;
+    permissions: string[]; // e.g. 'admin', 'read', 'write'
+    isPrimary: boolean;    // Is this the primary organization
     status: '在岗' | '调岗' | '离职';
+    joinDate: string;
 };
 
-const roleCatalog = ['语义治理', '版本管理', '数据服务', '数据安全', '数据质量', '业务场景', '问数', '找数'];
+
+
+const GOVERNANCE_ROLES = [
+    { name: '语义治理', desc: '负责数据标准、业务含义的统一定义与维护' },
+    { name: '版本管理', desc: '负责语义资产的版本发布、变更审核与生命周期管理' },
+    { name: '数据安全', desc: '负责数据分级分类、权限审批与合规审计' },
+    { name: '数据质量', desc: '负责数据质量规则配置、监控与问题治理' }
+];
+
+const CAPABILITIES = [
+    { name: '业务场景', desc: '负责业务场景的梳理与价值验证' },
+    { name: '问数', desc: '具备自然语言查数、取数的能力支持' },
+    { name: '找数', desc: '提供数据资产检索与探查服务' }
+];
+
+// Combine for backward compatibility if needed, or migration
+const roleCatalog = [...GOVERNANCE_ROLES, ...CAPABILITIES].map(r => r.name);
 
 const initialDepartments: Department[] = [
     {
@@ -53,7 +86,7 @@ const initialDepartments: Department[] = [
         status: '启用',
         region: '集团',
         order: 1,
-        roles: ['语义治理', '版本管理'],
+        functions: ['语义治理', '版本管理'],
         description: '负责语义治理、版本管理与统一裁决。',
         builtIn: true,
         updatedAt: '2024-06-26'
@@ -68,7 +101,7 @@ const initialDepartments: Department[] = [
         status: '启用',
         region: '集团',
         order: 1,
-        roles: ['语义治理', '业务场景'],
+        functions: ['语义治理', '业务场景'],
         description: '推动语义资产落地与场景编排。',
         builtIn: false,
         updatedAt: '2024-06-21'
@@ -83,7 +116,7 @@ const initialDepartments: Department[] = [
         status: '启用',
         region: '集团',
         order: 2,
-        roles: ['版本管理'],
+        functions: ['版本管理'],
         description: '负责语义版本评审与发布决策。',
         builtIn: true,
         updatedAt: '2024-06-18'
@@ -98,7 +131,7 @@ const initialDepartments: Department[] = [
         status: '启用',
         region: '总部',
         order: 2,
-        roles: ['数据安全'],
+        functions: ['数据安全'],
         description: '负责敏感数据与合规审计。',
         builtIn: true,
         updatedAt: '2024-06-16'
@@ -113,7 +146,7 @@ const initialDepartments: Department[] = [
         status: '启用',
         region: '总部',
         order: 3,
-        roles: ['数据质量'],
+        functions: ['数据质量'],
         description: '主导质量规则与异常闭环。',
         builtIn: false,
         updatedAt: '2024-06-14'
@@ -128,7 +161,7 @@ const initialDepartments: Department[] = [
         status: '启用',
         region: '华东',
         order: 4,
-        roles: ['数据服务', '问数', '找数'],
+        functions: ['数据服务', '问数', '找数'],
         description: '运营数据服务与问数找数能力。',
         builtIn: false,
         updatedAt: '2024-06-12'
@@ -143,7 +176,7 @@ const initialDepartments: Department[] = [
         status: '启用',
         region: '华东',
         order: 1,
-        roles: ['业务场景'],
+        functions: ['业务场景'],
         description: '推动业务场景上线与协同。',
         builtIn: false,
         updatedAt: '2024-06-08'
@@ -152,21 +185,21 @@ const initialDepartments: Department[] = [
 
 const memberMap: Record<string, Member[]> = {
     dept_root: [
-        { id: 'm_01', name: '王宁', title: '语义治理负责人', role: '语义治理', status: '在岗' },
-        { id: 'm_02', name: '刘洋', title: '版本委员会秘书', role: '版本管理', status: '在岗' },
-        { id: 'm_03', name: '孙凯', title: '语义裁决专员', role: '语义治理', status: '在岗' }
+        { id: 'm_01', name: '王宁', title: '语义治理负责人', role: '语义治理', permissions: ['manage', 'audit'], isPrimary: true, status: '在岗', joinDate: '2023-01-10' },
+        { id: 'm_02', name: '刘洋', title: '版本委员会秘书', role: '版本管理', permissions: ['audit'], isPrimary: true, status: '在岗', joinDate: '2023-03-15' },
+        { id: 'm_03', name: '孙凯', title: '语义裁决专员', role: '语义治理', permissions: ['operate'], isPrimary: true, status: '在岗', joinDate: '2023-05-20' }
     ],
     dept_semantic_ops: [
-        { id: 'm_11', name: '陈颖', title: '语义运营经理', role: '语义治理', status: '在岗' },
-        { id: 'm_12', name: '高原', title: '场景运营', role: '业务场景', status: '在岗' }
+        { id: 'm_11', name: '陈颖', title: '语义运营经理', role: '语义治理', permissions: ['operate'], isPrimary: true, status: '在岗', joinDate: '2023-02-01' },
+        { id: 'm_12', name: '高原', title: '场景运营', role: '业务场景', permissions: ['operate'], isPrimary: false, status: '在岗', joinDate: '2023-06-01' }
     ],
     dept_security: [
-        { id: 'm_21', name: '张倩', title: '安全审计负责人', role: '数据安全', status: '在岗' },
-        { id: 'm_22', name: '韩雪', title: '合规专员', role: '数据安全', status: '在岗' }
+        { id: 'm_21', name: '张倩', title: '安全审计负责人', role: '数据安全', permissions: ['audit'], isPrimary: true, status: '在岗', joinDate: '2023-01-15' },
+        { id: 'm_22', name: '韩雪', title: '合规专员', role: '数据安全', permissions: ['view'], isPrimary: true, status: '在岗', joinDate: '2023-04-10' }
     ],
     dept_data_service: [
-        { id: 'm_31', name: '赵敏', title: '服务运营经理', role: '数据服务', status: '在岗' },
-        { id: 'm_32', name: '陈浩', title: '问数产品运营', role: '问数', status: '在岗' }
+        { id: 'm_31', name: '赵敏', title: '服务运营经理', role: '数据服务', permissions: ['manage'], isPrimary: true, status: '在岗', joinDate: '2023-03-01' },
+        { id: 'm_32', name: '陈浩', title: '问数产品运营', role: '问数', permissions: ['operate'], isPrimary: true, status: '在岗', joinDate: '2023-07-01' }
     ]
 };
 
@@ -180,7 +213,103 @@ const OrgManagementView = () => {
     const [regionFilter, setRegionFilter] = useState('all');
     const [modalOpen, setModalOpen] = useState(false);
     const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
+    const [createStep, setCreateStep] = useState<'form' | 'success'>('form'); // New state for post-create guide
     const [draftDept, setDraftDept] = useState<Department | null>(null);
+
+    // V2.4 Refactor: View Mode & Tree State
+    const [viewMode, setViewMode] = useState<'tree' | 'list'>('tree');
+    const [expandedNodeIds, setExpandedNodeIds] = useState<Set<string>>(new Set(['dept_root']));
+    const [draggedNodeId, setDraggedNodeId] = useState<string | null>(null);
+
+    // Filters
+    const [hasMembersFilter, setHasMembersFilter] = useState<'all' | 'yes' | 'no'>('all');
+    const [hasSubOrgFilter, setHasSubOrgFilter] = useState<'all' | 'yes' | 'no'>('all');
+
+    // Member Management State
+    const [showMemberModal, setShowMemberModal] = useState(false);
+    const [memberSearch, setMemberSearch] = useState('');
+    const [memberRoleFilter, setMemberRoleFilter] = useState('all');
+    const [selectedMembers, setSelectedMembers] = useState<Set<string>>(new Set());
+
+    const toggleExpand = (id: string) => {
+        const next = new Set(expandedNodeIds);
+        if (next.has(id)) {
+            next.delete(id);
+        } else {
+            next.add(id);
+        }
+        setExpandedNodeIds(next);
+    };
+
+    const handleDragStart = (e: React.DragEvent, id: string) => {
+        setDraggedNodeId(id);
+        e.dataTransfer.setData('text/plain', id);
+        e.dataTransfer.effectAllowed = 'move';
+    };
+
+    const handleDragOver = (e: React.DragEvent) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+    };
+
+    const handleDrop = (e: React.DragEvent, targetId: string) => {
+        e.preventDefault();
+        const sourceId = draggedNodeId;
+        if (!sourceId || sourceId === targetId) return;
+
+        // Reorder logic:
+        // 1. Find source and target departments
+        // 2. Ensure they share the same parent (for simple reordering within same level in sorting)
+        //    OR support reparenting (moving to another folder). 
+        //    Requirement said "Drag Sort (replace display order)", usually implies sorting.
+        //    Let's support sorting within same parent for safety first, or allow reparenting if user drops ON a node?
+        //    "Drag Sort" usually means re-arranging.
+
+        // Let's implement full re-ordering. 
+        // If dropped ON a node -> reparent? No, usually "sort" means in-between.
+        // Simplification for MVP: Swap orders if same parent.
+
+        setDepartments(prev => {
+            const sourceIndex = prev.findIndex(d => d.id === sourceId);
+            const targetIndex = prev.findIndex(d => d.id === targetId);
+            if (sourceIndex === -1 || targetIndex === -1) return prev;
+
+            const source = prev[sourceIndex];
+            const target = prev[targetIndex];
+
+            // Only allow reordering within same level for now to avoid confusion
+            if (source.parentId !== target.parentId) {
+                // Optional: Allow reparenting? 
+                // Let's stick to Requirements: "Drag Sort (substitute display order filling)"
+                // So purely order adjustment.
+                return prev;
+            }
+
+            // Swap orders? Or insert?
+            // True sort: items with same parentId should be re-indexed.
+            const siblings = prev.filter(d => d.parentId === source.parentId).sort((a, b) => a.order - b.order);
+            const sourceSiblingIndex = siblings.findIndex(s => s.id === sourceId);
+            const targetSiblingIndex = siblings.findIndex(s => s.id === targetId);
+
+            // Move source to target's position
+            const newSiblings = [...siblings];
+            const [moved] = newSiblings.splice(sourceSiblingIndex, 1);
+            newSiblings.splice(targetSiblingIndex, 0, moved);
+
+            // Re-assign orders based on new index
+            // We need to update ALL departments because we only have a flat list
+            // Map the new orders back to the full list
+            const newOrderMap = new Map(newSiblings.map((s, index) => [s.id, index + 1]));
+
+            return prev.map(dept => {
+                if (newOrderMap.has(dept.id)) {
+                    return { ...dept, order: newOrderMap.get(dept.id)! };
+                }
+                return dept;
+            });
+        });
+        setDraggedNodeId(null);
+    };
 
     const regionOptions = useMemo(
         () => ['全部', ...Array.from(new Set(departments.map((item) => item.region)))],
@@ -202,11 +331,48 @@ const OrgManagementView = () => {
             const matchesSearch = `${item.name}${item.code}${item.manager}`.toLowerCase().includes(searchTerm.toLowerCase());
             const matchesStatus = statusFilter === 'all' || item.status === statusFilter;
             const matchesRegion = regionFilter === 'all' || item.region === regionFilter;
-            return matchesSearch && matchesStatus && matchesRegion;
+
+            const hasMembers = item.members > 0;
+            const matchesMemberFilter = hasMembersFilter === 'all'
+                ? true
+                : hasMembersFilter === 'yes' ? hasMembers : !hasMembers;
+
+            const hasSubOrgs = departments.some(d => d.parentId === item.id);
+            const matchesSubOrgFilter = hasSubOrgFilter === 'all'
+                ? true
+                : hasSubOrgFilter === 'yes' ? hasSubOrgs : !hasSubOrgs;
+
+            return matchesSearch && matchesStatus && matchesRegion && matchesMemberFilter && matchesSubOrgFilter;
         });
-    }, [deptTree, searchTerm, statusFilter, regionFilter]);
+    }, [deptTree, searchTerm, statusFilter, regionFilter, hasMembersFilter, hasSubOrgFilter]);
 
     const activeDept = departments.find((item) => item.id === activeDeptId) ?? departments[0];
+
+    const filteredMembers = useMemo(() => {
+        if (!activeDept) return [];
+        const members = memberMap[activeDept.id] || [];
+        return members.filter(m => {
+            const matchesSearch = memberSearch ? (m.name.includes(memberSearch) || m.title?.includes(memberSearch)) : true;
+            const matchesRole = memberRoleFilter === 'all' ? true : m.role === memberRoleFilter;
+            return matchesSearch && matchesRole;
+        });
+    }, [activeDept, memberSearch, memberRoleFilter]);
+
+    const handleSelectMember = (id: string, checked: boolean) => {
+        const next = new Set(selectedMembers);
+        if (checked) next.add(id);
+        else next.delete(id);
+        setSelectedMembers(next);
+    };
+
+    const handleSelectAllMembers = (checked: boolean) => {
+        if (checked) {
+            setSelectedMembers(new Set(filteredMembers.map(m => m.id)));
+        } else {
+            setSelectedMembers(new Set());
+        }
+    };
+
     const totalCount = departments.length;
     const enabledCount = departments.filter((item) => item.status === '启用').length;
     const totalMembers = departments.reduce((sum, item) => sum + item.members, 0);
@@ -229,22 +395,66 @@ const OrgManagementView = () => {
         return path;
     };
 
+
+    // Impact Analysis State
+    const [impactModalOpen, setImpactModalOpen] = useState(false);
+    const [impactType, setImpactType] = useState<'deactivate' | 'delete'>('deactivate');
+    const [impactTarget, setImpactTarget] = useState<Department | null>(null);
+    const [transferTarget, setTransferTarget] = useState('');
+
+    // Mock Impact Analysis Data
+    const getImpactRisk = (dept: Department) => {
+        const subCount = departments.filter(d => d.parentId === dept.id).length;
+        const memberCount = dept.members;
+        const workflowCount = dept.code === 'version_board' ? 2 : 0; // Mock dependency
+        const assetCount = dept.code === 'data_quality' ? 5 : 0;
+
+        const riskLevel = (subCount > 0 || memberCount > 0 || workflowCount > 0) ? 'high' : 'low';
+
+        return {
+            level: riskLevel,
+            subOrgs: subCount,
+            members: memberCount,
+            workflows: workflowCount,
+            assets: assetCount
+        };
+    };
+
+    const openImpactModal = (type: 'deactivate' | 'delete', dept: Department) => {
+        setImpactTarget(dept);
+        setImpactType(type);
+        setImpactModalOpen(true);
+        setTransferTarget('');
+    };
+
+    const confirmImpactAction = () => {
+        if (!impactTarget) return;
+
+        if (impactType === 'delete') {
+            handleDelete(impactTarget, true); // Add force flag to handleDelete signature
+        } else {
+            handleToggleStatus(impactTarget, true);
+        }
+        setImpactModalOpen(false);
+        setImpactTarget(null);
+    };
+
     const openCreateModal = () => {
         setModalMode('create');
+        setCreateStep('form');
         setDraftDept({
-            id: `dept_${Date.now()}`,
+            id: '',
             name: '',
             code: '',
-            parentId: null,
+            parentId: activeDeptId || null,
             manager: '',
             members: 0,
             status: '启用',
-            region: '集团',
-            order: 1,
-            roles: [],
-            description: '',
+            region: '华东',
+            order: 0,
             builtIn: false,
-            updatedAt: formatDate()
+            updatedAt: formatDate(),
+            functions: []
         });
         setModalOpen(true);
     };
@@ -258,9 +468,10 @@ const OrgManagementView = () => {
     const closeModal = () => {
         setModalOpen(false);
         setDraftDept(null);
+        setCreateStep('form'); // Reset step on close
     };
 
-    const handleSave = () => {
+    const saveDepartment = () => {
         if (!draftDept) {
             return;
         }
@@ -268,32 +479,63 @@ const OrgManagementView = () => {
             alert('请填写组织名称与编码。');
             return;
         }
-        const nextDept = { ...draftDept, updatedAt: formatDate() };
         if (modalMode === 'create') {
-            setDepartments((prev) => [nextDept, ...prev]);
-            setActiveDeptId(nextDept.id);
+            const newDept = {
+                ...draftDept,
+                id: `dept_${Math.random().toString(36).substr(2, 6)}`,
+                members: 0,
+                updatedAt: formatDate(),
+                builtIn: false
+            };
+            setDepartments([...departments, newDept]);
+            // Show Success Step instead of closing immediately
+            setCreateStep('success');
         } else {
-            setDepartments((prev) => prev.map((item) => (item.id === nextDept.id ? nextDept : item)));
+            setDepartments(
+                departments.map((item) => (item.id === draftDept.id ? { ...draftDept, updatedAt: formatDate() } : item))
+            );
+            closeModal();
         }
-        closeModal();
     };
 
-    const handleToggleStatus = (dept: Department) => {
-        const nextStatus: OrgStatus = dept.status === '启用' ? '停用' : '启用';
-        setDepartments((prev) =>
-            prev.map((item) =>
-                item.id === dept.id ? { ...item, status: nextStatus, updatedAt: formatDate() } : item
-            )
-        );
+    // Helper for Path Preview
+    const getPathPreview = (parentId: string | null) => {
+        if (!parentId) return '根组织';
+        const parent = departments.find(d => d.id === parentId);
+        const ancestors = getDeptPath(parent);
+        return [...ancestors, draftDept?.name || '[当前组织]'].join(' > ');
     };
 
-    const handleDelete = (dept: Department) => {
-        if (dept.builtIn) {
+    // Helper for Code Auto-Gen
+    const generateCode = () => {
+        if (!draftDept?.name) return;
+        // Mock pinyin/random generation
+        const mockPinyin = 'org_' + Math.random().toString(36).substring(2, 5);
+        setDraftDept(prev => prev ? ({ ...prev, code: mockPinyin }) : null);
+    };
+
+    // Helper for Manager Selection (Mock)
+    const handleSelectManager = () => {
+        // Just set a mock user for now
+        setDraftDept(prev => prev ? ({ ...prev, manager: '王宁' }) : null);
+    };
+
+    const toggleFunction = (func: string) => {
+        if (!draftDept) return;
+        const current = draftDept.functions || [];
+        const next = current.includes(func)
+            ? current.filter(f => f !== func)
+            : [...current, func];
+        setDraftDept({ ...draftDept, functions: next });
+    };
+
+    const handleDelete = (dept: Department, force = false) => {
+        if (dept.builtIn && !force) {
             return;
         }
-        if (!confirm('确定要删除该组织节点吗？')) {
-            return;
-        }
+        // if (!confirm('确定要删除该组织节点吗？')) {
+        //     return;
+        // }
         setDepartments((prev) => {
             const next = prev.filter((item) => item.id !== dept.id && item.parentId !== dept.id);
             if (activeDeptId === dept.id) {
@@ -303,16 +545,18 @@ const OrgManagementView = () => {
         });
     };
 
-    const toggleRole = (role: string) => {
-        if (!draftDept) {
-            return;
-        }
-        const exists = draftDept.roles.includes(role);
-        setDraftDept({
-            ...draftDept,
-            roles: exists ? draftDept.roles.filter((item) => item !== role) : [...draftDept.roles, role]
-        });
+    const handleToggleStatus = (dept: Department, force = false) => {
+        setDepartments((prev) =>
+            prev.map((item) =>
+                item.id === dept.id
+                    ? { ...item, status: item.status === '启用' ? '停用' : '启用', updatedAt: formatDate() }
+                    : item
+            )
+        );
     };
+
+
+
 
     return (
         <div className="space-y-6 h-full flex flex-col pt-6 pb-2 px-1">
@@ -338,18 +582,38 @@ const OrgManagementView = () => {
             </div>
 
             <div className="grid gap-4 px-1 md:grid-cols-4">
-                {[
-                    { label: '组织数量', value: `${totalCount}`, note: '含层级节点' },
-                    { label: '启用组织', value: `${enabledCount}`, note: '当前可用' },
-                    { label: '人员规模', value: `${totalMembers}`, note: '全部部门' },
-                    { label: '覆盖角色', value: `${roleCatalog.length}`, note: '语义治理角色' }
-                ].map((item) => (
-                    <div key={item.label} className="bg-white rounded-lg border border-slate-200 p-4 shadow-sm">
-                        <p className="text-sm text-slate-500">{item.label}</p>
-                        <div className="mt-2 text-2xl font-semibold text-slate-800">{item.value}</div>
-                        <div className="mt-1 text-xs text-slate-400">{item.note}</div>
-                    </div>
-                ))}
+                {/* Mock Stats for KPIs */}
+                {(() => {
+                    const totalDepts = departments.length;
+                    const totalMembers = departments.reduce((acc, cur) => acc + cur.members, 0);
+                    // New Governance KPIs
+                    const orgsWithoutManager = departments.filter(d => !d.manager || d.manager === '-').length;
+                    const orgsWithoutFunction = departments.filter(d => !d.functions || d.functions.length === 0).length;
+                    const functionCoverage = totalDepts > 0 ? Math.round(((totalDepts - orgsWithoutFunction) / totalDepts) * 100) : 0;
+
+                    const StatCard = ({ title, value, label, trend, color = 'indigo' }: any) => (
+                        <div className="relative overflow-hidden rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
+                            <div className={`absolute -right-4 -top-4 h-16 w-16 rounded-full bg-${color}-50 bg-opacity-50 blur-2xl transition-all group-hover:bg-${color}-100`}></div>
+                            <p className="text-xs font-medium text-slate-500">{title}</p>
+                            <div className="mt-2 flex items-baseline gap-2">
+                                <span className="text-2xl font-bold text-slate-800">{value}</span>
+                                <span className="text-xs text-slate-400">{label}</span>
+                            </div>
+                            {trend && <p className={`mt-2 text-xs font-medium ${trend === 'down' ? 'text-emerald-600' : 'text-rose-600'}`}>{trend === 'down' ? '↓' : '↑'} {trend === 'down' ? '下降' : '上升'}</p>}
+                        </div>
+                    );
+
+                    return (
+                        <>
+                            <StatCard title="组织总数" value={totalCount} label="个" />
+                            <StatCard title="启用组织" value={enabledCount} label="个" />
+                            <StatCard title="人员规模" value={totalMembers} label="人" />
+                            <StatCard title="角色覆盖" value={roleCatalog.length} label="种" />
+                            <StatCard title="无负责人组织" value={orgsWithoutManager} label="个" color="rose" />
+                            <StatCard title="职能覆盖率" value={`${functionCoverage}%`} label="组织" color="emerald" />
+                        </>
+                    );
+                })()}
             </div>
 
             <div className="grid gap-6 px-1 lg:grid-cols-[1.05fr_1.4fr]">
@@ -371,8 +635,9 @@ const OrgManagementView = () => {
                                 onChange={(event) => setRegionFilter(event.target.value)}
                                 className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-600"
                             >
-                                {regionOptions.map((item) => (
-                                    <option key={item} value={item === '全部' ? 'all' : item}>
+                                <option value="all">所有区域</option>
+                                {regionOptions.filter(r => r !== '全部').map((item) => (
+                                    <option key={item} value={item}>
                                         {item}
                                     </option>
                                 ))}
@@ -382,58 +647,169 @@ const OrgManagementView = () => {
                                 onChange={(event) => setStatusFilter(event.target.value as 'all' | OrgStatus)}
                                 className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-600"
                             >
-                                <option value="all">全部状态</option>
+                                <option value="all">所有状态</option>
                                 <option value="启用">启用</option>
                                 <option value="停用">停用</option>
                             </select>
+                            <select
+                                value={hasMembersFilter}
+                                onChange={(event) => setHasMembersFilter(event.target.value as 'all' | 'yes' | 'no')}
+                                className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-600"
+                            >
+                                <option value="all">成员情况</option>
+                                <option value="yes">有成员</option>
+                                <option value="no">无成员</option>
+                            </select>
+                            <select
+                                value={hasSubOrgFilter}
+                                onChange={(event) => setHasSubOrgFilter(event.target.value as 'all' | 'yes' | 'no')}
+                                className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-600"
+                            >
+                                <option value="all">下级组织</option>
+                                <option value="yes">有下级</option>
+                                <option value="no">无下级</option>
+                            </select>
+
+                            <div className="h-4 w-px bg-slate-200 mx-1" />
+
+                            <div className="flex bg-slate-100 p-0.5 rounded-lg">
+                                <button
+                                    onClick={() => setViewMode('tree')}
+                                    className={`p-1 rounded ${viewMode === 'tree' ? 'bg-white shadow text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}
+                                    title="树形视图"
+                                >
+                                    <AlignLeft size={14} />
+                                </button>
+                                <button
+                                    onClick={() => setViewMode('list')}
+                                    className={`p-1 rounded ${viewMode === 'list' ? 'bg-white shadow text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}
+                                    title="列表视图"
+                                >
+                                    <List size={14} />
+                                </button>
+                            </div>
                         </div>
                     </div>
 
                     <div className="mt-4 space-y-2">
-                        {filteredDepartments.map(({ item, level }) => {
-                            const isActive = item.id === activeDeptId;
-                            return (
-                                <button
-                                    key={item.id}
-                                    onClick={() => setActiveDeptId(item.id)}
-                                    className={`w-full text-left rounded-xl border p-4 transition ${
-                                        isActive
+                        {viewMode === 'list' ? (
+                            // List View
+                            filteredDepartments.map(({ item, level }) => {
+                                const isActive = item.id === activeDeptId;
+                                return (
+                                    <button
+                                        key={item.id}
+                                        onClick={() => setActiveDeptId(item.id)}
+                                        className={`w-full text-left rounded-xl border p-4 transition ${isActive
                                             ? 'border-indigo-200 bg-indigo-50 shadow-sm'
                                             : 'border-slate-200 hover:border-indigo-200 hover:bg-slate-50'
-                                    }`}
-                                >
-                                    <div className="flex items-start justify-between gap-3">
-                                        <div>
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-sm font-semibold text-slate-800" style={{ marginLeft: level * 12 }}>
-                                                    {item.name}
-                                                </span>
-                                                <span className="text-xs text-slate-400">{item.code}</span>
+                                            }`}
+                                    >
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-sm font-semibold text-slate-800">
+                                                        {item.name}
+                                                    </span>
+                                                    <span className="text-xs text-slate-400">{item.code}</span>
+                                                </div>
+                                                <p className="mt-1 text-xs text-slate-500">
+                                                    {item.manager} · {item.region}
+                                                </p>
                                             </div>
-                                            <p className="mt-1 text-xs text-slate-500">
-                                                {item.manager} · {item.region}
-                                            </p>
-                                        </div>
-                                        <span
-                                            className={`text-xs px-2 py-0.5 rounded-full ${
-                                                item.status === '启用'
+                                            <span
+                                                className={`text-xs px-2 py-0.5 rounded-full ${item.status === '启用'
                                                     ? 'bg-emerald-50 text-emerald-600'
                                                     : 'bg-slate-100 text-slate-500'
-                                            }`}
+                                                    }`}
+                                            >
+                                                {item.status}
+                                            </span>
+                                        </div>
+                                    </button>
+                                );
+                            })
+                        ) : (
+                            // Tree View
+                            deptTree.map(({ item, level }) => {
+                                // For Tree View, we need to respect parent expansion state
+                                // Simple check: if any parent in the path is NOT expanded, hide this node.
+                                // However, finding path efficiently for each node:
+                                //   We can check if item.parentId is in expanded list if strict hierarchy.
+                                //   Better: Filter `deptTree` before mapping or use a recursive component.
+                                //   Here, since `deptTree` is already flattened but sorted, we can check visibility.
+
+                                // Simplified approach: Check visibility based on hierarchy.
+                                // A node is visible if correct root, OR its parent is visible AND expanded.
+                                // Since `deptTree` is strictly ordered by hierarchy:
+
+                                // Just for MVP step 1: Render all, add indentation and expand toggles
+                                // Improved: Only show if parent is expanded (except for root level if parentId is null)
+
+                                const isActive = item.id === activeDeptId;
+                                const hasChildren = departments.some(d => d.parentId === item.id);
+                                const isExpanded = expandedNodeIds.has(item.id);
+
+                                // Visibility Check (to be optimized later with recursive component if needed)
+                                // Only hide if parent is collapsed. 
+                                // But `deptTree` is flat. We need to know if any ancestor is collapsed.
+                                // Let's use a helper in render or filter beforehand.
+
+                                const isVisible = (dept: Department): boolean => {
+                                    if (!dept.parentId) return true;
+                                    if (!expandedNodeIds.has(dept.parentId)) return false;
+                                    const parent = departments.find(d => d.id === dept.parentId);
+                                    return parent ? isVisible(parent) : true;
+                                };
+
+                                if (!isVisible(item)) return null;
+
+                                return (
+                                    <div
+                                        key={item.id}
+                                        draggable
+                                        onDragStart={(e) => handleDragStart(e, item.id)}
+                                        onDragOver={handleDragOver}
+                                        onDrop={(e) => handleDrop(e, item.id)}
+                                        className={`group flex items-center gap-2 rounded-lg p-2 text-sm transition-colors cursor-move ${isActive ? 'bg-indigo-50 text-indigo-700' : 'hover:bg-slate-50 text-slate-700'
+                                            } ${draggedNodeId === item.id ? 'opacity-50 dashed border border-indigo-300' : ''}`}
+                                        style={{ paddingLeft: level * 20 + 8 }}
+                                    >
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                toggleExpand(item.id);
+                                            }}
+                                            className={`p-0.5 rounded hover:bg-black/5 ${hasChildren ? 'visible' : 'invisible'}`}
                                         >
-                                            {item.status}
-                                        </span>
+                                            {isExpanded ? <ChevronDown size={14} className="text-slate-400" /> : <ChevronRight size={14} className="text-slate-400" />}
+                                        </button>
+
+                                        <div
+                                            className="flex-1 flex items-center gap-2 cursor-pointer"
+                                            onClick={() => setActiveDeptId(item.id)}
+                                        >
+                                            <span className={`font-medium ${isActive ? 'text-indigo-700' : 'text-slate-700'}`}>
+                                                {item.name}
+                                            </span>
+                                            <span className="text-xs text-slate-400 scale-90 origin-left">
+                                                {item.members}人
+                                            </span>
+                                        </div>
+
+                                        {/* Actions on Hover */}
+                                        <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1">
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); openEditModal(item); }}
+                                                className="p-1 text-slate-400 hover:text-indigo-600"
+                                            >
+                                                <Pencil size={12} />
+                                            </button>
+                                        </div>
                                     </div>
-                                    <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-slate-500">
-                                        <span className="flex items-center gap-1">
-                                            <Users size={14} /> {item.members} 人
-                                        </span>
-                                        <span>顺序 {item.order}</span>
-                                        <span>{item.updatedAt} 更新</span>
-                                    </div>
-                                </button>
-                            );
-                        })}
+                                );
+                            })
+                        )}
                     </div>
                 </section>
 
@@ -451,20 +827,19 @@ const OrgManagementView = () => {
                                 <Pencil size={14} /> 编辑
                             </button>
                             <button
-                                onClick={() => activeDept && handleToggleStatus(activeDept)}
+                                onClick={() => activeDept && openImpactModal('deactivate', activeDept)}
                                 className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs text-slate-600 hover:text-slate-800 flex items-center gap-1"
                             >
                                 {activeDept?.status === '启用' ? <EyeOff size={14} /> : <Eye size={14} />}
                                 {activeDept?.status === '启用' ? '停用' : '启用'}
                             </button>
                             <button
-                                onClick={() => activeDept && handleDelete(activeDept)}
+                                onClick={() => activeDept && openImpactModal('delete', activeDept)}
                                 disabled={activeDept?.builtIn}
-                                className={`px-3 py-1.5 rounded-lg border text-xs flex items-center gap-1 ${
-                                    activeDept?.builtIn
-                                        ? 'border-slate-100 text-slate-300 cursor-not-allowed'
-                                        : 'border-rose-200 text-rose-600 hover:text-rose-700 hover:border-rose-300'
-                                }`}
+                                className={`px-3 py-1.5 rounded-lg border text-xs flex items-center gap-1 ${activeDept?.builtIn
+                                    ? 'border-slate-100 text-slate-300 cursor-not-allowed'
+                                    : 'border-rose-200 text-rose-600 hover:text-rose-700 hover:border-rose-300'
+                                    }`}
                             >
                                 <Trash2 size={14} /> 删除
                             </button>
@@ -488,21 +863,26 @@ const OrgManagementView = () => {
                     </div>
 
                     <div>
-                        <p className="text-sm font-semibold text-slate-700">组织层级</p>
-                        <div className="mt-2 flex flex-wrap gap-2 text-xs text-slate-500">
-                            {getDeptPath(activeDept).map((node) => (
-                                <span key={node} className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1">
-                                    {node}
-                                </span>
+                        <p className="text-sm font-semibold text-slate-700 mb-2">组织路径</p>
+                        <nav className="flex items-center text-sm text-slate-500">
+                            {getDeptPath(activeDept).map((node, index, arr) => (
+                                <div key={node} className="flex items-center">
+                                    <span className={`${index === arr.length - 1 ? 'font-semibold text-slate-800' : 'hover:text-slate-700 cursor-default'}`}>
+                                        {node}
+                                    </span>
+                                    {index < arr.length - 1 && (
+                                        <ChevronRight size={14} className="mx-1 text-slate-400" />
+                                    )}
+                                </div>
                             ))}
-                        </div>
+                        </nav>
                     </div>
 
                     <div>
                         <p className="text-sm font-semibold text-slate-700">职责角色</p>
                         <div className="mt-2 flex flex-wrap gap-2">
-                            {activeDept?.roles?.length ? (
-                                activeDept.roles.map((role) => (
+                            {activeDept?.functions?.length ? (
+                                activeDept.functions.map((role) => (
                                     <span
                                         key={role}
                                         className="rounded-full border border-indigo-100 bg-indigo-50 px-3 py-1 text-xs text-indigo-600"
@@ -535,194 +915,454 @@ const OrgManagementView = () => {
                     </div>
 
                     <div className="rounded-xl border border-slate-200 p-4">
-                        <p className="text-sm font-semibold text-slate-700">成员列表</p>
-                        <div className="mt-3 space-y-2 text-xs text-slate-600">
-                            {(memberMap[activeDept?.id ?? ''] ?? []).length ? (
-                                memberMap[activeDept?.id ?? ''].map((member) => (
-                                    <div key={member.id} className="flex items-center justify-between">
-                                        <div>
-                                            <p className="text-slate-700">{member.name}</p>
-                                            <p className="text-slate-400">{member.title}</p>
-                                        </div>
-                                        <div className="text-right">
-                                            <p className="text-slate-500">{member.role}</p>
-                                            <p className="text-slate-400">{member.status}</p>
-                                        </div>
-                                    </div>
-                                ))
-                            ) : (
-                                <div className="text-xs text-slate-400">暂无成员数据</div>
-                            )}
+                        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-4">
+                            <p className="text-sm font-semibold text-slate-700">成员列表</p>
+                            <div className="flex items-center gap-2">
+                                <div className="relative">
+                                    <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                                    <input
+                                        type="text"
+                                        placeholder="搜索成员..."
+                                        className="pl-8 pr-3 py-1.5 text-xs border border-slate-200 rounded-lg w-32 focus:outline-none focus:border-indigo-500"
+                                        value={memberSearch}
+                                        onChange={e => setMemberSearch(e.target.value)}
+                                    />
+                                </div>
+                                <select
+                                    className="text-xs border border-slate-200 rounded-lg px-2 py-1.5 focus:outline-none"
+                                    value={memberRoleFilter}
+                                    onChange={e => setMemberRoleFilter(e.target.value)}
+                                >
+                                    <option value="all">所有角色</option>
+                                    {roleCatalog.map(r => <option key={r} value={r}>{r}</option>)}
+                                </select>
+                                <button
+                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white text-xs rounded-lg hover:bg-indigo-700"
+                                    onClick={() => setShowMemberModal(true)}
+                                >
+                                    <Plus size={14} /> 添加成员
+                                </button>
+                            </div>
+                        </div>
+
+                        {selectedMembers.size > 0 && (
+                            <div className="mb-3 flex items-center gap-3 bg-indigo-50 px-3 py-2 rounded-lg text-xs">
+                                <span className="text-indigo-700 font-medium">已选 {selectedMembers.size} 人</span>
+                                <div className="h-3 w-px bg-indigo-200" />
+                                <button className="text-slate-600 hover:text-indigo-700">批量移除</button>
+                                <button className="text-slate-600 hover:text-indigo-700">分配角色</button>
+                                <button className="text-slate-600 hover:text-indigo-700">调整归属</button>
+                            </div>
+                        )}
+
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left text-xs">
+                                <thead className="bg-slate-50 text-slate-500 font-medium border-b border-slate-100">
+                                    <tr>
+                                        <th className="px-3 py-2 w-8">
+                                            <input
+                                                type="checkbox"
+                                                className="rounded border-slate-300"
+                                                checked={filteredMembers.length > 0 && selectedMembers.size === filteredMembers.length}
+                                                onChange={e => handleSelectAllMembers(e.target.checked)}
+                                            />
+                                        </th>
+                                        <th className="px-3 py-2">姓名 / 职位</th>
+                                        <th className="px-3 py-2">治理角色</th>
+                                        <th className="px-3 py-2">归属性质</th>
+                                        <th className="px-3 py-2">权限</th>
+                                        <th className="px-3 py-2">状态</th>
+                                        <th className="px-3 py-2 text-right">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {filteredMembers.length > 0 ? (
+                                        filteredMembers.map((member) => (
+                                            <tr key={member.id} className="group hover:bg-slate-50">
+                                                <td className="px-3 py-2">
+                                                    <input
+                                                        type="checkbox"
+                                                        className="rounded border-slate-300"
+                                                        checked={selectedMembers.has(member.id)}
+                                                        onChange={e => handleSelectMember(member.id, e.target.checked)}
+                                                    />
+                                                </td>
+                                                <td className="px-3 py-2">
+                                                    <div className="font-medium text-slate-700">{member.name}</div>
+                                                    <div className="text-slate-400 scale-90 origin-left">{member.title}</div>
+                                                </td>
+                                                <td className="px-3 py-2">
+                                                    <span className="px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-full">{member.role}</span>
+                                                </td>
+                                                <td className="px-3 py-2">
+                                                    {member.isPrimary ? (
+                                                        <span className="flex items-center gap-1 text-emerald-600">
+                                                            <BadgeCheck size={12} />
+                                                            主归属
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-slate-400">兼职</span>
+                                                    )}
+                                                </td>
+                                                <td className="px-3 py-2 text-slate-500">
+                                                    {member.permissions?.join(', ') || '-'}
+                                                </td>
+                                                <td className="px-3 py-2">
+                                                    <span className={`flex items-center gap-1.5 ${member.status === '在岗' ? 'text-slate-600' : 'text-amber-600'
+                                                        }`}>
+                                                        <span className={`w-1.5 h-1.5 rounded-full ${member.status === '在岗' ? 'bg-emerald-400' : 'bg-amber-400'
+                                                            }`} />
+                                                        {member.status}
+                                                    </span>
+                                                </td>
+                                                <td className="px-3 py-2 text-right opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <button className="text-indigo-600 hover:text-indigo-700 mr-2">设置</button>
+                                                    <button className="text-rose-600 hover:text-rose-700">移除</button>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    ) : (
+                                        <tr>
+                                            <td colSpan={7} className="px-3 py-8 text-center text-slate-400">
+                                                暂无成员数据
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </section>
             </div>
 
             {modalOpen && draftDept && (
-                <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/40">
-                    <div className="min-h-screen p-4 flex items-start justify-center">
-                        <div className="w-full max-w-4xl rounded-2xl bg-white shadow-2xl flex max-h-[92vh] flex-col">
-                            <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
-                                <div>
-                                    <h3 className="text-lg font-semibold text-slate-800">
-                                        {modalMode === 'create' ? '新建组织' : '编辑组织'}
+                <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 flex items-center justify-center p-4">
+                    <div className="w-full max-w-2xl bg-white rounded-xl shadow-2xl flex flex-col max-h-[90vh]">
+                        {createStep === 'form' ? (
+                            <>
+                                <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+                                    <h3 className="text-lg font-bold text-slate-800">
+                                        {modalMode === 'create' ? '新建组织' : '编辑组织信息'}
                                     </h3>
-                                    <p className="text-xs text-slate-500">配置组织层级、角色与人员归属。</p>
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={closeModal}
-                                    className="rounded-full border border-slate-200 p-2 text-slate-500 hover:text-slate-700"
-                                >
-                                    <X size={16} />
-                                </button>
-                            </div>
-                            <div className="space-y-6 px-6 py-6 overflow-y-auto">
-                                <div className="grid gap-4 md:grid-cols-2">
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-semibold text-slate-600">组织名称</label>
-                                        <input
-                                            value={draftDept.name}
-                                            onChange={(event) => setDraftDept({ ...draftDept, name: event.target.value })}
-                                            placeholder="例如：语义治理中心"
-                                            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-semibold text-slate-600">组织编码</label>
-                                        <input
-                                            value={draftDept.code}
-                                            onChange={(event) => setDraftDept({ ...draftDept, code: event.target.value })}
-                                            placeholder="semantic_center"
-                                            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none"
-                                        />
-                                    </div>
-                                    <div className="space-y-2 md:col-span-2">
-                                        <label className="text-xs font-semibold text-slate-600">组织描述</label>
-                                        <textarea
-                                            value={draftDept.description}
-                                            onChange={(event) =>
-                                                setDraftDept({ ...draftDept, description: event.target.value })
-                                            }
-                                            placeholder="描述该组织的职责与定位"
-                                            className="h-20 w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-semibold text-slate-600">负责人</label>
-                                        <input
-                                            value={draftDept.manager}
-                                            onChange={(event) =>
-                                                setDraftDept({ ...draftDept, manager: event.target.value })
-                                            }
-                                            placeholder="负责人姓名"
-                                            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-semibold text-slate-600">所属区域</label>
-                                        <input
-                                            value={draftDept.region}
-                                            onChange={(event) =>
-                                                setDraftDept({ ...draftDept, region: event.target.value })
-                                            }
-                                            placeholder="集团 / 华东 / 总部"
-                                            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-semibold text-slate-600">父级组织</label>
-                                        <select
-                                            value={draftDept.parentId ?? ''}
-                                            onChange={(event) =>
-                                                setDraftDept({
-                                                    ...draftDept,
-                                                    parentId: event.target.value || null
-                                                })
-                                            }
-                                            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none"
-                                        >
-                                            <option value="">顶级组织</option>
-                                            {departments
-                                                .filter((item) => item.id !== draftDept.id)
-                                                .map((item) => (
-                                                    <option key={item.id} value={item.id}>
-                                                        {item.name}
-                                                    </option>
-                                                ))}
-                                        </select>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-semibold text-slate-600">展示顺序</label>
-                                        <input
-                                            type="number"
-                                            value={draftDept.order}
-                                            onChange={(event) =>
-                                                setDraftDept({ ...draftDept, order: Number(event.target.value) })
-                                            }
-                                            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-semibold text-slate-600">状态</label>
-                                        <select
-                                            value={draftDept.status}
-                                            onChange={(event) =>
-                                                setDraftDept({ ...draftDept, status: event.target.value as OrgStatus })
-                                            }
-                                            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none"
-                                        >
-                                            <option value="启用">启用</option>
-                                            <option value="停用">停用</option>
-                                        </select>
-                                    </div>
+                                    <button onClick={closeModal} className="text-slate-400 hover:text-slate-600">
+                                        <X size={20} />
+                                    </button>
                                 </div>
 
-                                <div>
-                                    <p className="text-sm font-semibold text-slate-700">职责角色</p>
-                                    <div className="mt-3 flex flex-wrap gap-2">
-                                        {roleCatalog.map((role) => {
-                                            const active = draftDept.roles.includes(role);
-                                            return (
-                                                <button
-                                                    key={role}
-                                                    type="button"
-                                                    onClick={() => toggleRole(role)}
-                                                    className={`rounded-full border px-3 py-1 text-xs transition ${
-                                                        active
-                                                            ? 'border-indigo-200 bg-indigo-50 text-indigo-600'
-                                                            : 'border-slate-200 text-slate-500 hover:border-indigo-200 hover:text-slate-700'
-                                                    }`}
-                                                >
-                                                    {role}
-                                                </button>
-                                            );
-                                        })}
+                                <div className="p-6 overflow-y-auto space-y-6">
+                                    {/* Basic Info Group */}
+                                    <div className="space-y-4">
+                                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">基本信息</h4>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-2 col-span-2">
+                                                <label className="text-sm font-semibold text-slate-700">组织名称 <span className="text-rose-500">*</span></label>
+                                                <input
+                                                    type="text"
+                                                    value={draftDept.name}
+                                                    onChange={(event) =>
+                                                        setDraftDept({ ...draftDept, name: event.target.value })
+                                                    }
+                                                    placeholder="请输入组织名称，如：语义运营部"
+                                                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none"
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-semibold text-slate-700">组织编码 <span className="text-rose-500">*</span></label>
+                                                <div className="flex gap-2">
+                                                    <input
+                                                        type="text"
+                                                        value={draftDept.code}
+                                                        onChange={(event) =>
+                                                            setDraftDept({ ...draftDept, code: event.target.value })
+                                                        }
+                                                        placeholder="小写字母+下划线"
+                                                        className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none"
+                                                    />
+                                                    <button
+                                                        onClick={generateCode}
+                                                        className="px-3 py-2 bg-slate-100 text-slate-600 rounded-lg text-xs hover:bg-slate-200 whitespace-nowrap"
+                                                    >
+                                                        自动生成
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-sm font-semibold text-slate-700">负责人</label>
+                                                <div className="flex gap-2">
+                                                    <div className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 bg-slate-50 flex items-center gap-2">
+                                                        {draftDept.manager ? (
+                                                            <>
+                                                                <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-bold">
+                                                                    {draftDept.manager.charAt(0)}
+                                                                </div>
+                                                                {draftDept.manager}
+                                                            </>
+                                                        ) : (
+                                                            <span className="text-slate-400">未指定</span>
+                                                        )}
+                                                    </div>
+                                                    <button
+                                                        onClick={handleSelectManager}
+                                                        className="px-3 py-2 bg-indigo-50 text-indigo-600 rounded-lg text-xs hover:bg-indigo-100"
+                                                    >
+                                                        选择
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Hierarchy Group */}
+                                    <div className="space-y-4">
+                                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">层级关系</h4>
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-semibold text-slate-700">上级组织</label>
+                                            <select
+                                                value={draftDept.parentId || ''}
+                                                onChange={(event) =>
+                                                    setDraftDept({ ...draftDept, parentId: event.target.value || null })
+                                                }
+                                                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none"
+                                            >
+                                                <option value="">作为根组织</option>
+                                                {departments
+                                                    .filter((d) => d.id !== draftDept.id)
+                                                    .map((d) => (
+                                                        <option key={d.id} value={d.id}>
+                                                            {d.name}
+                                                        </option>
+                                                    ))}
+                                            </select>
+                                            <div className="bg-slate-50 rounded-lg px-3 py-2 text-xs text-slate-500 flex items-center gap-2">
+                                                <MapPin size={12} className="text-slate-400" />
+                                                <span>路径预览：</span>
+                                                <span className="font-medium text-slate-700">{getPathPreview(draftDept.parentId)}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Governance Config */}
+                                    <div className="space-y-4">
+                                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">治理与能力配置</h4>
+
+                                        <div className="space-y-3">
+                                            <label className="text-sm font-semibold text-slate-700">治理职能 (Governance Roles)</label>
+                                            <div className="grid grid-cols-2 gap-3">
+                                                {GOVERNANCE_ROLES.map(role => (
+                                                    <div key={role.name} className="relative group">
+                                                        <label className={`flex items-center gap-2 p-3 border rounded-lg cursor-pointer transition-colors ${(draftDept.functions || []).includes(role.name)
+                                                            ? 'bg-indigo-50 border-indigo-200 shadow-sm'
+                                                            : 'border-slate-200 hover:border-indigo-200'
+                                                            }`}>
+                                                            <input
+                                                                type="checkbox"
+                                                                className="rounded accent-indigo-600"
+                                                                checked={(draftDept.functions || []).includes(role.name)}
+                                                                onChange={() => toggleFunction(role.name)}
+                                                            />
+                                                            <span className="text-sm font-medium text-slate-700">{role.name}</span>
+                                                            <Info size={14} className="text-slate-400 ml-auto" />
+                                                        </label>
+                                                        {/* Tooltip */}
+                                                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-slate-800 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none w-48 z-10">
+                                                            {role.desc}
+                                                            <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-800"></div>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-3 pt-3 border-t border-slate-100">
+                                            <label className="text-sm font-semibold text-slate-700">能力覆盖 (Capabilities)</label>
+                                            <div className="grid grid-cols-3 gap-3">
+                                                {CAPABILITIES.map(cap => (
+                                                    <label key={cap.name} className={`flex items-center gap-2 p-3 border rounded-lg cursor-pointer transition-colors ${(draftDept.functions || []).includes(cap.name)
+                                                        ? 'bg-emerald-50 border-emerald-200 shadow-sm'
+                                                        : 'border-slate-200 hover:border-emerald-200'
+                                                        }`}>
+                                                        <input
+                                                            type="checkbox"
+                                                            className="rounded accent-emerald-600"
+                                                            checked={(draftDept.functions || []).includes(cap.name)}
+                                                            onChange={() => toggleFunction(cap.name)}
+                                                        />
+                                                        <span className="text-sm font-medium text-slate-700">{cap.name}</span>
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Other Fields (Region, Status) */}
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-semibold text-slate-700">所属区域</label>
+                                            <select
+                                                value={draftDept.region}
+                                                onChange={(event) =>
+                                                    setDraftDept({ ...draftDept, region: event.target.value })
+                                                }
+                                                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none"
+                                            >
+                                                <option value="华东">华东</option>
+                                                <option value="华北">华北</option>
+                                                <option value="华南">华南</option>
+                                                <option value="总部">总部</option>
+                                            </select>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-sm font-semibold text-slate-700">状态</label>
+                                            <select
+                                                value={draftDept.status}
+                                                onChange={(event) =>
+                                                    setDraftDept({ ...draftDept, status: event.target.value as OrgStatus })
+                                                }
+                                                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none"
+                                            >
+                                                <option value="启用">启用</option>
+                                                <option value="停用">停用</option>
+                                            </select>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                            <div className="flex items-center justify-end gap-3 border-t border-slate-200 px-6 py-4">
+                                <div className="flex items-center justify-end gap-3 border-t border-slate-200 px-6 py-4">
+                                    <button
+                                        type="button"
+                                        onClick={closeModal}
+                                        className="rounded-lg border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:text-slate-800"
+                                    >
+                                        取消
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={saveDepartment}
+                                        className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+                                    >
+                                        {modalMode === 'create' ? '创建组织' : '保存修改'}
+                                    </button>
+                                </div>
+
+                            </>
+                        ) : (
+                            // Success Step
+                            <div className="p-10 flex flex-col items-center text-center animate-in fade-in zoom-in-95 leading-relaxed">
+                                <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-6">
+                                    <CheckCircle size={32} />
+                                </div>
+                                <h3 className="text-2xl font-bold text-slate-800 mb-2">组织创建成功</h3>
+                                <p className="text-slate-500 mb-8 max-w-sm">
+                                    <strong className="text-slate-700">{draftDept.name}</strong> ({draftDept.code}) 已成功创建，
+                                    建议您立即完善以下信息以确保治理工作正常开展。
+                                </p>
+
+                                <div className="grid grid-cols-2 gap-4 w-full">
+                                    <button
+                                        onClick={() => { closeModal(); setShowMemberModal(true); }}
+                                        className="flex flex-col items-center gap-3 p-4 border border-slate-200 rounded-xl hover:border-indigo-500 hover:bg-indigo-50 transition-all group"
+                                    >
+                                        <div className="p-3 bg-slate-100 rounded-full group-hover:bg-indigo-100 text-slate-600 group-hover:text-indigo-600">
+                                            <UserPlus size={24} />
+                                        </div>
+                                        <div className="text-sm font-semibold text-slate-700">添加成员</div>
+                                    </button>
+                                    <button
+                                        onClick={() => { alert('跳转权限配置 (Mock)'); closeModal(); }}
+                                        className="flex flex-col items-center gap-3 p-4 border border-slate-200 rounded-xl hover:border-indigo-500 hover:bg-indigo-50 transition-all group"
+                                    >
+                                        <div className="p-3 bg-slate-100 rounded-full group-hover:bg-indigo-100 text-slate-600 group-hover:text-indigo-600">
+                                            <Settings size={24} />
+                                        </div>
+                                        <div className="text-sm font-semibold text-slate-700">配置权限组</div>
+                                    </button>
+                                </div>
+
                                 <button
-                                    type="button"
                                     onClick={closeModal}
-                                    className="rounded-lg border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:text-slate-800"
+                                    className="mt-8 text-slate-400 hover:text-slate-600 text-sm"
                                 >
-                                    取消
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={handleSave}
-                                    className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
-                                >
-                                    {modalMode === 'create' ? '创建组织' : '保存修改'}
+                                    暂不处理，稍后完善
                                 </button>
                             </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {showMemberModal && (
+                <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 flex items-center justify-center p-4">
+                    <div className="w-full max-w-lg bg-white rounded-xl shadow-2xl flex flex-col max-h-[90vh]">
+                        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+                            <h3 className="text-base font-bold text-slate-800">添加成员</h3>
+                            <button
+                                onClick={() => setShowMemberModal(false)}
+                                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100"
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        <div className="p-5 space-y-4 overflow-y-auto">
+                            {/* Mock User Selection */}
+                            <div className="space-y-1.5">
+                                <label className="text-sm font-semibold text-slate-700">选择用户 <span className="text-rose-500">*</span></label>
+                                <div className="p-3 border border-slate-200 rounded-lg bg-slate-50 text-sm text-slate-400 cursor-not-allowed">
+                                    点击搜索用户 (Mock: 暂时不支持真实搜索)
+                                </div>
+                            </div>
+
+                            {/* Governance Role */}
+                            <div className="space-y-1.5">
+                                <label className="text-sm font-semibold text-slate-700">分配治理角色</label>
+                                <div className="flex flex-wrap gap-2">
+                                    {roleCatalog.map(role => (
+                                        <label key={role} className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 rounded-lg text-xs cursor-pointer hover:border-indigo-300 has-[:checked]:bg-indigo-50 has-[:checked]:border-indigo-200 has-[:checked]:text-indigo-700">
+                                            <input type="radio" name="role" className="accent-indigo-600" />
+                                            {role}
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Function & Permission */}
+                            <div className="space-y-2">
+                                <label className="text-sm font-semibold text-slate-700">权限与归属</label>
+                                <div className="space-y-2 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                                    <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+                                        <input type="checkbox" className="rounded border-slate-300 accent-indigo-600" defaultChecked />
+                                        设为主归属组织 (Primary Org)
+                                    </label>
+                                    <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+                                        <input type="checkbox" className="rounded border-slate-300 accent-indigo-600" />
+                                        授予部门管理权限 (Manager)
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="border-t border-slate-200 px-5 py-4 flex justify-end gap-3 bg-slate-50 rounded-b-xl">
+                            <button
+                                onClick={() => setShowMemberModal(false)}
+                                className="px-4 py-2 text-sm text-slate-600 hover:bg-white border border-transparent hover:border-slate-200 rounded-lg transition-colors"
+                            >
+                                取消
+                            </button>
+                            <button
+                                onClick={() => {
+                                    alert('已添加成员 (Mock action)');
+                                    setShowMemberModal(false);
+                                }}
+                                className="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm"
+                            >
+                                确认添加
+                            </button>
                         </div>
                     </div>
                 </div>
             )}
-        </div>
+        </div >
     );
 };
 
 export default OrgManagementView;
+
