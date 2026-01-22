@@ -103,7 +103,7 @@ const transformToGraph = (profile: TableSemanticProfile): { nodes: GraphNode[]; 
                 name: f.fieldName,
                 label: f.aiSuggestion || f.fieldName,
                 isKey: f.role === 'Identifier' || f.fieldName === 'id',
-                isForeignKey: f.role === 'ForeignKey' || f.fieldName.endsWith('_id'),
+                isForeignKey: f.role === 'ForeignKey' || f.fieldName?.endsWith('_id'),
                 dataType: f.dataType || 'string'
             }))
         });

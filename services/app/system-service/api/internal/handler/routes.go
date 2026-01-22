@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	user "github.com/DataSemanticHub/services/app/system-service/api/internal/handler/user"
+	user_management "github.com/DataSemanticHub/services/app/system-service/api/internal/handler/user_management"
 	"github.com/DataSemanticHub/services/app/system-service/api/internal/svc"
 
 	"github.com/zeromicro/go-zero/rest"
@@ -32,14 +33,6 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Path:    "/user/info",
 				Handler: user.GetUserInfoHandler(serverCtx),
 			},
-		},
-		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
-		rest.WithPrefix("/api/v1"),
-	)
-
-	// 公开接口（不需要 JWT 认证）
-	server.AddRoutes(
-		[]rest.Route{
 			{
 				// 用户登录
 				Method:  http.MethodPost,
@@ -59,6 +52,80 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Handler: user.RegisterHandler(serverCtx),
 			},
 		},
+		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
 		rest.WithPrefix("/api/v1"),
+	)
+
+	server.AddRoutes(
+		[]rest.Route{
+			{
+				// 获取统计数据
+				Method:  http.MethodGet,
+				Path:    "/statistics",
+				Handler: user_management.GetStatisticsHandler(serverCtx),
+			},
+			{
+				// 用户列表查询
+				Method:  http.MethodGet,
+				Path:    "/users",
+				Handler: user_management.ListUsersHandler(serverCtx),
+			},
+			{
+				// 创建用户
+				Method:  http.MethodPost,
+				Path:    "/users",
+				Handler: user_management.CreateUserHandler(serverCtx),
+			},
+			{
+				// 用户详情查询
+				Method:  http.MethodGet,
+				Path:    "/users/:id",
+				Handler: user_management.GetUserHandler(serverCtx),
+			},
+			{
+				// 更新用户
+				Method:  http.MethodPut,
+				Path:    "/users/:id",
+				Handler: user_management.UpdateUserHandler(serverCtx),
+			},
+			{
+				// 删除用户
+				Method:  http.MethodDelete,
+				Path:    "/users/:id",
+				Handler: user_management.DeleteUserHandler(serverCtx),
+			},
+			{
+				// 重置用户密码
+				Method:  http.MethodPost,
+				Path:    "/users/:id/reset-password",
+				Handler: user_management.ResetPasswordHandler(serverCtx),
+			},
+			{
+				// 解锁用户
+				Method:  http.MethodPost,
+				Path:    "/users/:id/unlock",
+				Handler: user_management.UnlockUserHandler(serverCtx),
+			},
+			{
+				// 批量导入用户
+				Method:  http.MethodPost,
+				Path:    "/users/batch-import",
+				Handler: user_management.BatchImportHandler(serverCtx),
+			},
+			{
+				// 批量更新用户状态
+				Method:  http.MethodPost,
+				Path:    "/users/batch-status",
+				Handler: user_management.BatchUpdateStatusHandler(serverCtx),
+			},
+			{
+				// 导出用户数据
+				Method:  http.MethodGet,
+				Path:    "/users/export",
+				Handler: user_management.ExportUsersHandler(serverCtx),
+			},
+		},
+		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
+		rest.WithPrefix("/api/v1/user_management"),
 	)
 }

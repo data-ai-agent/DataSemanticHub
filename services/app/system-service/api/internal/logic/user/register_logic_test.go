@@ -48,19 +48,22 @@ func TestRegister_ValidInput_ReturnsUser(t *testing.T) {
 	passwordHash, _ := bcrypt.GenerateFromPassword([]byte(password), 10)
 
 	user := &users.User{
-		Id:           userID.String(),
-		FirstName:    "John",
-		LastName:     "Doe",
-		Email:        "john.doe@example.com",
-		Organization: "Test Org",
-		PasswordHash: string(passwordHash),
-		Status:       1,
+		Id:            userID.String(),
+		FirstName:     "John",
+		LastName:      "Doe",
+		Name:          "John Doe",
+		Email:         "john.doe@example.com",
+		Organization:  "Test Org",
+		PasswordHash:  string(passwordHash),
+		Status:        0,        // 未激活
+		AccountSource: "local", // 本地注册
 	}
 
 	// 设置 mock 期望
 	mockModel.On("FindOneByEmail", mock.Anything, "john.doe@example.com").Return(nil, users.ErrUserNotFound)
 	mockModel.On("Insert", mock.Anything, mock.MatchedBy(func(u *users.User) bool {
-		return u.FirstName == "John" && u.LastName == "Doe" && u.Email == "john.doe@example.com"
+		return u.FirstName == "John" && u.LastName == "Doe" && u.Email == "john.doe@example.com" &&
+			u.Status == 0 && u.AccountSource == "local" && u.Name == "John Doe"
 	})).Return(user, nil)
 
 	// 执行注册
@@ -99,12 +102,14 @@ func TestRegister_EmailExists_ReturnsError(t *testing.T) {
 	passwordHash, _ := bcrypt.GenerateFromPassword([]byte("password123"), 10)
 
 	existingUser := &users.User{
-		Id:           existingUserID.String(),
-		FirstName:    "Existing",
-		LastName:     "User",
-		Email:        "existing@example.com",
-		PasswordHash: string(passwordHash),
-		Status:       1,
+		Id:            existingUserID.String(),
+		FirstName:     "Existing",
+		LastName:      "User",
+		Name:          "Existing User",
+		Email:         "existing@example.com",
+		PasswordHash:  string(passwordHash),
+		Status:        1,
+		AccountSource: "local",
 	}
 
 	// 设置 mock 期望
@@ -455,12 +460,14 @@ func TestRegister_EmailCaseInsensitive_Works(t *testing.T) {
 	passwordHash, _ := bcrypt.GenerateFromPassword([]byte(password), 10)
 
 	user := &users.User{
-		Id:           userID.String(),
-		FirstName:    "John",
-		LastName:     "Doe",
-		Email:        "john.doe@example.com", // 小写存储
-		PasswordHash: string(passwordHash),
-		Status:       1,
+		Id:            userID.String(),
+		FirstName:     "John",
+		LastName:      "Doe",
+		Name:          "John Doe",
+		Email:         "john.doe@example.com", // 小写存储
+		PasswordHash:  string(passwordHash),
+		Status:        0,
+		AccountSource: "local",
 	}
 
 	// 设置 mock 期望（邮箱会被转小写）
@@ -485,6 +492,151 @@ func TestRegister_EmailCaseInsensitive_Works(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotNil(t, resp)
 	assert.Equal(t, "john.doe@example.com", resp.Email) // 应该返回小写邮箱
+
+	// 验证 mock 调用
+	mockModel.AssertExpectations(t)
+}
+
+// TestRegister_StatusIsInactive_OnRegistration 测试注册用户状态为"未激活"（T120）
+func TestRegister_StatusIsInactive_OnRegistration(t *testing.T) {
+	mockModel := new(MockUserModel)
+	logic, _ := setupTestRegisterLogic(mockModel)
+
+	// 准备测试数据
+	userID, _ := uuid.NewV7()
+	password := "password123"
+	passwordHash, _ := bcrypt.GenerateFromPassword([]byte(password), 10)
+
+	user := &users.User{
+		Id:            userID.String(),
+		FirstName:     "Jane",
+		LastName:      "Smith",
+		Name:          "Jane Smith",
+		Email:         "jane.smith@example.com",
+		PasswordHash:  string(passwordHash),
+		Status:        0,        // 未激活
+		AccountSource: "local", // 本地注册
+	}
+
+	// 设置 mock 期望
+	mockModel.On("FindOneByEmail", mock.Anything, "jane.smith@example.com").Return(nil, users.ErrUserNotFound)
+	mockModel.On("Insert", mock.Anything, mock.MatchedBy(func(u *users.User) bool {
+		// 验证状态为未激活
+		return u.Status == 0
+	})).Return(user, nil)
+
+	// 执行注册
+	req := &types.RegisterReq{
+		FirstName:       "Jane",
+		LastName:        "Smith",
+		Email:           "jane.smith@example.com",
+		Password:        password,
+		ConfirmPassword: password,
+		AgreeTerms:      true,
+	}
+
+	resp, err := logic.Register(req)
+
+	// 验证结果
+	require.NoError(t, err)
+	assert.NotNil(t, resp)
+
+	// 验证 mock 调用
+	mockModel.AssertExpectations(t)
+}
+
+// TestRegister_AccountSourceIsLocal_OnRegistration 测试注册用户账号来源为"local"（T120）
+func TestRegister_AccountSourceIsLocal_OnRegistration(t *testing.T) {
+	mockModel := new(MockUserModel)
+	logic, _ := setupTestRegisterLogic(mockModel)
+
+	// 准备测试数据
+	userID, _ := uuid.NewV7()
+	password := "password123"
+	passwordHash, _ := bcrypt.GenerateFromPassword([]byte(password), 10)
+
+	user := &users.User{
+		Id:            userID.String(),
+		FirstName:     "Bob",
+		LastName:      "Johnson",
+		Name:          "Bob Johnson",
+		Email:         "bob.johnson@example.com",
+		PasswordHash:  string(passwordHash),
+		Status:        0,
+		AccountSource: "local", // 本地注册
+	}
+
+	// 设置 mock 期望
+	mockModel.On("FindOneByEmail", mock.Anything, "bob.johnson@example.com").Return(nil, users.ErrUserNotFound)
+	mockModel.On("Insert", mock.Anything, mock.MatchedBy(func(u *users.User) bool {
+		// 验证账号来源为 local
+		return u.AccountSource == "local"
+	})).Return(user, nil)
+
+	// 执行注册
+	req := &types.RegisterReq{
+		FirstName:       "Bob",
+		LastName:        "Johnson",
+		Email:           "bob.johnson@example.com",
+		Password:        password,
+		ConfirmPassword: password,
+		AgreeTerms:      true,
+	}
+
+	resp, err := logic.Register(req)
+
+	// 验证结果
+	require.NoError(t, err)
+	assert.NotNil(t, resp)
+
+	// 验证 mock 调用
+	mockModel.AssertExpectations(t)
+}
+
+// TestRegister_NameFieldIsSet_OnRegistration 测试Name字段设置正确（T120）
+func TestRegister_NameFieldIsSet_OnRegistration(t *testing.T) {
+	mockModel := new(MockUserModel)
+	logic, _ := setupTestRegisterLogic(mockModel)
+
+	// 准备测试数据
+	userID, _ := uuid.NewV7()
+	password := "password123"
+	passwordHash, _ := bcrypt.GenerateFromPassword([]byte(password), 10)
+
+	user := &users.User{
+		Id:            userID.String(),
+		FirstName:     "Alice",
+		LastName:      "Williams",
+		Name:          "Alice Williams", // 合并的完整姓名
+		Email:         "alice.williams@example.com",
+		PasswordHash:  string(passwordHash),
+		Status:        0,
+		AccountSource: "local",
+	}
+
+	// 设置 mock 期望
+	mockModel.On("FindOneByEmail", mock.Anything, "alice.williams@example.com").Return(nil, users.ErrUserNotFound)
+	mockModel.On("Insert", mock.Anything, mock.MatchedBy(func(u *users.User) bool {
+		// 验证 Name 字段是 FirstName + " " + LastName
+		expectedName := u.FirstName + " " + u.LastName
+		return u.Name == expectedName
+	})).Return(user, nil)
+
+	// 执行注册
+	req := &types.RegisterReq{
+		FirstName:       "Alice",
+		LastName:        "Williams",
+		Email:           "alice.williams@example.com",
+		Password:        password,
+		ConfirmPassword: password,
+		AgreeTerms:      true,
+	}
+
+	resp, err := logic.Register(req)
+
+	// 验证结果
+	require.NoError(t, err)
+	assert.NotNil(t, resp)
 
 	// 验证 mock 调用
 	mockModel.AssertExpectations(t)

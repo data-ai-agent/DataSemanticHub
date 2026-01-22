@@ -161,7 +161,7 @@ const buildOntologyFromPrompt = (prompt: string): { nodes: KnowledgeNode[]; edge
         { id: 'edge_8', from: 'entity_product', to: 'attr_product_id', label: '拥有' }
     ];
 
-    return { nodes: baseNodes, edges: baseEdges };
+    return { nodes: baseNodes as KnowledgeNode[], edges: baseEdges };
 };
 
 const ResourceKnowledgeNetworkView = () => {
@@ -1003,681 +1003,681 @@ const ResourceKnowledgeNetworkView = () => {
                 </div>
             ) : (
                 <div className="grid grid-cols-1 xl:grid-cols-[1fr_320px] gap-6">
-                {canvasPanel}
+                    {canvasPanel}
 
-                <div className="space-y-4">
-                    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                        <div className="px-4 py-3 text-sm font-semibold text-slate-700 bg-slate-50">建模流程</div>
-                        <div className="p-4 space-y-3 text-xs text-slate-500">
-                            <div className="flex flex-wrap gap-2">
-                                {([
-                                    { key: 'select', label: '选择对象' },
-                                    { key: 'detail', label: '对象详情' },
-                                    { key: 'relation', label: '关系定义' },
-                                    { key: 'search', label: '检索/批量' }
-                                ] as const).map(step => (
-                                    <button
-                                        key={step.key}
-                                        onClick={() => setRightStep(step.key)}
-                                        className={`px-3 py-1 rounded-full border ${rightStep === step.key ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-200 bg-white text-slate-500 hover:text-slate-700'}`}
-                                    >
-                                        {step.label}
-                                    </button>
-                                ))}
-                            </div>
-                            <div className="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2">
-                                当前选择：{selectedNodeIds.length} 个对象 / {selectedEdgeIds.length} 条关系
-                            </div>
-                        </div>
-                    </div>
-
-                    {rightStep === 'select' && (
+                    <div className="space-y-4">
                         <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                            <div className="px-4 py-3 text-sm font-semibold text-slate-700 bg-slate-50">选择对象</div>
+                            <div className="px-4 py-3 text-sm font-semibold text-slate-700 bg-slate-50">建模流程</div>
                             <div className="p-4 space-y-3 text-xs text-slate-500">
-                                <div>点击画布节点进行选择，拖拽框选可批量选择对象。</div>
                                 <div className="flex flex-wrap gap-2">
-                                    <button
-                                        onClick={() => setRightStep('search')}
-                                        className="px-3 py-1.5 rounded-full border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-                                    >
-                                        去检索
-                                    </button>
-                                    <button
-                                        onClick={() => setRightStep('relation')}
-                                        className="px-3 py-1.5 rounded-full border border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100"
-                                    >
-                                        去建关系
-                                    </button>
+                                    {([
+                                        { key: 'select', label: '选择对象' },
+                                        { key: 'detail', label: '对象详情' },
+                                        { key: 'relation', label: '关系定义' },
+                                        { key: 'search', label: '检索/批量' }
+                                    ] as const).map(step => (
+                                        <button
+                                            key={step.key}
+                                            onClick={() => setRightStep(step.key)}
+                                            className={`px-3 py-1 rounded-full border ${rightStep === step.key ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-200 bg-white text-slate-500 hover:text-slate-700'}`}
+                                        >
+                                            {step.label}
+                                        </button>
+                                    ))}
+                                </div>
+                                <div className="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2">
+                                    当前选择：{selectedNodeIds.length} 个对象 / {selectedEdgeIds.length} 条关系
                                 </div>
                             </div>
                         </div>
-                    )}
 
-                    {rightStep === 'detail' && (
-                        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                            <div className="px-4 py-3 flex items-center justify-between text-sm font-semibold text-slate-700 bg-slate-50">
-                                焦点详情
-                                <div className="flex items-center gap-2">
-                                    <button
-                                        onClick={() => setDetailCompact(prev => !prev)}
-                                        className="px-2 py-1 rounded-full border border-slate-200 bg-white text-xs text-slate-500 hover:text-slate-700"
-                                    >
-                                        {detailCompact ? '展开' : '精简'}
-                                    </button>
-                                    <div className="inline-flex rounded-full border border-slate-200 bg-white p-1 text-xs">
+                        {rightStep === 'select' && (
+                            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                                <div className="px-4 py-3 text-sm font-semibold text-slate-700 bg-slate-50">选择对象</div>
+                                <div className="p-4 space-y-3 text-xs text-slate-500">
+                                    <div>点击画布节点进行选择，拖拽框选可批量选择对象。</div>
+                                    <div className="flex flex-wrap gap-2">
                                         <button
-                                            onClick={() => setDetailTab('node')}
-                                            className={`px-3 py-1 rounded-full ${detailTab === 'node' ? 'bg-blue-600 text-white' : 'text-slate-500 hover:text-slate-700'}`}
+                                            onClick={() => setRightStep('search')}
+                                            className="px-3 py-1.5 rounded-full border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
                                         >
-                                            对象
+                                            去检索
                                         </button>
                                         <button
-                                            onClick={() => setDetailTab('edge')}
-                                            className={`px-3 py-1 rounded-full ${detailTab === 'edge' ? 'bg-blue-600 text-white' : 'text-slate-500 hover:text-slate-700'}`}
+                                            onClick={() => setRightStep('relation')}
+                                            className="px-3 py-1.5 rounded-full border border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100"
                                         >
-                                            关系
+                                            去建关系
                                         </button>
                                     </div>
                                 </div>
                             </div>
-                            <div className="p-4 space-y-3 text-sm text-slate-600">
-                            {detailTab === 'node' ? (
-                                selectedNode && selectedNodeIds.length <= 1 ? (
-                                    <>
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-slate-500">名称</span>
-                                            <input
-                                                value={selectedNode.label}
-                                                onChange={(event) => handleUpdateNode(selectedNode.id, { label: event.target.value })}
-                                                className="text-right text-sm text-slate-800 bg-transparent border-b border-transparent focus:border-blue-400 outline-none"
-                                            />
-                                        </div>
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-slate-500">对象类型</span>
-                                            <select
-                                                value={selectedNode.objectType}
-                                                onChange={(event) => {
-                                                    const nextType = event.target.value as ObjectType;
-                                                    handleUpdateNode(selectedNode.id, {
-                                                        objectType: nextType,
-                                                        kind: nextType === 'attribute' ? 'attribute' : 'object'
-                                                    });
-                                                }}
-                                                className="text-xs text-slate-600 border border-slate-200 rounded-md px-2 py-1 bg-white"
+                        )}
+
+                        {rightStep === 'detail' && (
+                            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                                <div className="px-4 py-3 flex items-center justify-between text-sm font-semibold text-slate-700 bg-slate-50">
+                                    焦点详情
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={() => setDetailCompact(prev => !prev)}
+                                            className="px-2 py-1 rounded-full border border-slate-200 bg-white text-xs text-slate-500 hover:text-slate-700"
+                                        >
+                                            {detailCompact ? '展开' : '精简'}
+                                        </button>
+                                        <div className="inline-flex rounded-full border border-slate-200 bg-white p-1 text-xs">
+                                            <button
+                                                onClick={() => setDetailTab('node')}
+                                                className={`px-3 py-1 rounded-full ${detailTab === 'node' ? 'bg-blue-600 text-white' : 'text-slate-500 hover:text-slate-700'}`}
                                             >
-                                                {(['entity', 'event', 'rule', 'state', 'attribute'] as ObjectType[]).map(type => (
-                                                    <option key={type} value={type}>{OBJECT_TYPE_LABELS[type]}</option>
-                                                ))}
-                                            </select>
+                                                对象
+                                            </button>
+                                            <button
+                                                onClick={() => setDetailTab('edge')}
+                                                className={`px-3 py-1 rounded-full ${detailTab === 'edge' ? 'bg-blue-600 text-white' : 'text-slate-500 hover:text-slate-700'}`}
+                                            >
+                                                关系
+                                            </button>
                                         </div>
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-slate-500">关系数量</span>
-                                        <span className="text-slate-800">{selectedNodeLinks.length}</span>
                                     </div>
-                                    <div className="pt-2 border-t border-slate-100 space-y-2">
+                                </div>
+                                <div className="p-4 space-y-3 text-sm text-slate-600">
+                                    {detailTab === 'node' ? (
+                                        selectedNode && selectedNodeIds.length <= 1 ? (
+                                            <>
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-slate-500">名称</span>
+                                                    <input
+                                                        value={selectedNode.label}
+                                                        onChange={(event) => handleUpdateNode(selectedNode.id, { label: event.target.value })}
+                                                        className="text-right text-sm text-slate-800 bg-transparent border-b border-transparent focus:border-blue-400 outline-none"
+                                                    />
+                                                </div>
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-slate-500">对象类型</span>
+                                                    <select
+                                                        value={selectedNode.objectType}
+                                                        onChange={(event) => {
+                                                            const nextType = event.target.value as ObjectType;
+                                                            handleUpdateNode(selectedNode.id, {
+                                                                objectType: nextType,
+                                                                kind: nextType === 'attribute' ? 'attribute' : 'object'
+                                                            });
+                                                        }}
+                                                        className="text-xs text-slate-600 border border-slate-200 rounded-md px-2 py-1 bg-white"
+                                                    >
+                                                        {(['entity', 'event', 'rule', 'state', 'attribute'] as ObjectType[]).map(type => (
+                                                            <option key={type} value={type}>{OBJECT_TYPE_LABELS[type]}</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-slate-500">关系数量</span>
+                                                    <span className="text-slate-800">{selectedNodeLinks.length}</span>
+                                                </div>
+                                                <div className="pt-2 border-t border-slate-100 space-y-2">
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-xs text-slate-500">标准术语</span>
+                                                        <button
+                                                            onClick={() => openTermModal(selectedNode.id)}
+                                                            className="text-xs text-blue-600 hover:text-blue-700"
+                                                        >
+                                                            关联/创建
+                                                        </button>
+                                                    </div>
+                                                    {selectedNode.termId && termById[selectedNode.termId] ? (
+                                                        <div className="text-xs text-slate-600">
+                                                            {termById[selectedNode.termId].name}
+                                                            <span className={`ml-2 inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] ${OBJECT_TYPE_STYLES[termById[selectedNode.termId].objectType].badge}`}>
+                                                                {OBJECT_TYPE_LABELS[termById[selectedNode.termId].objectType]}
+                                                            </span>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="text-xs text-slate-400">双击节点快速关联标准术语</div>
+                                                    )}
+                                                </div>
+                                                {!detailCompact && (
+                                                    <>
+                                                        <div className="pt-2 border-t border-slate-100 space-y-2">
+                                                            <div className="text-xs text-slate-500">标签</div>
+                                                            <div className="flex flex-wrap gap-1">
+                                                                {(nodeTags[selectedNode.id] || []).map(tag => (
+                                                                    <span key={tag} className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 text-[11px]">
+                                                                        {tag}
+                                                                    </span>
+                                                                ))}
+                                                            </div>
+                                                            <div className="flex gap-2">
+                                                                <input
+                                                                    value={newTag}
+                                                                    onChange={(event) => setNewTag(event.target.value)}
+                                                                    placeholder="新增标签"
+                                                                    className="flex-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs"
+                                                                />
+                                                                <button
+                                                                    onClick={() => {
+                                                                        const trimmed = newTag.trim();
+                                                                        if (!trimmed) return;
+                                                                        setNodeTags(prev => ({
+                                                                            ...prev,
+                                                                            [selectedNode.id]: Array.from(new Set([...(prev[selectedNode.id] || []), trimmed]))
+                                                                        }));
+                                                                        setNewTag('');
+                                                                    }}
+                                                                    className="px-3 py-1 rounded-lg border border-slate-200 text-xs text-slate-600 hover:bg-slate-50"
+                                                                >
+                                                                    添加
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                        <div className="pt-2 border-t border-slate-100 space-y-2">
+                                                            <div className="text-xs text-slate-500">字段</div>
+                                                            <div className="flex flex-wrap gap-1">
+                                                                {(nodeFields[selectedNode.id] || []).map(field => (
+                                                                    <span key={field} className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[11px]">
+                                                                        {field}
+                                                                    </span>
+                                                                ))}
+                                                            </div>
+                                                            <div className="flex gap-2">
+                                                                <input
+                                                                    value={newField}
+                                                                    onChange={(event) => setNewField(event.target.value)}
+                                                                    placeholder="新增字段"
+                                                                    className="flex-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs"
+                                                                />
+                                                                <button
+                                                                    onClick={() => {
+                                                                        const trimmed = newField.trim();
+                                                                        if (!trimmed) return;
+                                                                        setNodeFields(prev => ({
+                                                                            ...prev,
+                                                                            [selectedNode.id]: Array.from(new Set([...(prev[selectedNode.id] || []), trimmed]))
+                                                                        }));
+                                                                        setNewField('');
+                                                                    }}
+                                                                    className="px-3 py-1 rounded-lg border border-slate-200 text-xs text-slate-600 hover:bg-slate-50"
+                                                                >
+                                                                    添加
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                        {selectedNodeLinks.length > 0 && (
+                                                            <div className="pt-2 border-t border-slate-100">
+                                                                <div className="text-xs text-slate-500 mb-2">关联关系</div>
+                                                                <div className="space-y-2">
+                                                                    {selectedNodeLinks.slice(0, 4).map(edge => {
+                                                                        const from = getNode(edge.from);
+                                                                        const to = getNode(edge.to);
+                                                                        return (
+                                                                            <div key={edge.id} className="text-xs text-slate-600 flex items-center justify-between">
+                                                                                <span>{from?.label} → {to?.label}</span>
+                                                                                <span className="text-slate-400">{edge.label}</span>
+                                                                            </div>
+                                                                        );
+                                                                    })}
+                                                                    {selectedNodeLinks.length > 4 && (
+                                                                        <div className="text-[11px] text-slate-400">还有 {selectedNodeLinks.length - 4} 条关系</div>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </>
+                                                )}
+                                            </>
+                                        ) : selectedNodeIds.length > 1 ? (
+                                            <div className="text-xs text-slate-500">已选择 {selectedNodeIds.length} 个节点，可批量删除。</div>
+                                        ) : (
+                                            <div className="text-xs text-slate-400">点击画布节点查看详情</div>
+                                        )
+                                    ) : selectedEdge && selectedEdgeIds.length <= 1 ? (
+                                        <>
                                             <div className="flex items-center justify-between">
-                                                <span className="text-xs text-slate-500">标准术语</span>
-                                                <button
-                                                    onClick={() => openTermModal(selectedNode.id)}
-                                                    className="text-xs text-blue-600 hover:text-blue-700"
-                                                >
-                                                    关联/创建
-                                                </button>
+                                                <span className="text-slate-500">关系</span>
+                                                <span className="text-slate-800 font-medium">
+                                                    {getNode(selectedEdge.from)?.label} → {getNode(selectedEdge.to)?.label}
+                                                </span>
                                             </div>
-                                            {selectedNode.termId && termById[selectedNode.termId] ? (
-                                                <div className="text-xs text-slate-600">
-                                                    {termById[selectedNode.termId].name}
-                                                    <span className={`ml-2 inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] ${OBJECT_TYPE_STYLES[termById[selectedNode.termId].objectType].badge}`}>
-                                                        {OBJECT_TYPE_LABELS[termById[selectedNode.termId].objectType]}
-                                                    </span>
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-slate-500">关系名</span>
+                                                <span className="text-slate-800">{selectedEdge.label}</span>
+                                            </div>
+                                            {detailCompact ? (
+                                                <div className="flex items-center gap-2 pt-2">
+                                                    <button
+                                                        onClick={() => handleEditEdge(selectedEdge.id)}
+                                                        className="flex-1 py-2 rounded-lg border border-slate-200 text-xs text-slate-600 hover:bg-slate-50"
+                                                    >
+                                                        编辑关系
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDeleteEdge(selectedEdge.id)}
+                                                        className="flex-1 py-2 rounded-lg border border-red-100 text-xs text-red-600 hover:bg-red-50"
+                                                    >
+                                                        删除关系
+                                                    </button>
                                                 </div>
                                             ) : (
-                                                <div className="text-xs text-slate-400">双击节点快速关联标准术语</div>
+                                                <>
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-slate-500">线条样式</span>
+                                                        <select
+                                                            value={(edgeStyles[selectedEdge.id]?.style || 'solid')}
+                                                            onChange={(event) => {
+                                                                const style = event.target.value as 'solid' | 'dashed';
+                                                                setEdgeStyles(prev => ({
+                                                                    ...prev,
+                                                                    [selectedEdge.id]: {
+                                                                        style,
+                                                                        weight: prev[selectedEdge.id]?.weight || 2,
+                                                                        directed: prev[selectedEdge.id]?.directed ?? true
+                                                                    }
+                                                                }));
+                                                            }}
+                                                            className="text-xs text-slate-600 border border-slate-200 rounded-md px-2 py-1 bg-white"
+                                                        >
+                                                            <option value="solid">实线</option>
+                                                            <option value="dashed">虚线</option>
+                                                        </select>
+                                                    </div>
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-slate-500">线条粗细</span>
+                                                        <input
+                                                            type="range"
+                                                            min={1}
+                                                            max={4}
+                                                            value={edgeStyles[selectedEdge.id]?.weight || 2}
+                                                            onChange={(event) => {
+                                                                const weight = Number(event.target.value);
+                                                                setEdgeStyles(prev => ({
+                                                                    ...prev,
+                                                                    [selectedEdge.id]: {
+                                                                        style: prev[selectedEdge.id]?.style || 'solid',
+                                                                        weight,
+                                                                        directed: prev[selectedEdge.id]?.directed ?? true
+                                                                    }
+                                                                }));
+                                                            }}
+                                                            className="w-32"
+                                                        />
+                                                    </div>
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-slate-500">方向</span>
+                                                        <button
+                                                            onClick={() => {
+                                                                setEdgeStyles(prev => ({
+                                                                    ...prev,
+                                                                    [selectedEdge.id]: {
+                                                                        style: prev[selectedEdge.id]?.style || 'solid',
+                                                                        weight: prev[selectedEdge.id]?.weight || 2,
+                                                                        directed: !(prev[selectedEdge.id]?.directed ?? true)
+                                                                    }
+                                                                }));
+                                                            }}
+                                                            className="px-3 py-1 rounded-full text-xs border border-slate-200 text-slate-600 hover:bg-slate-50"
+                                                        >
+                                                            {(edgeStyles[selectedEdge.id]?.directed ?? true) ? '有向' : '无向'}
+                                                        </button>
+                                                    </div>
+                                                    <div className="flex items-center gap-2 pt-2">
+                                                        <button
+                                                            onClick={() => handleEditEdge(selectedEdge.id)}
+                                                            className="flex-1 py-2 rounded-lg border border-slate-200 text-xs text-slate-600 hover:bg-slate-50"
+                                                        >
+                                                            编辑关系
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDeleteEdge(selectedEdge.id)}
+                                                            className="flex-1 py-2 rounded-lg border border-red-100 text-xs text-red-600 hover:bg-red-50"
+                                                        >
+                                                            删除关系
+                                                        </button>
+                                                    </div>
+                                                </>
                                             )}
+                                        </>
+                                    ) : selectedEdgeIds.length > 1 ? (
+                                        <div className="text-xs text-slate-500">已选择 {selectedEdgeIds.length} 条关系，可批量删除。</div>
+                                    ) : (
+                                        <div className="text-xs text-slate-400">点击画布连线查看详情</div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {rightStep === 'search' && (
+                            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                                <button
+                                    onClick={() => setOpenPanels(prev => ({ ...prev, batch: !prev.batch }))}
+                                    className="w-full px-4 py-3 flex items-center justify-between text-sm font-semibold text-slate-700 bg-slate-50"
+                                >
+                                    批量操作
+                                    {openPanels.batch ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                                </button>
+                                {openPanels.batch && (
+                                    <div className="p-4 space-y-3 text-sm">
+                                        <div className="flex items-center justify-between text-xs text-slate-500">
+                                            <span>已选节点</span>
+                                            <span className="text-slate-700">{selectedNodeIds.length}</span>
                                         </div>
-                                    {!detailCompact && (
+                                        <div className="flex items-center justify-between text-xs text-slate-500">
+                                            <span>已选关系</span>
+                                            <span className="text-slate-700">{selectedEdgeIds.length}</span>
+                                        </div>
+                                        <button
+                                            onClick={handleBatchDelete}
+                                            disabled={selectedNodeIds.length === 0 && selectedEdgeIds.length === 0}
+                                            className={`w-full py-2 rounded-lg text-xs ${selectedNodeIds.length === 0 && selectedEdgeIds.length === 0
+                                                ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                                                : 'bg-red-50 text-red-600 border border-red-100 hover:bg-red-100'
+                                                }`}
+                                        >
+                                            批量删除
+                                        </button>
+                                        <div className="text-[11px] text-slate-400">按住 Ctrl/⌘ 可多选，Delete 快捷删除。</div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {rightStep === 'search' && (
+                            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                                <div className="px-4 py-3 flex items-center justify-between text-sm font-semibold text-slate-700 bg-slate-50">
+                                    检索与建模
+                                    <div className="inline-flex rounded-full border border-slate-200 bg-white p-1 text-xs">
+                                        <button
+                                            onClick={() => setRightTab('model')}
+                                            className={`px-3 py-1 rounded-full ${rightTab === 'model' ? 'bg-blue-600 text-white' : 'text-slate-500 hover:text-slate-700'}`}
+                                        >
+                                            建模
+                                        </button>
+                                        <button
+                                            onClick={() => setRightTab('search')}
+                                            className={`px-3 py-1 rounded-full ${rightTab === 'search' ? 'bg-blue-600 text-white' : 'text-slate-500 hover:text-slate-700'}`}
+                                        >
+                                            检索
+                                        </button>
+                                    </div>
+                                </div>
+                                <div className="p-4 space-y-3 text-sm">
+                                    {rightTab === 'model' ? (
                                         <>
-                                            <div className="pt-2 border-t border-slate-100 space-y-2">
-                                                <div className="text-xs text-slate-500">标签</div>
-                                                <div className="flex flex-wrap gap-1">
-                                                    {(nodeTags[selectedNode.id] || []).map(tag => (
-                                                        <span key={tag} className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 text-[11px]">
-                                                            {tag}
-                                                        </span>
+                                            <input
+                                                value={newNodeName}
+                                                onChange={(event) => setNewNodeName(event.target.value)}
+                                                placeholder="新节点名称"
+                                                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+                                            />
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <select
+                                                    value={newNodeKind}
+                                                    onChange={(event) => {
+                                                        const nextKind = event.target.value as 'object' | 'attribute';
+                                                        setNewNodeKind(nextKind);
+                                                        setNewNodeType(nextKind === 'attribute' ? 'attribute' : 'entity');
+                                                    }}
+                                                    className="rounded-lg border border-slate-200 bg-white px-2 py-2 text-xs text-slate-600"
+                                                >
+                                                    <option value="object">对象</option>
+                                                    <option value="attribute">属性</option>
+                                                </select>
+                                                <select
+                                                    value={newNodeType}
+                                                    onChange={(event) => setNewNodeType(event.target.value as ObjectType)}
+                                                    disabled={newNodeKind === 'attribute'}
+                                                    className="rounded-lg border border-slate-200 bg-white px-2 py-2 text-xs text-slate-600 disabled:bg-slate-50 disabled:text-slate-400"
+                                                >
+                                                    {(['entity', 'event', 'rule', 'state'] as ObjectType[]).map(type => (
+                                                        <option key={type} value={type}>{OBJECT_TYPE_LABELS[type]}</option>
                                                     ))}
-                                                </div>
-                                                <div className="flex gap-2">
-                                                    <input
-                                                        value={newTag}
-                                                        onChange={(event) => setNewTag(event.target.value)}
-                                                        placeholder="新增标签"
-                                                        className="flex-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs"
-                                                    />
-                                                    <button
-                                                        onClick={() => {
-                                                            const trimmed = newTag.trim();
-                                                            if (!trimmed) return;
-                                                            setNodeTags(prev => ({
-                                                                ...prev,
-                                                                [selectedNode.id]: Array.from(new Set([...(prev[selectedNode.id] || []), trimmed]))
-                                                            }));
-                                                            setNewTag('');
-                                                        }}
-                                                        className="px-3 py-1 rounded-lg border border-slate-200 text-xs text-slate-600 hover:bg-slate-50"
-                                                    >
-                                                        添加
-                                                    </button>
-                                                </div>
+                                                </select>
                                             </div>
-                                            <div className="pt-2 border-t border-slate-100 space-y-2">
-                                                <div className="text-xs text-slate-500">字段</div>
-                                                <div className="flex flex-wrap gap-1">
-                                                    {(nodeFields[selectedNode.id] || []).map(field => (
-                                                        <span key={field} className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[11px]">
-                                                            {field}
-                                                        </span>
-                                                    ))}
-                                                </div>
-                                                <div className="flex gap-2">
-                                                    <input
-                                                        value={newField}
-                                                        onChange={(event) => setNewField(event.target.value)}
-                                                        placeholder="新增字段"
-                                                        className="flex-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs"
-                                                    />
-                                                    <button
-                                                        onClick={() => {
-                                                            const trimmed = newField.trim();
-                                                            if (!trimmed) return;
-                                                            setNodeFields(prev => ({
-                                                                ...prev,
-                                                                [selectedNode.id]: Array.from(new Set([...(prev[selectedNode.id] || []), trimmed]))
-                                                            }));
-                                                            setNewField('');
-                                                        }}
-                                                        className="px-3 py-1 rounded-lg border border-slate-200 text-xs text-slate-600 hover:bg-slate-50"
-                                                    >
-                                                        添加
-                                                    </button>
-                                                </div>
-                                            </div>
-                                            {selectedNodeLinks.length > 0 && (
+                                            <button
+                                                onClick={handleAddNode}
+                                                className="w-full py-2 rounded-lg bg-blue-600 text-white text-sm hover:bg-blue-700"
+                                            >
+                                                添加节点
+                                            </button>
+                                            {layoutPresets.length > 0 && (
                                                 <div className="pt-2 border-t border-slate-100">
-                                                    <div className="text-xs text-slate-500 mb-2">关联关系</div>
+                                                    <div className="text-xs text-slate-500 mb-2">布局方案</div>
                                                     <div className="space-y-2">
-                                                        {selectedNodeLinks.slice(0, 4).map(edge => {
-                                                            const from = getNode(edge.from);
-                                                            const to = getNode(edge.to);
-                                                            return (
-                                                                <div key={edge.id} className="text-xs text-slate-600 flex items-center justify-between">
-                                                                    <span>{from?.label} → {to?.label}</span>
-                                                                    <span className="text-slate-400">{edge.label}</span>
-                                                                </div>
-                                                            );
-                                                        })}
-                                                        {selectedNodeLinks.length > 4 && (
-                                                            <div className="text-[11px] text-slate-400">还有 {selectedNodeLinks.length - 4} 条关系</div>
-                                                        )}
+                                                        {layoutPresets.map(item => (
+                                                            <button
+                                                                key={item.id}
+                                                                onClick={() => handleApplyLayout(item.id)}
+                                                                className={`w-full px-3 py-2 rounded-lg text-xs border ${selectedLayoutId === item.id ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                                                            >
+                                                                {item.name}
+                                                            </button>
+                                                        ))}
                                                     </div>
                                                 </div>
                                             )}
                                         </>
-                                    )}
-                                    </>
-                                ) : selectedNodeIds.length > 1 ? (
-                                    <div className="text-xs text-slate-500">已选择 {selectedNodeIds.length} 个节点，可批量删除。</div>
-                                ) : (
-                                    <div className="text-xs text-slate-400">点击画布节点查看详情</div>
-                                )
-                            ) : selectedEdge && selectedEdgeIds.length <= 1 ? (
-                                <>
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-slate-500">关系</span>
-                                        <span className="text-slate-800 font-medium">
-                                            {getNode(selectedEdge.from)?.label} → {getNode(selectedEdge.to)?.label}
-                                        </span>
-                                    </div>
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-slate-500">关系名</span>
-                                        <span className="text-slate-800">{selectedEdge.label}</span>
-                                    </div>
-                                    {detailCompact ? (
-                                        <div className="flex items-center gap-2 pt-2">
-                                            <button
-                                                onClick={() => handleEditEdge(selectedEdge.id)}
-                                                className="flex-1 py-2 rounded-lg border border-slate-200 text-xs text-slate-600 hover:bg-slate-50"
-                                            >
-                                                编辑关系
-                                            </button>
-                                            <button
-                                                onClick={() => handleDeleteEdge(selectedEdge.id)}
-                                                className="flex-1 py-2 rounded-lg border border-red-100 text-xs text-red-600 hover:bg-red-50"
-                                            >
-                                                删除关系
-                                            </button>
-                                        </div>
                                     ) : (
                                         <>
-                                            <div className="flex items-center justify-between">
-                                                <span className="text-slate-500">线条样式</span>
-                                                <select
-                                                    value={(edgeStyles[selectedEdge.id]?.style || 'solid')}
-                                                    onChange={(event) => {
-                                                        const style = event.target.value as 'solid' | 'dashed';
-                                                        setEdgeStyles(prev => ({
-                                                            ...prev,
-                                                            [selectedEdge.id]: {
-                                                                style,
-                                                                weight: prev[selectedEdge.id]?.weight || 2,
-                                                                directed: prev[selectedEdge.id]?.directed ?? true
-                                                            }
-                                                        }));
-                                                    }}
-                                                    className="text-xs text-slate-600 border border-slate-200 rounded-md px-2 py-1 bg-white"
-                                                >
-                                                    <option value="solid">实线</option>
-                                                    <option value="dashed">虚线</option>
-                                                </select>
-                                            </div>
-                                            <div className="flex items-center justify-between">
-                                                <span className="text-slate-500">线条粗细</span>
-                                                <input
-                                                    type="range"
-                                                    min={1}
-                                                    max={4}
-                                                    value={edgeStyles[selectedEdge.id]?.weight || 2}
-                                                    onChange={(event) => {
-                                                        const weight = Number(event.target.value);
-                                                        setEdgeStyles(prev => ({
-                                                            ...prev,
-                                                            [selectedEdge.id]: {
-                                                                style: prev[selectedEdge.id]?.style || 'solid',
-                                                                weight,
-                                                                directed: prev[selectedEdge.id]?.directed ?? true
-                                                            }
-                                                        }));
-                                                    }}
-                                                    className="w-32"
-                                                />
-                                            </div>
-                                            <div className="flex items-center justify-between">
-                                                <span className="text-slate-500">方向</span>
-                                                <button
-                                                    onClick={() => {
-                                                        setEdgeStyles(prev => ({
-                                                            ...prev,
-                                                            [selectedEdge.id]: {
-                                                                style: prev[selectedEdge.id]?.style || 'solid',
-                                                                weight: prev[selectedEdge.id]?.weight || 2,
-                                                                directed: !(prev[selectedEdge.id]?.directed ?? true)
-                                                            }
-                                                        }));
-                                                    }}
-                                                    className="px-3 py-1 rounded-full text-xs border border-slate-200 text-slate-600 hover:bg-slate-50"
-                                                >
-                                                    {(edgeStyles[selectedEdge.id]?.directed ?? true) ? '有向' : '无向'}
-                                                </button>
-                                            </div>
-                                            <div className="flex items-center gap-2 pt-2">
-                                                <button
-                                                    onClick={() => handleEditEdge(selectedEdge.id)}
-                                                    className="flex-1 py-2 rounded-lg border border-slate-200 text-xs text-slate-600 hover:bg-slate-50"
-                                                >
-                                                    编辑关系
-                                                </button>
-                                                <button
-                                                    onClick={() => handleDeleteEdge(selectedEdge.id)}
-                                                    className="flex-1 py-2 rounded-lg border border-red-100 text-xs text-red-600 hover:bg-red-50"
-                                                >
-                                                    删除关系
-                                                </button>
-                                            </div>
-                                        </>
-                                    )}
-                                </>
-                            ) : selectedEdgeIds.length > 1 ? (
-                                <div className="text-xs text-slate-500">已选择 {selectedEdgeIds.length} 条关系，可批量删除。</div>
-                            ) : (
-                                <div className="text-xs text-slate-400">点击画布连线查看详情</div>
-                            )}
-                        </div>
-                    </div>
-                    )}
-
-                    {rightStep === 'search' && (
-                    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                        <button
-                            onClick={() => setOpenPanels(prev => ({ ...prev, batch: !prev.batch }))}
-                            className="w-full px-4 py-3 flex items-center justify-between text-sm font-semibold text-slate-700 bg-slate-50"
-                        >
-                            批量操作
-                            {openPanels.batch ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                        </button>
-                        {openPanels.batch && (
-                            <div className="p-4 space-y-3 text-sm">
-                                <div className="flex items-center justify-between text-xs text-slate-500">
-                                    <span>已选节点</span>
-                                    <span className="text-slate-700">{selectedNodeIds.length}</span>
-                                </div>
-                                <div className="flex items-center justify-between text-xs text-slate-500">
-                                    <span>已选关系</span>
-                                    <span className="text-slate-700">{selectedEdgeIds.length}</span>
-                                </div>
-                                <button
-                                    onClick={handleBatchDelete}
-                                    disabled={selectedNodeIds.length === 0 && selectedEdgeIds.length === 0}
-                                    className={`w-full py-2 rounded-lg text-xs ${selectedNodeIds.length === 0 && selectedEdgeIds.length === 0
-                                        ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                                        : 'bg-red-50 text-red-600 border border-red-100 hover:bg-red-100'
-                                        }`}
-                                >
-                                    批量删除
-                                </button>
-                                <div className="text-[11px] text-slate-400">按住 Ctrl/⌘ 可多选，Delete 快捷删除。</div>
-                            </div>
-                        )}
-                    </div>
-                    )}
-
-                    {rightStep === 'search' && (
-                    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                        <div className="px-4 py-3 flex items-center justify-between text-sm font-semibold text-slate-700 bg-slate-50">
-                            检索与建模
-                            <div className="inline-flex rounded-full border border-slate-200 bg-white p-1 text-xs">
-                                <button
-                                    onClick={() => setRightTab('model')}
-                                    className={`px-3 py-1 rounded-full ${rightTab === 'model' ? 'bg-blue-600 text-white' : 'text-slate-500 hover:text-slate-700'}`}
-                                >
-                                    建模
-                                </button>
-                                <button
-                                    onClick={() => setRightTab('search')}
-                                    className={`px-3 py-1 rounded-full ${rightTab === 'search' ? 'bg-blue-600 text-white' : 'text-slate-500 hover:text-slate-700'}`}
-                                >
-                                    检索
-                                </button>
-                            </div>
-                        </div>
-                        <div className="p-4 space-y-3 text-sm">
-                            {rightTab === 'model' ? (
-                                <>
-                                    <input
-                                        value={newNodeName}
-                                        onChange={(event) => setNewNodeName(event.target.value)}
-                                        placeholder="新节点名称"
-                                        className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
-                                    />
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <select
-                                            value={newNodeKind}
-                                            onChange={(event) => {
-                                                const nextKind = event.target.value as 'object' | 'attribute';
-                                                setNewNodeKind(nextKind);
-                                                setNewNodeType(nextKind === 'attribute' ? 'attribute' : 'entity');
-                                            }}
-                                            className="rounded-lg border border-slate-200 bg-white px-2 py-2 text-xs text-slate-600"
-                                        >
-                                            <option value="object">对象</option>
-                                            <option value="attribute">属性</option>
-                                        </select>
-                                        <select
-                                            value={newNodeType}
-                                            onChange={(event) => setNewNodeType(event.target.value as ObjectType)}
-                                            disabled={newNodeKind === 'attribute'}
-                                            className="rounded-lg border border-slate-200 bg-white px-2 py-2 text-xs text-slate-600 disabled:bg-slate-50 disabled:text-slate-400"
-                                        >
-                                            {(['entity', 'event', 'rule', 'state'] as ObjectType[]).map(type => (
-                                                <option key={type} value={type}>{OBJECT_TYPE_LABELS[type]}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <button
-                                        onClick={handleAddNode}
-                                        className="w-full py-2 rounded-lg bg-blue-600 text-white text-sm hover:bg-blue-700"
-                                    >
-                                        添加节点
-                                    </button>
-                                    {layoutPresets.length > 0 && (
-                                        <div className="pt-2 border-t border-slate-100">
-                                            <div className="text-xs text-slate-500 mb-2">布局方案</div>
-                                            <div className="space-y-2">
-                                                {layoutPresets.map(item => (
+                                            <input
+                                                value={searchTerm}
+                                                onChange={(event) => setSearchTerm(event.target.value)}
+                                                placeholder="搜索对象/属性"
+                                                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+                                            />
+                                            <button
+                                                onClick={() => {
+                                                    const firstNodeId = Array.from(matchedNodeIds)[0];
+                                                    if (!firstNodeId || !canvasRef.current) return;
+                                                    setSelectedNodeIds([firstNodeId]);
+                                                    setSelectedNodeId(firstNodeId);
+                                                    setSelectedEdgeId(null);
+                                                    setSelectedEdgeIds([]);
+                                                    centerOnNode(firstNodeId);
+                                                }}
+                                                className="w-full py-2 rounded-lg border border-slate-200 text-xs text-slate-600 hover:bg-slate-50"
+                                            >
+                                                定位首个命中
+                                            </button>
+                                            <div className="grid grid-cols-3 gap-2 text-xs">
+                                                {(['all', 'entity', 'event', 'rule', 'state', 'attribute'] as const).map(option => (
                                                     <button
-                                                        key={item.id}
-                                                        onClick={() => handleApplyLayout(item.id)}
-                                                        className={`w-full px-3 py-2 rounded-lg text-xs border ${selectedLayoutId === item.id ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                                                        key={option}
+                                                        onClick={() => setFilterType(option)}
+                                                        className={`py-2 rounded-lg border ${filterType === option ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}
                                                     >
-                                                        {item.name}
+                                                        {option === 'all' ? '全部' : OBJECT_TYPE_LABELS[option]}
                                                     </button>
                                                 ))}
                                             </div>
-                                        </div>
+                                            <div className="text-xs text-slate-500">
+                                                当前显示 {filteredNodes.length} 个节点 / {filteredEdges.length} 条关系
+                                            </div>
+                                        </>
                                     )}
-                                </>
-                            ) : (
-                                <>
-                                    <input
-                                        value={searchTerm}
-                                        onChange={(event) => setSearchTerm(event.target.value)}
-                                        placeholder="搜索对象/属性"
-                                        className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
-                                    />
-                                    <button
-                                        onClick={() => {
-                                            const firstNodeId = Array.from(matchedNodeIds)[0];
-                                            if (!firstNodeId || !canvasRef.current) return;
-                                            setSelectedNodeIds([firstNodeId]);
-                                            setSelectedNodeId(firstNodeId);
-                                            setSelectedEdgeId(null);
-                                            setSelectedEdgeIds([]);
-                                            centerOnNode(firstNodeId);
-                                        }}
-                                        className="w-full py-2 rounded-lg border border-slate-200 text-xs text-slate-600 hover:bg-slate-50"
-                                    >
-                                        定位首个命中
-                                    </button>
-                                    <div className="grid grid-cols-3 gap-2 text-xs">
-                                        {(['all', 'entity', 'event', 'rule', 'state', 'attribute'] as const).map(option => (
-                                            <button
-                                                key={option}
-                                                onClick={() => setFilterType(option)}
-                                                className={`py-2 rounded-lg border ${filterType === option ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}
-                                            >
-                                                {option === 'all' ? '全部' : OBJECT_TYPE_LABELS[option]}
-                                            </button>
-                                        ))}
-                                    </div>
-                                    <div className="text-xs text-slate-500">
-                                        当前显示 {filteredNodes.length} 个节点 / {filteredEdges.length} 条关系
-                                    </div>
-                                </>
-                            )}
-                        </div>
-                    </div>
-                    )}
-
-                    {rightStep === 'relation' && (
-                    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                        <button
-                            onClick={() => setOpenPanels(prev => ({ ...prev, relation: !prev.relation }))}
-                            className="w-full px-4 py-3 flex items-center justify-between text-sm font-semibold text-slate-700 bg-blue-600 text-white"
-                        >
-                            关系定义
-                            {openPanels.relation ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                        </button>
-                        {openPanels.relation && (
-                            <div className="p-4 space-y-4 text-sm">
-                                {selectedEdge && (
-                                    <div className="rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-700">
-                                        正在编辑：{getNode(selectedEdge.from)?.label} → {getNode(selectedEdge.to)?.label} / {selectedEdge.label}
-                                    </div>
-                                )}
-                                <div className="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 text-xs text-slate-600">
-                                    <div className="flex items-center justify-between">
-                                        <span>步骤引导</span>
-                                        <span className="text-slate-400">1/2/3</span>
-                                    </div>
-                                    <div className="mt-2 grid grid-cols-3 gap-2">
-                                        {[
-                                            { key: 'source', label: '选择源对象', ok: Boolean(selectedSource) },
-                                            { key: 'target', label: '选择目标对象', ok: Boolean(selectedTarget) },
-                                            { key: 'name', label: '定义关系', ok: Boolean(relationshipName.trim()) }
-                                        ].map(item => (
-                                            <div
-                                                key={item.key}
-                                                className={`rounded-md border px-2 py-1 ${item.ok ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-white text-slate-500'}`}
-                                            >
-                                                {item.label}
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <div className="flex items-center gap-2 text-slate-600">
-                                        <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs">1</span>
-                                        选择源对象
-                                    </div>
-                                    <select
-                                        value={selectedSource}
-                                        onChange={(e) => setSelectedSource(e.target.value)}
-                                        className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
-                                    >
-                                        {objectNodes.map(node => (
-                                            <option key={node.id} value={node.id}>{node.label}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <div className="space-y-2">
-                                    <div className="flex items-center gap-2 text-slate-600">
-                                        <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs">2</span>
-                                        选择目标对象
-                                    </div>
-                                    <select
-                                        value={selectedTarget}
-                                        onChange={(e) => setSelectedTarget(e.target.value)}
-                                        className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
-                                    >
-                                        {objectNodes.map(node => (
-                                            <option key={node.id} value={node.id}>{node.label}</option>
-                                        ))}
-                                    </select>
-                                    <button
-                                        onClick={() => {
-                                            setSelectedSource(selectedTarget);
-                                            setSelectedTarget(selectedSource);
-                                        }}
-                                        className="mt-2 w-full py-2 rounded-lg border border-slate-200 text-xs text-slate-600 hover:bg-slate-50"
-                                    >
-                                        交换方向
-                                    </button>
-                                </div>
-                                <div className="space-y-2">
-                                    <div className="flex items-center gap-2 text-slate-600">
-                                        <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs">3</span>
-                                        定义关系
-                                    </div>
-                                    <div className="flex flex-wrap gap-2">
-                                        {relationshipSuggestions.map(item => (
-                                            <button
-                                                key={item}
-                                                onClick={() => {
-                                                    setRelationshipType(RELATIONSHIP_TYPES.includes(item) ? item : '自定义');
-                                                    setRelationshipName(item);
-                                                }}
-                                                className="px-2 py-1 rounded-full border border-slate-200 bg-white text-xs text-slate-600 hover:bg-slate-50"
-                                            >
-                                                {item}
-                                            </button>
-                                        ))}
-                                    </div>
-                                    <select
-                                        value={relationshipType}
-                                        onChange={(event) => {
-                                            const nextType = event.target.value;
-                                            setRelationshipType(nextType);
-                                            if (nextType !== '自定义') {
-                                                setRelationshipName(nextType);
-                                            }
-                                        }}
-                                        className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
-                                    >
-                                        {RELATIONSHIP_TYPES.map(type => (
-                                            <option key={type} value={type}>{type}</option>
-                                        ))}
-                                        <option value="自定义">自定义</option>
-                                    </select>
-                                    <input
-                                        value={relationshipName}
-                                        onChange={(e) => setRelationshipName(e.target.value)}
-                                        placeholder="输入自定义关系名"
-                                        className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
-                                    />
-                                </div>
-                                <button
-                                    onClick={handleCreateRelationship}
-                                    className="w-full py-2 rounded-lg bg-blue-600 text-white text-sm hover:bg-blue-700"
-                                >
-                                    {editingEdgeId ? '保存关系' : '创建关系连接'}
-                                </button>
-                                <div className="pt-3 border-t border-slate-100">
-                                    <div className="text-xs text-slate-500 mb-2">已有关系</div>
-                                    <div className="space-y-2">
-                                        {edges.filter(edge => getNode(edge.from)?.objectType !== 'attribute' && getNode(edge.to)?.objectType !== 'attribute').map(edge => (
-                                            <div
-                                                key={edge.id}
-                                                onClick={(event) => handleEdgeSelect(event, edge.id)}
-                                                onDoubleClick={() => handleEditEdge(edge.id)}
-                                                className={`flex items-center justify-between text-xs rounded-md px-2 py-1.5 cursor-pointer ${selectedEdgeIds.includes(edge.id) ? 'bg-blue-50 text-blue-700' : 'text-slate-600 bg-slate-50 hover:bg-slate-100'}`}
-                                            >
-                                                <span>{getNode(edge.from)?.label} → {getNode(edge.to)?.label} · {edge.label}</span>
-                                                <div className="flex items-center gap-1">
-                                                    <button
-                                                        onClick={() => handleEditEdge(edge.id)}
-                                                        className="p-1 rounded hover:bg-white text-slate-500 hover:text-slate-700"
-                                                    >
-                                                        <Pencil size={12} />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleDeleteEdge(edge.id)}
-                                                        className="p-1 rounded hover:bg-white text-slate-500 hover:text-red-500"
-                                                    >
-                                                        <Trash2 size={12} />
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
                                 </div>
                             </div>
                         )}
-                    </div>
-                    )}
 
-                    {rightStep === 'search' && (
-                        ([
-                            { key: 'api', label: '接口管理' },
-                            { key: 'action', label: '动作管理' },
-                            { key: 'function', label: '函数管理' }
-                        ] as const).map(section => (
-                            <div key={section.key} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                        {rightStep === 'relation' && (
+                            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
                                 <button
-                                    onClick={() => setOpenPanels(prev => ({ ...prev, [section.key]: !prev[section.key] }))}
-                                    className="w-full px-4 py-3 flex items-center justify-between text-sm font-semibold text-slate-700"
+                                    onClick={() => setOpenPanels(prev => ({ ...prev, relation: !prev.relation }))}
+                                    className="w-full px-4 py-3 flex items-center justify-between text-sm font-semibold text-slate-700 bg-blue-600 text-white"
                                 >
-                                    {section.label}
-                                    {openPanels[section.key] ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                                    关系定义
+                                    {openPanels.relation ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                                 </button>
-                                {openPanels[section.key] && (
-                                    <div className="px-4 pb-4 text-xs text-slate-500">
-                                        暂无配置项，可在关系建立后补充。
+                                {openPanels.relation && (
+                                    <div className="p-4 space-y-4 text-sm">
+                                        {selectedEdge && (
+                                            <div className="rounded-lg border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-700">
+                                                正在编辑：{getNode(selectedEdge.from)?.label} → {getNode(selectedEdge.to)?.label} / {selectedEdge.label}
+                                            </div>
+                                        )}
+                                        <div className="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                                            <div className="flex items-center justify-between">
+                                                <span>步骤引导</span>
+                                                <span className="text-slate-400">1/2/3</span>
+                                            </div>
+                                            <div className="mt-2 grid grid-cols-3 gap-2">
+                                                {[
+                                                    { key: 'source', label: '选择源对象', ok: Boolean(selectedSource) },
+                                                    { key: 'target', label: '选择目标对象', ok: Boolean(selectedTarget) },
+                                                    { key: 'name', label: '定义关系', ok: Boolean(relationshipName.trim()) }
+                                                ].map(item => (
+                                                    <div
+                                                        key={item.key}
+                                                        className={`rounded-md border px-2 py-1 ${item.ok ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-white text-slate-500'}`}
+                                                    >
+                                                        {item.label}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <div className="flex items-center gap-2 text-slate-600">
+                                                <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs">1</span>
+                                                选择源对象
+                                            </div>
+                                            <select
+                                                value={selectedSource}
+                                                onChange={(e) => setSelectedSource(e.target.value)}
+                                                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+                                            >
+                                                {objectNodes.map(node => (
+                                                    <option key={node.id} value={node.id}>{node.label}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <div className="flex items-center gap-2 text-slate-600">
+                                                <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs">2</span>
+                                                选择目标对象
+                                            </div>
+                                            <select
+                                                value={selectedTarget}
+                                                onChange={(e) => setSelectedTarget(e.target.value)}
+                                                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+                                            >
+                                                {objectNodes.map(node => (
+                                                    <option key={node.id} value={node.id}>{node.label}</option>
+                                                ))}
+                                            </select>
+                                            <button
+                                                onClick={() => {
+                                                    setSelectedSource(selectedTarget);
+                                                    setSelectedTarget(selectedSource);
+                                                }}
+                                                className="mt-2 w-full py-2 rounded-lg border border-slate-200 text-xs text-slate-600 hover:bg-slate-50"
+                                            >
+                                                交换方向
+                                            </button>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <div className="flex items-center gap-2 text-slate-600">
+                                                <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs">3</span>
+                                                定义关系
+                                            </div>
+                                            <div className="flex flex-wrap gap-2">
+                                                {relationshipSuggestions.map(item => (
+                                                    <button
+                                                        key={item}
+                                                        onClick={() => {
+                                                            setRelationshipType(RELATIONSHIP_TYPES.includes(item) ? item : '自定义');
+                                                            setRelationshipName(item);
+                                                        }}
+                                                        className="px-2 py-1 rounded-full border border-slate-200 bg-white text-xs text-slate-600 hover:bg-slate-50"
+                                                    >
+                                                        {item}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                            <select
+                                                value={relationshipType}
+                                                onChange={(event) => {
+                                                    const nextType = event.target.value;
+                                                    setRelationshipType(nextType);
+                                                    if (nextType !== '自定义') {
+                                                        setRelationshipName(nextType);
+                                                    }
+                                                }}
+                                                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+                                            >
+                                                {RELATIONSHIP_TYPES.map(type => (
+                                                    <option key={type} value={type}>{type}</option>
+                                                ))}
+                                                <option value="自定义">自定义</option>
+                                            </select>
+                                            <input
+                                                value={relationshipName}
+                                                onChange={(e) => setRelationshipName(e.target.value)}
+                                                placeholder="输入自定义关系名"
+                                                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm"
+                                            />
+                                        </div>
+                                        <button
+                                            onClick={handleCreateRelationship}
+                                            className="w-full py-2 rounded-lg bg-blue-600 text-white text-sm hover:bg-blue-700"
+                                        >
+                                            {editingEdgeId ? '保存关系' : '创建关系连接'}
+                                        </button>
+                                        <div className="pt-3 border-t border-slate-100">
+                                            <div className="text-xs text-slate-500 mb-2">已有关系</div>
+                                            <div className="space-y-2">
+                                                {edges.filter(edge => getNode(edge.from)?.objectType !== 'attribute' && getNode(edge.to)?.objectType !== 'attribute').map(edge => (
+                                                    <div
+                                                        key={edge.id}
+                                                        onClick={(event) => handleEdgeSelect(event, edge.id)}
+                                                        onDoubleClick={() => handleEditEdge(edge.id)}
+                                                        className={`flex items-center justify-between text-xs rounded-md px-2 py-1.5 cursor-pointer ${selectedEdgeIds.includes(edge.id) ? 'bg-blue-50 text-blue-700' : 'text-slate-600 bg-slate-50 hover:bg-slate-100'}`}
+                                                    >
+                                                        <span>{getNode(edge.from)?.label} → {getNode(edge.to)?.label} · {edge.label}</span>
+                                                        <div className="flex items-center gap-1">
+                                                            <button
+                                                                onClick={() => handleEditEdge(edge.id)}
+                                                                className="p-1 rounded hover:bg-white text-slate-500 hover:text-slate-700"
+                                                            >
+                                                                <Pencil size={12} />
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleDeleteEdge(edge.id)}
+                                                                className="p-1 rounded hover:bg-white text-slate-500 hover:text-red-500"
+                                                            >
+                                                                <Trash2 size={12} />
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
                                     </div>
                                 )}
                             </div>
-                        ))
-                    )}
+                        )}
+
+                        {rightStep === 'search' && (
+                            ([
+                                { key: 'api', label: '接口管理' },
+                                { key: 'action', label: '动作管理' },
+                                { key: 'function', label: '函数管理' }
+                            ] as const).map(section => (
+                                <div key={section.key} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                                    <button
+                                        onClick={() => setOpenPanels(prev => ({ ...prev, [section.key]: !prev[section.key] }))}
+                                        className="w-full px-4 py-3 flex items-center justify-between text-sm font-semibold text-slate-700"
+                                    >
+                                        {section.label}
+                                        {openPanels[section.key] ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                                    </button>
+                                    {openPanels[section.key] && (
+                                        <div className="px-4 pb-4 text-xs text-slate-500">
+                                            暂无配置项，可在关系建立后补充。
+                                        </div>
+                                    )}
+                                </div>
+                            ))
+                        )}
+                    </div>
                 </div>
-            </div>
             )}
             {termModalOpen && termTargetNodeId && (
                 <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/40 px-4">

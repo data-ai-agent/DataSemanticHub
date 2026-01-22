@@ -41,40 +41,93 @@ export interface RegisterResp {
     token: string;
 }
 
-const API_BASE = '/api/v1/user';
+const API_BASE = '/api/user';
+
+const MOCK_DELAY = 800;
+
+const mockLogin = async (data: LoginReq): Promise<LoginResp> => {
+    await new Promise(resolve => setTimeout(resolve, MOCK_DELAY));
+    return {
+        token: 'mock-jwt-token-' + Date.now(),
+        expires_in: 3600,
+        user_info: {
+            id: 'mock-user-001',
+            first_name: 'Demo',
+            last_name: 'User',
+            email: data.email,
+            organization: 'Default Org'
+        }
+    };
+};
+
+const mockRegister = async (data: RegisterReq): Promise<RegisterResp> => {
+    await new Promise(resolve => setTimeout(resolve, MOCK_DELAY));
+    return {
+        id: 'mock-user-new-' + Date.now(),
+        first_name: data.first_name,
+        last_name: data.last_name,
+        email: data.email,
+        token: 'mock-jwt-token-' + Date.now()
+    };
+};
 
 export const authService = {
     async login(data: LoginReq): Promise<LoginResp> {
-        const response = await fetch(`${API_BASE}/login`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(data),
-        });
+        try {
+            const response = await fetch(`${API_BASE}/login`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
+            });
 
-        if (!response.ok) {
-            const error = await response.json().catch(() => ({}));
-            throw new Error(error.message || 'Login failed');
+            if (!response.ok) {
+                // Fallback to mock on 404 or 500 in dev
+                if (import.meta.env.DEV && (response.status === 404 || response.status >= 500)) {
+                    console.warn('API connection failed, falling back to Mock Mode');
+                    return mockLogin(data);
+                }
+                const error = await response.json().catch(() => ({}));
+                throw new Error(error.message || 'Login failed');
+            }
+
+            return response.json();
+        } catch (error) {
+            if (import.meta.env.DEV) {
+                console.warn('Network error, falling back to Mock Mode');
+                return mockLogin(data);
+            }
+            throw error;
         }
-
-        return response.json();
     },
 
     async register(data: RegisterReq): Promise<RegisterResp> {
-        const response = await fetch(`${API_BASE}/register`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(data),
-        });
+        try {
+            const response = await fetch(`${API_BASE}/register`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data),
+            });
 
-        if (!response.ok) {
-            const error = await response.json().catch(() => ({}));
-            throw new Error(error.message || 'Registration failed');
+            if (!response.ok) {
+                if (import.meta.env.DEV && (response.status === 404 || response.status >= 500)) {
+                    console.warn('API connection failed, falling back to Mock Mode');
+                    return mockRegister(data);
+                }
+                const error = await response.json().catch(() => ({}));
+                throw new Error(error.message || 'Registration failed');
+            }
+
+            return response.json();
+        } catch (error) {
+            if (import.meta.env.DEV) {
+                console.warn('Network error, falling back to Mock Mode');
+                return mockRegister(data);
+            }
+            throw error;
         }
-
-        return response.json();
     }
 };

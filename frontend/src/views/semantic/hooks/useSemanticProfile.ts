@@ -121,7 +121,7 @@ export const useSemanticProfile = (
         const confirmScope = selectedTable.sourceName
             ? `${selectedTable.sourceName} / ${selectedTable.table}`
             : selectedTable.table;
-        const confirmFieldNames = selectedTableFields.map(field => field.name);
+        const confirmFieldNames = selectedTableFields.map(field => field.fieldName);
         const updatedProfile = {
             ...semanticProfile,
             governanceStatus: 'S3' as GovernanceStatus,
@@ -174,6 +174,25 @@ export const useSemanticProfile = (
         ));
     };
 
+    const updateFieldDecision = (fieldName: string, decision: any) => {
+        setSemanticProfile(prev => ({
+            ...prev,
+            fields: prev.fields.map(f => f.fieldName === fieldName ? { ...f, ...decision } : f)
+        }));
+    };
+
+    const resetProfile = () => {
+        setSemanticProfile({
+            ...emptyProfile,
+            analysisStep: 'idle',
+            relationships: []
+        });
+        setPendingAnalysisResult(null);
+        setAuditLogs([]);
+        setUpgradeHistory([]);
+        setFieldReviewStatus({});
+    };
+
     return {
         semanticProfile,
         setSemanticProfile,
@@ -193,6 +212,8 @@ export const useSemanticProfile = (
         handleAnalyze,
         handleConfirmEffective,
         handleIgnore,
-        handleSave
+        handleSave,
+        updateFieldDecision,
+        resetProfile
     };
 };

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Filter } from 'lucide-react';
-import { FieldSemanticProfile } from '../../types/semantic';
+import { FieldSemanticProfile } from '../../../types/semantic';
 
 export type FieldFilterType = 'all' | 'issues' | 'sensitive';
 

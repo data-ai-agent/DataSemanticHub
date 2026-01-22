@@ -41,6 +41,7 @@ import BusinessModelingView from './views/BusinessModelingView';
 import ResourceKnowledgeNetworkView from './views/ResourceKnowledgeNetworkView';
 import TechDiscoveryView from './views/TechDiscoveryView';
 import DataSemanticUnderstandingView from './views/DataSemanticUnderstandingView';
+import DataSemanticUnderstandingViewV2 from './views/DataSemanticUnderstandingViewV2';
 import CandidateGenerationView from './views/CandidateGenerationView';
 import ConflictDetectionView from './views/ConflictDetectionView';
 import SmartDataHubView from './views/SmartDataHubView';
@@ -150,6 +151,16 @@ export default function SemanticLayerApp() {
             case 'bu_scan': return <AssetScanningView onNavigate={setActiveModule} onAddScanResults={(results) => setScanResults(prev => [...prev, ...results])} />;
             case 'bu_discovery': return <TechDiscoveryView onAddBusinessObject={handleAddBusinessObject} scanResults={scanResults} setScanResults={setScanResults} />;
             case 'bu_semantic': return <DataSemanticUnderstandingView
+                scanResults={scanResults}
+                setScanResults={setScanResults}
+                candidateResults={candidateResults}
+                setCandidateResults={setCandidateResults}
+                businessObjects={businessObjects}
+                setBusinessObjects={setBusinessObjects}
+                setActiveModule={setActiveModule}
+                initialState={navigationParams}
+            />;
+            case 'bu_semantic_v2': return <DataSemanticUnderstandingViewV2
                 scanResults={scanResults}
                 setScanResults={setScanResults}
                 candidateResults={candidateResults}

@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 export type ModuleId =
     | 'dashboard' | 'modeling_overview'
     | 'td_goals' | 'mapping' | 'bo_mapping' | 'candidate_confirmation' | 'td_modeling' | 'resource_knowledge_network' | 'scenario_orchestration'
-    | 'bu_connect' | 'bu_scan' | 'bu_discovery' | 'bu_semantic' | 'bu_candidates'
+    | 'bu_connect' | 'bu_scan' | 'bu_discovery' | 'bu_semantic' | 'bu_semantic_v2' | 'bu_candidates'
     | 'governance' | 'smart_data' | 'data_supermarket' | 'term_mgmt' | 'tag_mgmt' | 'ask_data' | 'data_standard'
     | 'field_semantic' | 'data_quality' | 'data_security' | 'semantic_version'
     | 'user_permission' | 'workflow_mgmt' | 'approval_policy' | 'audit_log'

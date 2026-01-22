@@ -46,7 +46,7 @@ test:
 
 # 编译
 build:
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bin/$(PROJECT_NAME) ./api/api.go
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o bin/$(PROJECT_NAME) ./api
 
 # 运行
 run:

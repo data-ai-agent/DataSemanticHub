@@ -30,6 +30,13 @@ import {
     UserPlus,
     Briefcase
 } from 'lucide-react';
+import {
+    userManagementService,
+    type User as ApiUser,
+    type RoleBinding as ApiRoleBinding,
+    type AuditLog as ApiAuditLog,
+    type GetStatisticsResp
+} from '../services/userManagement';
 
 
 type UserStatus = '未激活' | '启用' | '停用' | '锁定' | '归档';
@@ -45,6 +52,19 @@ type RoleBinding = {
     orgId: string;
     position?: string;  // 岗位职责
     permissionRole?: string;  // 权限角色
+};
+
+type AuditLog = {
+    id: number;
+    action: string;
+    operator: string;
+    timestamp: string;
+    changes?: Record<string, unknown>;
+};
+
+type UserDetail = {
+    roleBindings: RoleBinding[];
+    auditLogs: AuditLog[];
 };
 
 type UserItem = {
@@ -97,123 +117,91 @@ const permissionRoles = [
     '只读用户'
 ];
 
-const initialUsers: UserItem[] = [
-    {
-        id: 'user_01',
-        name: '王宁',
-        email: 'wangning@company.com',
-        phone: '13800001111',
-        deptId: 'dept_root',
-        roleBindings: [
-            { orgId: 'dept_root', position: '语义治理负责人', permissionRole: '平台管理员' }
-        ],
-        status: '启用',
-        accountSource: '本地',
-        lastLogin: '2024-06-28 09:32',
-        createdAt: '2023-11-12'
-    },
-    {
-        id: 'user_02',
-        name: '陈颖',
-        email: 'chenying@company.com',
-        phone: '13800002222',
-        deptId: 'dept_semantic_ops',
-        roleBindings: [
-            { orgId: 'dept_semantic_ops', position: '语义治理专员', permissionRole: '编辑者' }
-        ],
-        status: '启用',
-        accountSource: '本地',
-        lastLogin: '2024-06-28 08:15',
-        createdAt: '2024-01-08'
-    },
-    {
-        id: 'user_03',
-        name: '刘洋',
-        email: 'liuyang@company.com',
-        phone: '13800003333',
-        deptId: 'dept_version_council',
-        roleBindings: [
-            { orgId: 'dept_version_council', position: '版本委员会成员', permissionRole: '审批人' }
-        ],
-        status: '启用',
-        accountSource: 'SSO',
-        lastLogin: '2024-06-27 17:40',
-        createdAt: '2023-10-05'
-    },
-    {
-        id: 'user_04',
-        name: '张倩',
-        email: 'zhangqian@company.com',
-        phone: '13800004444',
-        deptId: 'dept_security',
-        roleBindings: [
-            { orgId: 'dept_security', position: '安全审计', permissionRole: '审批人' }
-        ],
-        status: '启用',
-        accountSource: 'SSO',
-        lastLogin: '2024-06-27 16:22',
-        createdAt: '2023-09-21'
-    },
-    {
-        id: 'user_05',
-        name: '李晨',
-        email: 'lichen@company.com',
-        phone: '13800005555',
-        deptId: 'dept_quality',
-        roleBindings: [
-            { orgId: 'dept_quality', position: '数据质量管理员', permissionRole: '编辑者' }
-        ],
-        status: '启用',
-        accountSource: '本地',
-        lastLogin: '2024-06-27 15:02',
-        createdAt: '2023-12-18'
-    },
-    {
-        id: 'user_06',
-        name: '赵敏',
-        email: 'zhaomin@company.com',
-        phone: '13800006666',
-        deptId: 'dept_data_service',
-        roleBindings: [
-            { orgId: 'dept_data_service', position: '数据服务运营', permissionRole: '编辑者' }
-        ],
-        status: '停用',
-        accountSource: '本地',
-        lastLogin: '2024-06-20 11:30',
-        createdAt: '2024-02-09'
-    },
-    {
-        id: 'user_07',
-        name: '周琪',
-        email: 'zhouqi@company.com',
-        phone: '13800007777',
-        deptId: 'dept_scene',
-        roleBindings: [
-            { orgId: 'dept_scene', position: '业务分析师', permissionRole: '只读用户' }
-        ],
-        status: '锁定',
-        accountSource: '本地',
-        lastLogin: '2024-06-19 14:20',
-        createdAt: '2024-03-14',
-        lockReason: '多次登录失败',
-        lockTime: '2024-06-20 10:00',
-        lockBy: '系统'
-    },
-    {
-        id: 'user_08',
-        name: '孙浩',
-        email: 'sunhao@company.com',
-        phone: '13800008888',
-        deptId: 'dept_root',
-        roleBindings: [],
-        status: '未激活',
-        accountSource: 'SSO',
-        lastLogin: '-',
-        createdAt: '2024-06-25'
-    }
-];
-
 const formatDate = () => new Date().toISOString().split('T')[0];
+
+const statusLabelMap: Record<number, UserStatus> = {
+    0: '未激活',
+    1: '启用',
+    2: '停用',
+    3: '锁定',
+    4: '归档'
+};
+
+const statusCodeMap: Record<UserStatus, number> = {
+    '未激活': 0,
+    '启用': 1,
+    '停用': 2,
+    '锁定': 3,
+    '归档': 4
+};
+
+const accountSourceLabelMap: Record<string, '本地' | 'SSO'> = {
+    local: '本地',
+    sso: 'SSO'
+};
+
+const accountSourceCodeMap: Record<'本地' | 'SSO', 'local' | 'sso'> = {
+    '本地': 'local',
+    'SSO': 'sso'
+};
+
+const formatDateTime = (value?: string) => {
+    if (!value) return '-';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    const pad = (num: number) => `${num}`.padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+};
+
+const mapRoleBindings = (bindings: ApiRoleBinding[]): RoleBinding[] => (
+    bindings.map((rb) => ({
+        orgId: rb.org_id,
+        position: rb.position,
+        permissionRole: rb.permission_role
+    }))
+);
+
+const mapAuditLogs = (logs: ApiAuditLog[]): AuditLog[] => (
+    logs.map((log) => ({
+        id: log.id,
+        action: log.action,
+        operator: log.operator,
+        timestamp: formatDateTime(log.timestamp),
+        changes: log.changes
+    }))
+);
+
+const mapApiUser = (user: ApiUser): UserItem => ({
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    phone: user.phone ?? '',
+    deptId: user.dept_id ?? '',
+    roleBindings: [],
+    status: statusLabelMap[user.status] ?? '停用',
+    accountSource: accountSourceLabelMap[user.account_source] ?? '本地',
+    lastLogin: formatDateTime(user.last_login),
+    createdAt: formatDateTime(user.created_at)
+});
+
+const formatAuditAction = (action: string) => {
+    switch (action) {
+        case 'create':
+            return '账号创建';
+        case 'update':
+            return '信息更新';
+        case 'delete':
+            return '账号删除';
+        case 'unlock':
+            return '账号解锁';
+        case 'batch_update_status':
+            return '状态更新';
+        case 'reset_password':
+            return '密码重置';
+        default:
+            return action;
+    }
+};
 
 const useDebounce = <T,>(value: T, delay: number): T => {
     const [debouncedValue, setDebouncedValue] = useState(value);
@@ -225,7 +213,11 @@ const useDebounce = <T,>(value: T, delay: number): T => {
 };
 
 const UserManagementView = () => {
-    const [users, setUsers] = useState<UserItem[]>(initialUsers);
+    const [users, setUsers] = useState<UserItem[]>([]);
+    const [userDetails, setUserDetails] = useState<Record<string, UserDetail>>({});
+    const [stats, setStats] = useState<GetStatisticsResp | null>(null);
+    const [totalCount, setTotalCount] = useState(0);
+    const [listLoading, setListLoading] = useState(false);
     const [activeDeptId, setActiveDeptId] = useState<string>('all');
     const [activeUserId, setActiveUserId] = useState<string>('');
     const [searchTerm, setSearchTerm] = useState('');
@@ -261,43 +253,36 @@ const UserManagementView = () => {
         return map;
     }, []);
 
-    const filteredAndSortedUsers = useMemo(() => {
-        let result = users.filter((user) => {
-            const matchesSearch = `${user.name}${user.email}${user.phone}`.toLowerCase().includes(debouncedSearchTerm.toLowerCase());
-            const matchesStatus = statusFilter === 'all' || user.status === statusFilter;
-            const userPositions = user.roleBindings.map(rb => rb.position).filter(Boolean);
-            const matchesPosition = positionFilter === 'all' || userPositions.includes(positionFilter);
-            const matchesDept = activeDeptId === 'all' || user.deptId === activeDeptId;
-            return matchesSearch && matchesStatus && matchesPosition && matchesDept;
-        });
+    const mergedUsers = useMemo(() => (
+        users.map((user) => ({
+            ...user,
+            roleBindings: userDetails[user.id]?.roleBindings ?? user.roleBindings
+        }))
+    ), [users, userDetails]);
 
-        if (sortField) {
-            result.sort((a, b) => {
-                const aVal = a[sortField];
-                const bVal = b[sortField];
-                const comparison = aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
-                return sortOrder === 'asc' ? comparison : -comparison;
-            });
+    const displayUsers = useMemo(() => {
+        let result = mergedUsers;
+        if (positionFilter !== 'all') {
+            result = result.filter((user) => user.roleBindings.some((rb) => rb.position === positionFilter));
         }
-
+        if (sortField === 'status') {
+            const order = sortOrder === 'asc' ? 1 : -1;
+            result = [...result].sort((a, b) => (statusCodeMap[a.status] - statusCodeMap[b.status]) * order);
+        }
         return result;
-    }, [users, debouncedSearchTerm, statusFilter, positionFilter, activeDeptId, sortField, sortOrder]);
+    }, [mergedUsers, positionFilter, sortField, sortOrder]);
 
-    const paginatedUsers = useMemo(() => {
-        const start = (currentPage - 1) * pageSize;
-        return filteredAndSortedUsers.slice(start, start + pageSize);
-    }, [filteredAndSortedUsers, currentPage, pageSize]);
+    const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
 
-    const totalPages = Math.ceil(filteredAndSortedUsers.length / pageSize);
-
-    const activeUser = users.find((user) => user.id === activeUserId);
-    const totalUsers = users.length;
-    const enabledUsers = users.filter((user) => user.status === '启用').length;
-    const lockedUsers = users.filter((user) => user.status === '锁定').length;
+    const activeUser = mergedUsers.find((user) => user.id === activeUserId);
+    const activeAuditLogs = activeUserId ? (userDetails[activeUserId]?.auditLogs ?? []) : [];
+    const totalUsers = stats?.total ?? 0;
+    const enabledUsers = stats?.active ?? 0;
+    const lockedUsers = stats?.locked ?? 0;
     // Governance KPIs
-    const inactiveUsers = users.filter((user) => user.status === '未激活').length;
-    const noOrgUsers = users.filter((user) => !user.deptId || !departments.find(d => d.id === user.deptId)).length;
-    const noPermissionUsers = users.filter((user) => user.roleBindings.length === 0 || !user.roleBindings.some(rb => rb.permissionRole)).length;
+    const inactiveUsers = stats?.inactive ?? 0;
+    const noOrgUsers = stats?.no_org_binding ?? 0;
+    const noPermissionUsers = stats?.no_permission_role ?? 0;
 
     const showToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'info') => {
         const id = Date.now().toString();
@@ -306,6 +291,100 @@ const UserManagementView = () => {
             setToasts((prev) => prev.filter((t) => t.id !== id));
         }, 3000);
     }, []);
+
+    const resolveSortField = (field: SortField) => {
+        if (field === 'name') return 'name';
+        if (field === 'createdAt') return 'created_at';
+        return undefined;
+    };
+
+    const fetchUsers = useCallback(async () => {
+        setListLoading(true);
+        try {
+            const response = await userManagementService.listUsers({
+                page: currentPage,
+                page_size: pageSize,
+                keyword: debouncedSearchTerm.trim() || undefined,
+                dept_id: activeDeptId === 'all' ? undefined : activeDeptId,
+                status: statusFilter === 'all' ? undefined : (statusCodeMap[statusFilter] as number),
+                sort_field: resolveSortField(sortField),
+                sort_order: resolveSortField(sortField) ? sortOrder : undefined
+            });
+            setUsers(response.users.map(mapApiUser));
+            setTotalCount(response.total);
+            setSelectedUserIds(new Set());
+        } catch (error: any) {
+            showToast(error?.message || '用户列表加载失败', 'error');
+        } finally {
+            setListLoading(false);
+        }
+    }, [currentPage, pageSize, debouncedSearchTerm, activeDeptId, statusFilter, sortField, sortOrder, showToast]);
+
+    const fetchStats = useCallback(async () => {
+        try {
+            const response = await userManagementService.getStatistics();
+            setStats(response);
+        } catch (error: any) {
+            showToast(error?.message || '统计信息加载失败', 'error');
+        }
+    }, [showToast]);
+
+    const ensureUserDetail = useCallback(async (userId: string) => {
+        if (userDetails[userId]) return userDetails[userId];
+        const response = await userManagementService.getUser(userId);
+        const detail = {
+            roleBindings: mapRoleBindings(response.role_bindings),
+            auditLogs: mapAuditLogs(response.audit_logs)
+        };
+        setUserDetails((prev) => ({ ...prev, [userId]: detail }));
+        return detail;
+    }, [userDetails]);
+
+    useEffect(() => {
+        fetchUsers();
+    }, [fetchUsers]);
+
+    useEffect(() => {
+        fetchStats();
+    }, [fetchStats]);
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [debouncedSearchTerm, statusFilter, activeDeptId]);
+
+    useEffect(() => {
+        if (currentPage > totalPages) {
+            setCurrentPage(totalPages);
+        }
+    }, [currentPage, totalPages]);
+
+    useEffect(() => {
+        const missingIds = users.filter((user) => !userDetails[user.id]).map((user) => user.id);
+        if (missingIds.length === 0) return;
+        let cancelled = false;
+
+        const loadDetails = async () => {
+            const results = await Promise.allSettled(missingIds.map((id) => userManagementService.getUser(id)));
+            if (cancelled) return;
+            setUserDetails((prev) => {
+                const next = { ...prev };
+                results.forEach((result, index) => {
+                    if (result.status === 'fulfilled') {
+                        next[missingIds[index]] = {
+                            roleBindings: mapRoleBindings(result.value.role_bindings),
+                            auditLogs: mapAuditLogs(result.value.audit_logs)
+                        };
+                    }
+                });
+                return next;
+            });
+        };
+
+        loadDetails();
+        return () => {
+            cancelled = true;
+        };
+    }, [users, userDetails]);
 
     const openCreateModal = () => {
         setModalMode('create');
@@ -325,14 +404,28 @@ const UserManagementView = () => {
     };
 
     const openEditModal = (user: UserItem) => {
-        setModalMode('edit');
-        setDraftUser({ ...user });
-        setModalOpen(true);
+        const openWithDetail = async () => {
+            setModalMode('edit');
+            try {
+                const detail = await ensureUserDetail(user.id);
+                setDraftUser({ ...user, roleBindings: detail?.roleBindings ?? user.roleBindings });
+            } catch (error: any) {
+                showToast(error?.message || '加载用户详情失败', 'error');
+                setDraftUser({ ...user });
+            } finally {
+                setModalOpen(true);
+            }
+        };
+
+        void openWithDetail();
     };
 
     const openDrawer = (user: UserItem) => {
         setActiveUserId(user.id);
         setDrawerOpen(true);
+        ensureUserDetail(user.id).catch((error: any) => {
+            showToast(error?.message || '加载用户详情失败', 'error');
+        });
     };
 
     const closeModal = () => {
@@ -352,7 +445,7 @@ const UserManagementView = () => {
         return /^1[3-9]\d{9}$/.test(phone);
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
         if (!draftUser) {
             return;
         }
@@ -368,60 +461,150 @@ const UserManagementView = () => {
             showToast('请输入有效的手机号码', 'error');
             return;
         }
-        if (modalMode === 'create') {
-            setUsers((prev) => [draftUser, ...prev]);
-            showToast('用户创建成功', 'success');
-        } else {
-            setUsers((prev) => prev.map((item) => (item.id === draftUser.id ? draftUser : item)));
-            showToast('用户信息已更新', 'success');
+        if (!draftUser.deptId) {
+            showToast('请选择所属组织', 'error');
+            return;
         }
-        closeModal();
+
+        const roleBindings = draftUser.roleBindings.map((rb) => ({
+            org_id: rb.orgId || draftUser.deptId,
+            position: rb.position,
+            permission_role: rb.permissionRole
+        }));
+
+        try {
+            if (modalMode === 'create') {
+                const response = await userManagementService.createUser({
+                    name: draftUser.name,
+                    email: draftUser.email,
+                    phone: draftUser.phone || undefined,
+                    dept_id: draftUser.deptId,
+                    role_bindings: roleBindings.length > 0 ? roleBindings : undefined,
+                    account_source: accountSourceCodeMap[draftUser.accountSource] ?? 'local',
+                    send_invitation: false
+                });
+
+                if (draftUser.status !== '未激活') {
+                    const targetStatus = statusCodeMap[draftUser.status];
+                    if (targetStatus !== 0) {
+                        await userManagementService.batchUpdateStatus({
+                            user_ids: [response.user_id],
+                            status: targetStatus,
+                            reason: draftUser.status === '锁定' ? '创建时锁定' : undefined
+                        });
+                    }
+                }
+
+                showToast('用户创建成功', 'success');
+            } else {
+                await userManagementService.updateUser(draftUser.id, {
+                    name: draftUser.name,
+                    phone: draftUser.phone || '',
+                    dept_id: draftUser.deptId,
+                    role_bindings: roleBindings
+                });
+                setUserDetails((prev) => ({
+                    ...prev,
+                    [draftUser.id]: {
+                        roleBindings: draftUser.roleBindings,
+                        auditLogs: prev[draftUser.id]?.auditLogs ?? []
+                    }
+                }));
+                showToast('用户信息已更新', 'success');
+            }
+            closeModal();
+            await fetchUsers();
+            await fetchStats();
+        } catch (error: any) {
+            showToast(error?.message || '操作失败', 'error');
+        }
     };
 
-    const handleToggleStatus = (user: UserItem) => {
-        const nextStatus: UserStatus = user.status === '启用' ? '停用' : '启用';
-        setUsers((prev) =>
-            prev.map((item) => (item.id === user.id ? { ...item, status: nextStatus } : item))
-        );
-        showToast(`用户已${nextStatus === '启用' ? '启用' : '停用'}`, 'success');
+    const handleToggleStatus = async (user: UserItem) => {
+        try {
+            if (user.status === '锁定') {
+                await userManagementService.unlockUser(user.id, '手动解锁');
+                showToast('用户已解锁', 'success');
+            } else {
+                const nextStatus: UserStatus = user.status === '启用' ? '停用' : '启用';
+                await userManagementService.batchUpdateStatus({
+                    user_ids: [user.id],
+                    status: statusCodeMap[nextStatus]
+                });
+                showToast(`用户已${nextStatus === '启用' ? '启用' : '停用'}`, 'success');
+            }
+            await fetchUsers();
+            await fetchStats();
+        } catch (error: any) {
+            showToast(error?.message || '更新用户状态失败', 'error');
+        }
     };
 
-    const handleDelete = (user: UserItem) => {
-        setUsers((prev) => {
-            const next = prev.filter((item) => item.id !== user.id);
+    const handleDelete = async (user: UserItem) => {
+        try {
+            await userManagementService.deleteUser(user.id, { force: false });
             if (activeUserId === user.id) {
                 setActiveUserId('');
                 if (drawerOpen) setDrawerOpen(false);
             }
-            return next;
-        });
-        setSelectedUserIds((prev) => {
-            const next = new Set(prev);
-            next.delete(user.id);
-            return next;
-        });
-        showToast('用户已删除', 'success');
+            setUserDetails((prev) => {
+                const next = { ...prev };
+                delete next[user.id];
+                return next;
+            });
+            setSelectedUserIds((prev) => {
+                const next = new Set(prev);
+                next.delete(user.id);
+                return next;
+            });
+            showToast('用户已删除', 'success');
+            await fetchUsers();
+            await fetchStats();
+        } catch (error: any) {
+            showToast(error?.message || '删除用户失败', 'error');
+        }
     };
 
-    const handleBatchDelete = () => {
+    const handleBatchDelete = async () => {
         if (selectedUserIds.size === 0) return;
-        setUsers((prev) => prev.filter((item) => !selectedUserIds.has(item.id)));
+        const targets = Array.from(selectedUserIds);
+        const results = await Promise.allSettled(targets.map((id) => userManagementService.deleteUser(id, { force: false })));
+        const successCount = results.filter((result) => result.status === 'fulfilled').length;
+        const failedCount = results.length - successCount;
+        if (activeUserId && selectedUserIds.has(activeUserId)) {
+            setActiveUserId('');
+            if (drawerOpen) setDrawerOpen(false);
+        }
         setSelectedUserIds(new Set());
-        showToast(`已删除 ${selectedUserIds.size} 个用户`, 'success');
+        showToast(`已删除 ${successCount} 个用户${failedCount ? `，失败 ${failedCount} 个` : ''}`, failedCount ? 'error' : 'success');
+        await fetchUsers();
+        await fetchStats();
     };
 
-    const handleBatchToggleStatus = (status: UserStatus) => {
+    const handleBatchToggleStatus = async (status: UserStatus) => {
         if (selectedUserIds.size === 0) return;
-        setUsers((prev) =>
-            prev.map((item) => (selectedUserIds.has(item.id) ? { ...item, status } : item))
-        );
-        setSelectedUserIds(new Set());
-        showToast(`已批量${status === '启用' ? '启用' : '停用'}用户`, 'success');
+        try {
+            const response = await userManagementService.batchUpdateStatus({
+                user_ids: Array.from(selectedUserIds),
+                status: statusCodeMap[status],
+                reason: status === '锁定' ? '批量锁定' : undefined
+            });
+            setSelectedUserIds(new Set());
+            if (response.failed_count > 0) {
+                showToast(`已更新 ${response.success_count} 个用户，失败 ${response.failed_count} 个`, 'error');
+            } else {
+                showToast(`已批量${status === '启用' ? '启用' : status === '停用' ? '停用' : '锁定'}用户`, 'success');
+            }
+            await fetchUsers();
+            await fetchStats();
+        } catch (error: any) {
+            showToast(error?.message || '批量更新失败', 'error');
+        }
     };
 
     const handleSelectAll = (checked: boolean) => {
         if (checked) {
-            setSelectedUserIds(new Set(paginatedUsers.map((u) => u.id)));
+            setSelectedUserIds(new Set(displayUsers.map((u) => u.id)));
         } else {
             setSelectedUserIds(new Set());
         }
@@ -465,7 +648,7 @@ const UserManagementView = () => {
             const hasChildren = (deptChildren[dept.id] ?? []).length > 0;
             const isExpanded = expandedDeptIds.includes(dept.id);
             const isActive = activeDeptId === dept.id;
-            const userCount = users.filter((u) => u.deptId === dept.id).length;
+            const userCount = mergedUsers.filter((u) => u.deptId === dept.id).length;
 
             return (
                 <div key={dept.id}>
@@ -546,8 +729,8 @@ const UserManagementView = () => {
         return sortOrder === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />;
     };
 
-    const allSelected = paginatedUsers.length > 0 && paginatedUsers.every((u) => selectedUserIds.has(u.id));
-    const someSelected = paginatedUsers.some((u) => selectedUserIds.has(u.id));
+    const allSelected = displayUsers.length > 0 && displayUsers.every((u) => selectedUserIds.has(u.id));
+    const someSelected = displayUsers.some((u) => selectedUserIds.has(u.id));
 
     return (
         <div className="space-y-6 h-full flex flex-col pt-6 pb-2 px-1">
@@ -633,7 +816,7 @@ const UserManagementView = () => {
                         >
                             <Building2 size={14} />
                             <span>全部组织</span>
-                            <span className="ml-auto text-slate-400">{users.length}</span>
+                            <span className="ml-auto text-slate-400">{totalUsers}</span>
                         </button>
                         {renderDeptTree(null, 0)}
                     </div>
@@ -788,16 +971,24 @@ const UserManagementView = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {paginatedUsers.length === 0 ? (
+                                {listLoading ? (
                                     <tr>
-                                        <td colSpan={8}>
+                                        <td colSpan={9}>
+                                            <div className="p-4">
+                                                {renderSkeleton()}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ) : displayUsers.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={9}>
                                             <div className="py-8">
                                                 {renderEmptyState()}
                                             </div>
                                         </td>
                                     </tr>
                                 ) : (
-                                    paginatedUsers.map((user) => {
+                                    displayUsers.map((user) => {
                                         const isSelected = selectedUserIds.has(user.id);
                                         return (
                                             <tr
@@ -874,7 +1065,7 @@ const UserManagementView = () => {
                                                         <button
                                                             onClick={() => handleToggleStatus(user)}
                                                             className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition"
-                                                            title={user.status === '启用' ? '停用' : '启用'}
+                                                            title={user.status === '启用' ? '停用' : user.status === '锁定' ? '解锁' : '启用'}
                                                         >
                                                             {user.status === '启用' ? <EyeOff size={14} /> : <Eye size={14} />}
                                                         </button>
@@ -896,10 +1087,10 @@ const UserManagementView = () => {
                     </div>
 
                     {/* 分页 */}
-                    {filteredAndSortedUsers.length > 0 && (
+                    {totalCount > 0 && (
                         <div className="flex items-center justify-between px-4 py-3 border-t border-slate-200">
                             <div className="flex items-center gap-2 text-sm text-slate-500">
-                                <span>共 {filteredAndSortedUsers.length} 条</span>
+                                <span>共 {totalCount} 条</span>
                                 <select
                                     value={pageSize}
                                     onChange={(e) => {
@@ -1183,14 +1374,14 @@ const UserManagementView = () => {
                             </div>
 
                             {/* 锁定信息区 (仅锁定用户显示) */}
-                            {activeUser.status === '锁定' && activeUser.lockReason && (
+                            {activeUser.status === '锁定' && (
                                 <div className="border-t border-slate-200 pt-4">
                                     <h5 className="text-sm font-semibold text-rose-600 mb-3 flex items-center gap-2">
                                         <Lock size={14} /> 锁定信息
                                     </h5>
                                     <div className="rounded-lg border border-rose-200 p-3 bg-rose-50">
                                         <div className="text-xs text-rose-700 space-y-1">
-                                            <p><strong>锁定原因：</strong>{activeUser.lockReason}</p>
+                                            <p><strong>锁定原因：</strong>{activeUser.lockReason || '-'}</p>
                                             <p><strong>锁定时间：</strong>{activeUser.lockTime || '-'}</p>
                                             <p><strong>操作者：</strong>{activeUser.lockBy || '-'}</p>
                                         </div>
@@ -1207,25 +1398,23 @@ const UserManagementView = () => {
                                 </div>
                             )}
 
-                            {/* 审计日志区 (Mock) */}
+                            {/* 审计日志区 */}
                             <div className="border-t border-slate-200 pt-4">
                                 <h5 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
                                     <History size={14} /> 变更记录
                                 </h5>
-                                <div className="space-y-2 text-xs text-slate-500">
-                                    <div className="flex justify-between py-2 border-b border-slate-100">
-                                        <span>状态变更为"启用"</span>
-                                        <span className="text-slate-400">系统 · 2024-06-28</span>
+                                {activeAuditLogs.length > 0 ? (
+                                    <div className="space-y-2 text-xs text-slate-500">
+                                        {activeAuditLogs.map((log) => (
+                                            <div key={log.id} className="flex justify-between py-2 border-b border-slate-100">
+                                                <span>{formatAuditAction(log.action)}</span>
+                                                <span className="text-slate-400">{log.operator} · {log.timestamp}</span>
+                                            </div>
+                                        ))}
                                     </div>
-                                    <div className="flex justify-between py-2 border-b border-slate-100">
-                                        <span>修改了权限角色</span>
-                                        <span className="text-slate-400">王宁 · 2024-06-20</span>
-                                    </div>
-                                    <div className="flex justify-between py-2">
-                                        <span>账号创建</span>
-                                        <span className="text-slate-400">系统 · {activeUser.createdAt}</span>
-                                    </div>
-                                </div>
+                                ) : (
+                                    <p className="text-xs text-slate-400">暂无变更记录</p>
+                                )}
                             </div>
 
 

@@ -616,24 +616,24 @@ export const SemanticConclusionCard: React.FC<SemanticConclusionCardProps> = ({
                                                         <span>{Math.round((item.weight || 0) * 100)}%</span>
                                                     </div>
                                                     <div className="mt-1 text-xs text-slate-700">
-                                                        {item.text}{item.field ? `（${item.field}）` : ''}
+                                                        {item.text}{(item as any).field ? `（${(item as any).field}）` : ''}
                                                     </div>
                                                     {onEvidenceAction && (
                                                         <div className="mt-2 flex items-center gap-2 text-[10px]">
                                                             <button
-                                                                onClick={() => onEvidenceAction({ action: 'accept', field: item.field, source: item.source, reason: item.text })}
+                                                                onClick={() => onEvidenceAction({ action: 'accept', field: (item as any).field, source: item.source, reason: item.text })}
                                                                 className="text-emerald-600 hover:underline"
                                                             >
                                                                 接受建议
                                                             </button>
                                                             <button
-                                                                onClick={() => onEvidenceAction({ action: 'override', field: item.field, source: item.source, reason: item.text })}
+                                                                onClick={() => onEvidenceAction({ action: 'override', field: (item as any).field, source: item.source, reason: item.text })}
                                                                 className="text-blue-600 hover:underline flex items-center gap-1"
                                                             >
                                                                 <Edit3 size={11} /> 改判
                                                             </button>
                                                             <button
-                                                                onClick={() => onEvidenceAction({ action: 'pending', field: item.field, source: item.source, reason: item.text })}
+                                                                onClick={() => onEvidenceAction({ action: 'pending', field: (item as any).field, source: item.source, reason: item.text })}
                                                                 className="text-amber-600 hover:underline flex items-center gap-1"
                                                             >
                                                                 <Clock size={11} /> 待定

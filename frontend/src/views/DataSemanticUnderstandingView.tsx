@@ -19,6 +19,7 @@ import { OverviewTab } from './semantic/tabs/OverviewTab';
 import { EvidenceTab } from './semantic/tabs/EvidenceTab';
 import { LogsTab } from './semantic/tabs/LogsTab';
 import { RelationshipGraphTab } from './semantic/tabs/RelationshipGraphTab';
+import { QualityOverviewTab } from './semantic/tabs/QualityOverviewTab';
 import { BatchOperationBar } from './semantic/components/BatchOperationBar';
 import { AnalysisProgressPanel } from './semantic/AnalysisProgressPanel';
 import { StreamingProgressPanel } from './semantic/StreamingProgressPanel';
@@ -73,6 +74,7 @@ const DataSemanticUnderstandingView = ({
     const [selectedDataSourceId, setSelectedDataSourceId] = useState<string | null>(null); // null means all
     const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
     const [expandedTypes, setExpandedTypes] = useState<string[]>(['MySQL', 'Oracle', 'PostgreSQL']);
+    const [showDirectory, setShowDirectory] = useState(true);
 
 
     /*
@@ -97,7 +99,7 @@ const DataSemanticUnderstandingView = ({
         });
 
         // Auto-select next field if needed (simple implementation)
-        const currentIndex = prev.fields.findIndex(f => (f.fieldName || f.name) === fieldName);
+        const currentIndex = prev.fields.findIndex(f => f.fieldName === fieldName);
         if (currentIndex !== -1 && currentIndex < prev.fields.length - 1) {
             // Optional: setFocusField(prev.fields[currentIndex + 1].name);
         }
@@ -171,7 +173,7 @@ const DataSemanticUnderstandingView = ({
     const [expandedFields, setExpandedFields] = useState<string[]>([]);
     const [focusField, setFocusField] = useState<string | null>(null);
 
-    const [resultTab, setResultTab] = useState<'overview' | 'evidence' | 'fields' | 'logs'>('overview');
+    const [resultTab, setResultTab] = useState<'overview' | 'evidence' | 'fields' | 'logs' | 'structure' | 'graph' | 'quality'>('overview');
     const [showAllKeyEvidence, setShowAllKeyEvidence] = useState(false);
     const [fieldRoleOverrides, setFieldRoleOverrides] = useState<Record<string, { role: string; source: 'rule' | 'ai' }>>({});
     const [openConflictPopover, setOpenConflictPopover] = useState<string | null>(null);
@@ -360,17 +362,17 @@ const DataSemanticUnderstandingView = ({
 
     const handleSemanticDecision = (fieldName: string, decision: any) => {
         if (isReadOnly) return;
-        setSemanticProfile(prev => {
+        setSemanticProfile((prev: any) => {
             // Check if field exists in profile
-            const existingFieldIndex = prev.fields.findIndex(f =>
-                (f.fieldName || f.name) === fieldName
+            const existingFieldIndex = prev.fields.findIndex((f: any) =>
+                f.fieldName === fieldName
             );
 
             let newFields;
             if (existingFieldIndex !== -1) {
                 // Update existing field
-                newFields = prev.fields.map(f => {
-                    const fName = f.fieldName || f.name;
+                newFields = prev.fields.map((f: any) => {
+                    const fName = f.fieldName;
                     if (fName === fieldName) {
                         return {
                             ...f,
@@ -430,19 +432,19 @@ const DataSemanticUnderstandingView = ({
         const reviewStats = safeProfile.reviewStats || buildReviewStats(safeTableName, fields, table?.comment);
         const isTableConfirmed = (safeProfile.governanceStatus || semanticProfile.governanceStatus) === 'S3';
         const primaryKeyFields = fields.filter((field: any) =>
-            field.primaryKey || field.key === 'PK' || field.name === 'id' || field.name.endsWith('_id')
+            field.primaryKey || field.key === 'PK' || field.fieldName === 'id' || field.fieldName?.endsWith('_id')
         );
         const primaryKeyConfirmed = primaryKeyFields.length > 0 && (
-            isTableConfirmed || primaryKeyFields.every((field: any) => fieldReviewStatus[field.name] === 'confirmed')
+            isTableConfirmed || primaryKeyFields.every((field: any) => fieldReviewStatus[field.fieldName] === 'confirmed')
         );
         const lifecyclePassed = gateDetails.lifecycle === true;
         const sensitiveFields = fields.filter((field: any) => {
             const analysis = analyzeField(field);
-            const sensitivity = sensitivityOverrides[field.name] || analysis.sensitivity;
+            const sensitivity = sensitivityOverrides[field.fieldName] || analysis.sensitivity;
             return sensitivity === 'L3' || sensitivity === 'L4';
         });
         const sensitivePending = sensitiveFields.filter((field: any) =>
-            !isTableConfirmed && fieldReviewStatus[field.name] !== 'confirmed'
+            !isTableConfirmed && fieldReviewStatus[field.fieldName] !== 'confirmed'
         );
         const sensitiveProcessed = sensitivePending.length === 0;
         const pendingReviewCount = reviewStats?.pendingReviewFields || 0;
@@ -561,14 +563,14 @@ const DataSemanticUnderstandingView = ({
         const fields = selectedTableFields;
         if (fields.length === 0) return;
         const lowerTarget = fieldName.toLowerCase();
-        const exactMatch = fields.find((f: any) => f.name === fieldName);
-        const lowerMatch = fields.find((f: any) => f.name.toLowerCase() === lowerTarget);
-        const containsMatch = fields.find((f: any) => f.name.toLowerCase().includes(lowerTarget));
+        const exactMatch = fields.find((f: any) => f.fieldName === fieldName);
+        const lowerMatch = fields.find((f: any) => f.fieldName.toLowerCase() === lowerTarget);
+        const containsMatch = fields.find((f: any) => f.fieldName.toLowerCase().includes(lowerTarget));
         const matched = exactMatch || lowerMatch || containsMatch;
         if (!matched) return;
         setResultTab('fields');
         setFocusField(null);
-        setTimeout(() => setFocusField(matched.name), 0);
+        setTimeout(() => setFocusField(matched.fieldName), 0);
     };
 
     const scrollToSection = (sectionId: string) => {
@@ -661,7 +663,7 @@ const DataSemanticUnderstandingView = ({
                 ? { ...item, lastRun: { ...runSummary } }
                 : item
         ));
-        handleBatchAnalyze(runId, runSummary, runConfig);
+        handleBatchAnalyze(runId);
     };
 
 
@@ -688,7 +690,7 @@ const DataSemanticUnderstandingView = ({
                 risk: 'low'
             },
             fieldSuggestions: (table.fields || []).map((f: any) => ({
-                field: f.name,
+                field: f.fieldName,
                 semanticRole: f.comment || 'Attribute',
                 confidence: 0.9,
                 status: 'pending'
@@ -805,11 +807,11 @@ const DataSemanticUnderstandingView = ({
             status: 'Draft',
             description: profile.description || table.comment,
             fields: (table.fields || []).map((f: any) => ({
-                id: f.name,
-                name: f.comment || f.name,
-                code: f.name,
+                id: f.fieldName,
+                name: f.comment || f.fieldName,
+                code: f.fieldName,
                 type: f.type,
-                isPrimary: f.name.includes('id'), // Simple heuristic
+                isPrimary: f.fieldName.includes('id'), // Simple heuristic
                 required: false
             }))
         };
@@ -1497,10 +1499,10 @@ const DataSemanticUnderstandingView = ({
                                         assist={{
                                             ...DEFAULT_SEMANTIC_ASSIST,
                                             enabled: isAssistEnabled,
-                                            template: assistSettings.template,
+                                            template: assistSettings.template as any,
                                             runtimeConfig: {
                                                 ...DEFAULT_SEMANTIC_ASSIST.runtimeConfig,
-                                                sampleRatio: assistSettings.sampleRatio * 100
+                                                sampleRatio: (assistSettings.sampleRatio * 100) as any
                                             },
                                             scope: 'TABLE',
                                             status: semanticProfile.governanceStatus === 'S1' ? 'SUCCESS' : 'IDLE',
@@ -1752,7 +1754,7 @@ const DataSemanticUnderstandingView = ({
                                                         fieldName={focusField}
                                                         fieldProfile={(() => {
                                                             // Get existing profile or create with AI suggestions
-                                                            const existingProfile = semanticProfile.fields?.find(f => f.fieldName === focusField || f.name === focusField);
+                                                            const existingProfile = semanticProfile.fields?.find((f: any) => f.fieldName === focusField);
                                                             if (existingProfile) return existingProfile;
 
                                                             // Generate AI suggestions for new fields
@@ -1964,6 +1966,15 @@ const DataSemanticUnderstandingView = ({
                                                                     { id: 'result-summary', label: '治理摘要' },
                                                                     { id: 'result-fields', label: '字段分析' }
                                                                 ],
+                                                                structure: [
+                                                                    { id: 'result-fields', label: '字段结构' }
+                                                                ],
+                                                                graph: [
+                                                                    { id: 'result-graph', label: '关系图谱' }
+                                                                ],
+                                                                quality: [
+                                                                    { id: 'result-quality', label: '质量概览' }
+                                                                ],
                                                                 logs: [
                                                                     { id: 'result-summary', label: '治理摘要' },
                                                                     { id: 'result-logs', label: '操作记录' }
@@ -2044,32 +2055,67 @@ const DataSemanticUnderstandingView = ({
                                                                         </div>
                                                                     </div>
 
-                                                                    <div className="mt-6 grid grid-cols-1 xl:grid-cols-[1fr_220px] gap-6">
-                                                                        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-                                                                            <div className="flex items-center gap-1 border-b border-slate-100 bg-slate-50 px-2">
-                                                                                {([
-                                                                                    { key: 'overview', label: '概览', count: undefined },
-                                                                                    { key: 'evidence', label: '证据', count: evidenceCount },
-                                                                                    { key: 'fields', label: '字段', count: fieldsCount },
-                                                                                    { key: 'logs', label: '日志', count: logsCount }
-                                                                                ] as const).map(tab => (
-                                                                                    <button
-                                                                                        key={tab.key}
-                                                                                        onClick={() => setResultTab(tab.key)}
-                                                                                        className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${resultTab === tab.key ? 'border-blue-500 text-blue-600 bg-white' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-white/60'}`}
-                                                                                    >
-                                                                                        <span className="flex items-center gap-2">
-                                                                                            <span>{tab.label}</span>
-                                                                                            {typeof tab.count === 'number' && (
-                                                                                                <span className="px-2 py-0.5 rounded-full text-[11px] bg-slate-100 text-slate-500">
-                                                                                                    {tab.count}
-                                                                                                </span>
-                                                                                            )}
-                                                                                        </span>
-                                                                                    </button>
-                                                                                ))}
+                                                                    <div className="mt-6 grid grid-cols-1 gap-6">
+                                                                        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden relative min-h-[600px]">
+                                                                            <div className="flex items-center gap-1 border-b border-slate-100 bg-slate-50 px-2 justify-between">
+                                                                                <div className="flex items-center gap-1">
+                                                                                    {([
+                                                                                        { key: 'overview', label: '概览', count: undefined },
+                                                                                        { key: 'evidence', label: '证据', count: evidenceCount },
+                                                                                        { key: 'structure', label: '字段结构', count: fieldsCount },
+                                                                                        { key: 'graph', label: '关系图谱', count: semanticProfile.relationships?.length || 0 },
+                                                                                        { key: 'quality', label: '质量概览', count: undefined },
+                                                                                        { key: 'logs', label: '日志', count: logsCount }
+                                                                                    ] as const).map(tab => (
+                                                                                        <button
+                                                                                            key={tab.key}
+                                                                                            onClick={() => setResultTab(tab.key)}
+                                                                                            className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${resultTab === tab.key ? 'border-blue-500 text-blue-600 bg-white' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-white/60'}`}
+                                                                                        >
+                                                                                            <span className="flex items-center gap-2">
+                                                                                                <span>{tab.label}</span>
+                                                                                                {typeof tab.count === 'number' && (
+                                                                                                    <span className="px-2 py-0.5 rounded-full text-[11px] bg-slate-100 text-slate-500">
+                                                                                                        {tab.count}
+                                                                                                    </span>
+                                                                                                )}
+                                                                                            </span>
+                                                                                        </button>
+                                                                                    ))}
+                                                                                </div>
                                                                             </div>
-                                                                            <div className="p-4">
+                                                                            <div className="p-4 relative">
+                                                                                {/* Directory Floating Widget */}
+                                                                                {/* Directory Widget - Hidden temporarily per user request
+                                                {anchors[resultTab] && anchors[resultTab].length > 0 && (
+                                                    <div className={`absolute top-4 right-4 z-20 transition-all duration-300 ${showDirectory ? 'w-48 bg-white/90 backdrop-blur border border-slate-200 shadow-sm rounded-lg p-3' : ''}`}>
+                                                        <div className={`flex items-center ${showDirectory ? 'justify-between mb-2' : 'justify-end'}`}>
+                                                            {showDirectory && <div className="text-xs font-medium text-slate-500 px-1">结果目录</div>}
+                                                            <button
+                                                                onClick={() => setShowDirectory(!showDirectory)}
+                                                                className={`p-1.5 rounded-lg transition-colors ${showDirectory ? 'hover:bg-slate-100 text-slate-400' : 'bg-white border border-slate-200 shadow-sm text-slate-500 hover:text-blue-600'}`}
+                                                                title={showDirectory ? "收起目录" : "展开目录"}
+                                                            >
+                                                                {showDirectory ? <PanelLeftClose size={14} /> : <ListPlus size={16} />}
+                                                            </button>
+                                                        </div>
+                                                        {showDirectory && (
+                                                            <div className="space-y-0.5 animate-in fade-in slide-in-from-top-1 duration-200">
+                                                                {anchors[resultTab].map(item => (
+                                                                    <button
+                                                                        key={item.id}
+                                                                        onClick={() => scrollToSection(item.id)}
+                                                                        className="w-full text-left text-xs text-slate-500 px-2 py-1.5 rounded hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                                                                    >
+                                                                        {item.label}
+                                                                    </button>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
+                                                */}
+
                                                                                 {resultTab === 'overview' && (
                                                                                     <OverviewTab
                                                                                         profile={semanticProfile}
@@ -2114,16 +2160,25 @@ const DataSemanticUnderstandingView = ({
                                                                                     />
                                                                                 )}
 
-                                                                                {resultTab === 'fields' && (
+                                                                                {resultTab === 'structure' && (
                                                                                     <div id="result-fields">
                                                                                         <DeepAnalysisTabs
                                                                                             profile={semanticProfile}
                                                                                             fields={selectedTableFields}
                                                                                             onProfileChange={isReadOnly ? () => { } : (updates) => setSemanticProfile(prev => ({ ...prev, ...updates }))}
-                                                                                            activeTabOverride={focusField ? 'fields' : undefined}
                                                                                             focusField={focusField}
                                                                                         />
                                                                                     </div>
+                                                                                )}
+
+                                                                                {resultTab === 'graph' && (
+                                                                                    <div className="bg-white rounded-xl border border-slate-200">
+                                                                                        <RelationshipGraphTab semanticProfile={semanticProfile} />
+                                                                                    </div>
+                                                                                )}
+
+                                                                                {resultTab === 'quality' && (
+                                                                                    <QualityOverviewTab />
                                                                                 )}
 
                                                                                 {resultTab === 'logs' && (
@@ -2133,22 +2188,6 @@ const DataSemanticUnderstandingView = ({
                                                                                         onRollback={rollbackUpgrade}
                                                                                     />
                                                                                 )}
-                                                                            </div>
-                                                                        </div>
-                                                                        <div className="hidden xl:block">
-                                                                            <div className="sticky top-6 bg-white rounded-xl border border-slate-200 p-3">
-                                                                                <div className="text-xs font-medium text-slate-500 mb-2">结果目录</div>
-                                                                                <div className="space-y-1">
-                                                                                    {anchors[resultTab].map(item => (
-                                                                                        <button
-                                                                                            key={item.id}
-                                                                                            onClick={() => scrollToSection(item.id)}
-                                                                                            className="w-full text-left text-xs text-slate-500 px-2 py-1.5 rounded hover:bg-slate-50 hover:text-slate-700"
-                                                                                        >
-                                                                                            {item.label}
-                                                                                        </button>
-                                                                                    ))}
-                                                                                </div>
                                                                             </div>
                                                                         </div>
                                                                     </div>
@@ -2291,7 +2330,7 @@ const DataSemanticUnderstandingView = ({
                                                                         <div className="flex items-center gap-3">
                                                                             <span className="text-xs text-slate-400">语义维度将在语义理解完成后生成</span>
                                                                             <button
-                                                                                onClick={() => setExpandedFields(expandedFields.length === selectedTableFields.length ? [] : selectedTableFields.map((f: any) => f.name))}
+                                                                                onClick={() => setExpandedFields(expandedFields.length === selectedTableFields.length ? [] : selectedTableFields.map((f: any) => f.fieldName))}
                                                                                 className="text-xs text-blue-600 hover:text-blue-700"
                                                                             >
                                                                                 {expandedFields.length === selectedTableFields.length ? '全部折叠' : '全部展开'}
@@ -2299,19 +2338,19 @@ const DataSemanticUnderstandingView = ({
                                                                         </div>
                                                                     </div>
                                                                     {selectedTableFields.map((field: any, idx: number) => {
-                                                                        const isExpanded = expandedFields.includes(field.name);
+                                                                        const isExpanded = expandedFields.includes(field.fieldName);
                                                                         return (
                                                                             <div key={idx} className="border border-slate-200 rounded-lg overflow-hidden">
                                                                                 <button
                                                                                     onClick={() => setExpandedFields(isExpanded
-                                                                                        ? expandedFields.filter(f => f !== field.name)
-                                                                                        : [...expandedFields, field.name]
+                                                                                        ? expandedFields.filter(f => f !== field.fieldName)
+                                                                                        : [...expandedFields, field.fieldName]
                                                                                     )}
                                                                                     className="w-full px-4 py-3 bg-white hover:bg-slate-50 flex items-center justify-between transition-colors"
                                                                                 >
                                                                                     <div className="flex items-center gap-3">
                                                                                         <ChevronRight size={16} className={`text-slate-400 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
-                                                                                        <span className="font-mono font-medium text-slate-700">{field.name}</span>
+                                                                                        <span className="font-mono font-medium text-slate-700">{field.fieldName}</span>
                                                                                         <span className="text-xs text-slate-400">({field.type})</span>
                                                                                     </div>
                                                                                     <div className="flex items-center gap-2">
@@ -2363,25 +2402,25 @@ const DataSemanticUnderstandingView = ({
                                                                     <div className="flex justify-between items-center mb-3">
                                                                         <span className="text-sm text-slate-500">共 {selectedTableFields.length} 个字段</span>
                                                                         <button
-                                                                            onClick={() => setExpandedFields(expandedFields.length === selectedTableFields.length ? [] : selectedTableFields.map((f: any) => f.name))}
+                                                                            onClick={() => setExpandedFields(expandedFields.length === selectedTableFields.length ? [] : selectedTableFields.map((f: any) => f.fieldName))}
                                                                             className="text-xs text-blue-600 hover:text-blue-700"
                                                                         >
                                                                             {expandedFields.length === selectedTableFields.length ? '全部折叠' : '全部展开'}
                                                                         </button>
                                                                     </div>
                                                                     {selectedTableFields.map((field: any, idx: number) => {
-                                                                        const isExpanded = expandedFields.includes(field.name);
+                                                                        const isExpanded = expandedFields.includes(field.fieldName);
                                                                         // Semantic calculations
-                                                                        const ruleRole = field.name.endsWith('_id') ? 'Identifier' :
-                                                                            field.name.includes('time') ? 'EventHint' :
-                                                                                field.name.includes('status') ? 'Status' : 'BusAttr';
+                                                                        const ruleRole = field.fieldName?.endsWith('_id') ? 'Identifier' :
+                                                                            field.fieldName?.includes('time') ? 'EventHint' :
+                                                                                field.fieldName?.includes('status') ? 'Status' : 'BusAttr';
                                                                         const getSensitivity = (name: string): 'L1' | 'L2' | 'L3' | 'L4' => {
                                                                             if (name.includes('id_card') || name.includes('bank')) return 'L4';
                                                                             if (name.includes('mobile') || name.includes('phone') || name.includes('name') || name.includes('address')) return 'L3';
                                                                             if (name.includes('user') || name.includes('employee')) return 'L2';
                                                                             return 'L1';
                                                                         };
-                                                                        const sensitivity = getSensitivity(field.name);
+                                                                        const sensitivity = getSensitivity(field.fieldName);
                                                                         const getValueDomain = (type: string): string => {
                                                                             if (type.includes('tinyint') || type.includes('enum')) return '枚举型';
                                                                             if (type.includes('decimal') || type.includes('int')) return '范围型';
@@ -2390,20 +2429,20 @@ const DataSemanticUnderstandingView = ({
                                                                         };
                                                                         const valueDomain = getValueDomain(field.type);
                                                                         const nullRate = Math.floor(Math.random() * 10);
-                                                                        const uniqueness = field.name.includes('id') ? 100 : Math.floor(Math.random() * 50) + 50;
+                                                                        const uniqueness = field.fieldName.includes('id') ? 100 : Math.floor(Math.random() * 50) + 50;
 
                                                                         return (
                                                                             <div key={idx} className="border border-slate-200 rounded-lg overflow-hidden">
                                                                                 <button
                                                                                     onClick={() => setExpandedFields(isExpanded
-                                                                                        ? expandedFields.filter(f => f !== field.name)
-                                                                                        : [...expandedFields, field.name]
+                                                                                        ? expandedFields.filter(f => f !== field.fieldName)
+                                                                                        : [...expandedFields, field.fieldName]
                                                                                     )}
                                                                                     className="w-full px-4 py-3 bg-white hover:bg-slate-50 flex items-center justify-between transition-colors"
                                                                                 >
                                                                                     <div className="flex items-center gap-3">
                                                                                         <ChevronRight size={16} className={`text-slate-400 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
-                                                                                        <span className="font-mono font-medium text-slate-700">{field.name}</span>
+                                                                                        <span className="font-mono font-medium text-slate-700">{field.fieldName}</span>
                                                                                         <span className="text-xs text-slate-400">({field.type})</span>
                                                                                     </div>
                                                                                     <div className="flex items-center gap-2">
@@ -2431,9 +2470,9 @@ const DataSemanticUnderstandingView = ({
                                                                                                 <div className="mt-2">
                                                                                                     <div className="text-[10px] text-slate-400 mb-1">可能值:</div>
                                                                                                     <div className="flex flex-wrap gap-1">
-                                                                                                        {(field.name.includes('status')
+                                                                                                        {(field.fieldName.includes('status')
                                                                                                             ? ['待处理', '进行中', '已完成', '已取消']
-                                                                                                            : field.name.includes('type')
+                                                                                                            : field.fieldName.includes('type')
                                                                                                                 ? ['普通', 'VIP', '企业']
                                                                                                                 : ['值1', '值2', '值3']
                                                                                                         ).map((v, i) => (
@@ -2444,20 +2483,20 @@ const DataSemanticUnderstandingView = ({
                                                                                             )}
                                                                                             {valueDomain === '格式型' && (
                                                                                                 <div className="mt-2 text-[10px] text-slate-500 font-mono bg-slate-50 px-2 py-1 rounded">
-                                                                                                    {field.name.includes('mobile') || field.name.includes('phone')
+                                                                                                    {field.fieldName.includes('mobile') || field.fieldName.includes('phone')
                                                                                                         ? '格式: ^1[3-9]\\d{9}$'
-                                                                                                        : field.name.includes('id_card') || field.name.includes('sfz')
+                                                                                                        : field.fieldName.includes('id_card') || field.fieldName.includes('sfz')
                                                                                                             ? '格式: ^\\d{17}[\\dX]$'
-                                                                                                            : field.name.includes('email')
+                                                                                                            : field.fieldName.includes('email')
                                                                                                                 ? '格式: ^[\\w.-]+@[\\w.-]+$'
                                                                                                                 : '格式: 固定18位'}
                                                                                                 </div>
                                                                                             )}
                                                                                             {valueDomain === '范围型' && (
                                                                                                 <div className="mt-2 flex items-center gap-3 text-[10px]">
-                                                                                                    <span className="text-slate-400">MIN: <span className="text-slate-600 font-medium">{field.name.includes('amt') || field.name.includes('price') ? '0.01' : '1'}</span></span>
-                                                                                                    <span className="text-slate-400">MAX: <span className="text-slate-600 font-medium">{field.name.includes('amt') || field.name.includes('price') ? '99999.99' : '9999'}</span></span>
-                                                                                                    <span className="text-slate-400">AVG: <span className="text-slate-600 font-medium">{field.name.includes('amt') || field.name.includes('price') ? '258.50' : '156'}</span></span>
+                                                                                                    <span className="text-slate-400">MIN: <span className="text-slate-600 font-medium">{field.fieldName.includes('amt') || field.fieldName.includes('price') ? '0.01' : '1'}</span></span>
+                                                                                                    <span className="text-slate-400">MAX: <span className="text-slate-600 font-medium">{field.fieldName.includes('amt') || field.fieldName.includes('price') ? '99999.99' : '9999'}</span></span>
+                                                                                                    <span className="text-slate-400">AVG: <span className="text-slate-600 font-medium">{field.fieldName.includes('amt') || field.fieldName.includes('price') ? '258.50' : '156'}</span></span>
                                                                                                 </div>
                                                                                             )}
                                                                                             {valueDomain === '自由文本' && (
@@ -2484,11 +2523,11 @@ const DataSemanticUnderstandingView = ({
                                                                                             <div className="mt-2 grid grid-cols-2 gap-2 text-[10px]">
                                                                                                 <div>
                                                                                                     <span className="text-slate-400">责任人:</span>
-                                                                                                    <span className="ml-1 text-slate-600">{field.name.includes('user') ? '用户中心' : field.name.includes('order') ? '交易中心' : '数据管理部'}</span>
+                                                                                                    <span className="ml-1 text-slate-600">{field.fieldName.includes('user') ? '用户中心' : field.fieldName.includes('order') ? '交易中心' : '数据管理部'}</span>
                                                                                                 </div>
                                                                                                 <div>
                                                                                                     <span className="text-slate-400">标准:</span>
-                                                                                                    <span className="ml-1 text-blue-600">{field.name.includes('id') ? 'GB/T 35273' : field.name.includes('time') ? 'ISO 8601' : '-'}</span>
+                                                                                                    <span className="ml-1 text-blue-600">{field.fieldName.includes('id') ? 'GB/T 35273' : field.fieldName.includes('time') ? 'ISO 8601' : '-'}</span>
                                                                                                 </div>
                                                                                             </div>
                                                                                         </div>
@@ -2515,23 +2554,23 @@ const DataSemanticUnderstandingView = ({
                                                                                                 </div>
                                                                                                 <div className="flex items-center justify-between text-xs">
                                                                                                     <span className="text-slate-500">格式一致</span>
-                                                                                                    <span className="font-medium text-emerald-600">{field.name.includes('id') ? '100%' : Math.floor(95 + Math.random() * 5) + '%'}</span>
+                                                                                                    <span className="font-medium text-emerald-600">{field.fieldName.includes('id') ? '100%' : Math.floor(95 + Math.random() * 5) + '%'}</span>
                                                                                                 </div>
                                                                                             </div>
                                                                                         </div>
                                                                                         <div className="bg-white p-3 rounded-lg border border-slate-100 col-span-2 lg:col-span-3">
                                                                                             <div className="text-[10px] text-slate-400 uppercase tracking-wider mb-1">D-07 关联性</div>
                                                                                             <div className="text-sm text-slate-600">
-                                                                                                {field.name.endsWith('_id') ? (
+                                                                                                {field.fieldName?.endsWith('_id') ? (
                                                                                                     <div className="flex items-center gap-4">
                                                                                                         <span className="flex items-center gap-1.5">
                                                                                                             <Share2 size={12} className="text-blue-500" />
                                                                                                             <span className="text-slate-500">外键:</span>
-                                                                                                            <span className="font-mono text-blue-600">t_{field.name.replace('_id', '')}</span>
+                                                                                                            <span className="font-mono text-blue-600">t_{field.fieldName.replace('_id', '')}</span>
                                                                                                         </span>
                                                                                                         <span className="px-1.5 py-0.5 bg-blue-50 text-blue-600 text-[10px] rounded">显式FK</span>
                                                                                                     </div>
-                                                                                                ) : field.name.includes('code') || field.name.includes('no') ? (
+                                                                                                ) : field.fieldName.includes('code') || field.fieldName.includes('no') ? (
                                                                                                     <div className="flex items-center gap-4">
                                                                                                         <span className="flex items-center gap-1.5">
                                                                                                             <Share2 size={12} className="text-amber-500" />
@@ -2540,7 +2579,7 @@ const DataSemanticUnderstandingView = ({
                                                                                                         </span>
                                                                                                         <span className="px-1.5 py-0.5 bg-amber-50 text-amber-600 text-[10px] rounded">隐式FK</span>
                                                                                                     </div>
-                                                                                                ) : field.name.includes('total') || field.name.includes('sum') || field.name.includes('count') ? (
+                                                                                                ) : field.fieldName.includes('total') || field.fieldName.includes('sum') || field.fieldName.includes('count') ? (
                                                                                                     <div className="flex items-center gap-4">
                                                                                                         <span className="flex items-center gap-1.5">
                                                                                                             <Activity size={12} className="text-purple-500" />
@@ -2563,15 +2602,15 @@ const DataSemanticUnderstandingView = ({
                                                                     {(() => {
                                                                         // Status Object Detection: status/state fields with expected multiple values
                                                                         const statusFields = selectedTableFields.filter((f: any) =>
-                                                                            f.name.includes('status') || f.name.includes('state') ||
-                                                                            f.name.includes('phase') || f.name.includes('stage')
+                                                                            f.fieldName.includes('status') || f.fieldName.includes('state') ||
+                                                                            f.fieldName.includes('phase') || f.fieldName.includes('stage')
                                                                         );
 
                                                                         // Behavior Object Detection: time fields with verb-like semantics
                                                                         const behaviorVerbs = ['pay', 'create', 'update', 'submit', 'approve', 'confirm', 'cancel', 'delete', 'login', 'logout', 'sign', 'complete', 'finish', 'start', 'end'];
                                                                         const behaviorFields = selectedTableFields.filter((f: any) => {
-                                                                            if (!f.name.includes('time') && !f.name.includes('date') && !f.name.includes('_at')) return false;
-                                                                            return behaviorVerbs.some(verb => f.name.includes(verb));
+                                                                            if (!f.fieldName.includes('time') && !f.fieldName.includes('date') && !f.fieldName.includes('_at')) return false;
+                                                                            return behaviorVerbs.some(verb => f.fieldName.includes(verb));
                                                                         });
 
                                                                         if (statusFields.length === 0 && behaviorFields.length === 0) return null;
@@ -2600,10 +2639,10 @@ const DataSemanticUnderstandingView = ({
                                                                                             {statusFields.map((field: any, idx: number) => (
                                                                                                 <div key={idx} className="flex items-center justify-between bg-white px-3 py-2 rounded border border-amber-100">
                                                                                                     <div className="flex items-center gap-2">
-                                                                                                        <span className="font-mono text-sm text-slate-600">{field.name}</span>
+                                                                                                        <span className="font-mono text-sm text-slate-600">{field.fieldName}</span>
                                                                                                         <span className="text-slate-400">→</span>
                                                                                                         <span className="px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-xs font-medium">
-                                                                                                            {field.name.replace(/^(.*?)_?(status|state|phase|stage)$/i, '$1')}状态对象
+                                                                                                            {field.fieldName.replace(/^(.*?)_?(status|state|phase|stage)$/i, '$1')}状态对象
                                                                                                         </span>
                                                                                                     </div>
                                                                                                     <div className="flex items-center gap-1">
@@ -2635,7 +2674,7 @@ const DataSemanticUnderstandingView = ({
                                                                                         <div className="space-y-1.5">
                                                                                             {behaviorFields.map((field: any, idx: number) => {
                                                                                                 // Extract verb from field name
-                                                                                                const matchedVerb = behaviorVerbs.find(v => field.name.includes(v));
+                                                                                                const matchedVerb = behaviorVerbs.find(v => field.fieldName.includes(v));
                                                                                                 const behaviorName = matchedVerb ?
                                                                                                     (matchedVerb === 'pay' ? '支付' :
                                                                                                         matchedVerb === 'create' ? '创建' :
@@ -2657,7 +2696,7 @@ const DataSemanticUnderstandingView = ({
                                                                                                 return (
                                                                                                     <div key={idx} className="flex items-center justify-between bg-white px-3 py-2 rounded border border-blue-100">
                                                                                                         <div className="flex items-center gap-2">
-                                                                                                            <span className="font-mono text-sm text-slate-600">{field.name}</span>
+                                                                                                            <span className="font-mono text-sm text-slate-600">{field.fieldName}</span>
                                                                                                             <span className="text-slate-400">→</span>
                                                                                                             <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-medium">
                                                                                                                 {behaviorName}
@@ -2773,7 +2812,7 @@ const DataSemanticUnderstandingView = ({
                                                                                 return 'L1';
                                                                             };
                                                                             const counts = { L1: 0, L2: 0, L3: 0, L4: 0 };
-                                                                            fields.forEach((f: any) => counts[getSensitivity(f.name)]++);
+                                                                            fields.forEach((f: any) => counts[getSensitivity(f.fieldName)]++);
                                                                             const maxCount = Math.max(...Object.values(counts), 1);
                                                                             const config = [
                                                                                 { level: 'L1', label: '公开', color: 'bg-slate-300', count: counts.L1 },
@@ -2818,11 +2857,13 @@ const DataSemanticUnderstandingView = ({
                                                     ) : (() => {
                                                         // Calculate conflict stats for batch actions
                                                         const allFields = selectedTableFields;
-                                                        const getRuleResult = (name: string, type: string) => {
-                                                            if (name.endsWith('_id') || name === 'id') return { role: 'Identifier', reason: '字段名含_id后缀', confidence: 95 };
-                                                            if (name.includes('time') || name.includes('date') || type.includes('datetime') || type.includes('timestamp')) return { role: 'EventHint', reason: '时间类型字段', confidence: 90 };
-                                                            if (name.includes('status') || name.includes('state') || name.includes('type')) return { role: 'Status', reason: '状态/类型字段', confidence: 85 };
-                                                            if (name.includes('amount') || name.includes('price') || name.includes('total') || type.includes('decimal')) return { role: 'Measure', reason: '金额/数量字段', confidence: 80 };
+                                                        const getRuleResult = (name: string = '', type: string = '') => {
+                                                            const safeName = (name || '').toLowerCase();
+                                                            const safeType = (type || '').toLowerCase();
+                                                            if (safeName.endsWith('_id') || safeName === 'id') return { role: 'Identifier', reason: '字段名含_id后缀', confidence: 95 };
+                                                            if (safeName.includes('time') || safeName.includes('date') || safeType.includes('datetime') || safeType.includes('timestamp')) return { role: 'EventHint', reason: '时间类型字段', confidence: 90 };
+                                                            if (safeName.includes('status') || safeName.includes('state') || safeName.includes('type')) return { role: 'Status', reason: '状态/类型字段', confidence: 85 };
+                                                            if (safeName.includes('amount') || safeName.includes('price') || safeName.includes('total') || safeType.includes('decimal')) return { role: 'Measure', reason: '金额/数量字段', confidence: 80 };
                                                             return { role: 'BusAttr', reason: '默认业务属性', confidence: 60 };
                                                         };
                                                         const getAIResult = (name: string) => {
@@ -2848,14 +2889,15 @@ const DataSemanticUnderstandingView = ({
                                                             field,
                                                             analysis: analyzeField(field)
                                                         }));
-                                                        const analysisMap = new Map(analyzedFields.map((entry) => [entry.field.name, entry.analysis]));
+                                                        const analysisMap = new Map(analyzedFields.map((entry) => [entry.field.fieldName || entry.field.name, entry.analysis]));
                                                         const getFieldGroup = (field: any) => {
-                                                            const analysis = analysisMap.get(field.name) || analyzeField(field);
-                                                            const ruleRole = getRuleResult(field.name, field.type || '').role;
-                                                            const aiRole = field.suggestion || getAIResult(field.name).role;
-                                                            const isResolved = !!fieldRoleOverrides[field.name];
+                                                            const fieldName = field.fieldName || field.name || '';
+                                                            const analysis = analysisMap.get(fieldName) || analyzeField(field);
+                                                            const ruleRole = getRuleResult(fieldName, field.type || '').role;
+                                                            const aiRole = field.suggestion || getAIResult(fieldName).role;
+                                                            const isResolved = !!fieldRoleOverrides[fieldName];
                                                             const hasConflict = ruleRole.toLowerCase() !== aiRole.toLowerCase() && aiRole !== 'unknown' && !isResolved;
-                                                            const sensitivity = sensitivityOverrides[field.name] || analysis.sensitivity;
+                                                            const sensitivity = sensitivityOverrides[fieldName] || analysis.sensitivity;
                                                             const confidence = analysis.roleConfidence || 0;
                                                             if (sensitivity === 'L3' || sensitivity === 'L4') return 'C';
                                                             if (hasConflict || confidence < 0.7) return 'C';
@@ -2873,27 +2915,27 @@ const DataSemanticUnderstandingView = ({
                                                             acc[group] = (acc[group] || 0) + 1;
                                                             return acc;
                                                         }, { A: 0, B: 0, C: 0 } as Record<string, number>);
-                                                        const fieldGroupMap = new Map(allFields.map(field => [field.name, getFieldGroup(field)]));
+                                                        const fieldGroupMap = new Map(allFields.map(field => [field.fieldName, getFieldGroup(field)]));
                                                         const reviewFieldNames = new Set(
                                                             analyzedFields
                                                                 .filter((entry) => ['L3', 'L4'].includes(entry.analysis.sensitivity) || (entry.analysis.roleConfidence || 0) < 0.7)
-                                                                .map((entry) => entry.field.name)
+                                                                .map((entry) => entry.field.fieldName)
                                                         );
                                                         const baseFields = fieldProblemFilter === 'review'
-                                                            ? allFields.filter((field: any) => reviewFieldNames.has(field.name))
+                                                            ? allFields.filter((field: any) => reviewFieldNames.has(field.fieldName))
                                                             : allFields;
                                                         // Filter fields by search term
                                                         const filteredFields = fieldSearchTerm.trim()
                                                             ? baseFields.filter((field: any) =>
-                                                                field.name.toLowerCase().includes(fieldSearchTerm.toLowerCase()) ||
+                                                                field.fieldName.toLowerCase().includes(fieldSearchTerm.toLowerCase()) ||
                                                                 field.type?.toLowerCase().includes(fieldSearchTerm.toLowerCase()) ||
                                                                 field.comment?.toLowerCase().includes(fieldSearchTerm.toLowerCase())
                                                             )
                                                             : baseFields;
                                                         const displayFields = fieldGroupFilter === 'all'
                                                             ? filteredFields
-                                                            : filteredFields.filter((field: any) => fieldGroupMap.get(field.name) === fieldGroupFilter);
-                                                        const visibleFieldNames = displayFields.map(field => field.name);
+                                                            : filteredFields.filter((field: any) => fieldGroupMap.get(field.fieldName) === fieldGroupFilter);
+                                                        const visibleFieldNames = displayFields.map(field => field.fieldName);
                                                         const selectedFieldSet = new Set(selectedFieldNames);
                                                         const isAllVisibleSelected = visibleFieldNames.length > 0 && visibleFieldNames.every(name => selectedFieldSet.has(name));
                                                         const visibleSelectedCount = visibleFieldNames.filter(name => selectedFieldSet.has(name)).length;
@@ -2906,9 +2948,9 @@ const DataSemanticUnderstandingView = ({
                                                         const hasProblemFilter = fieldProblemFilter !== 'all';
                                                         const hasGroupFilter = fieldGroupFilter !== 'all';
                                                         const conflictFields = allFields.filter((field: any) => {
-                                                            const ruleRole = getRuleResult(field.name, field.type || '').role;
-                                                            const aiRole = field.suggestion ? field.suggestion : getAIResult(field.name).role;
-                                                            const isResolved = !!fieldRoleOverrides[field.name];
+                                                            const ruleRole = getRuleResult(field.fieldName, field.type || '').role;
+                                                            const aiRole = field.suggestion ? field.suggestion : getAIResult(field.fieldName).role;
+                                                            const isResolved = !!fieldRoleOverrides[field.fieldName];
                                                             return ruleRole !== aiRole && aiRole !== 'unknown' && !isResolved;
                                                         });
                                                         const resolvedCount = Object.keys(fieldRoleOverrides).length;
@@ -2986,11 +3028,11 @@ const DataSemanticUnderstandingView = ({
                                                         const batchResolve = (choice: 'rule' | 'ai') => {
                                                             const newOverrides: Record<string, { role: string; source: 'rule' | 'ai' }> = { ...fieldRoleOverrides };
                                                             conflictFields.forEach((field: any) => {
-                                                                const ruleRole = field.name.endsWith('_id') ? 'Identifier' :
-                                                                    field.name.includes('time') ? 'EventHint' :
-                                                                        field.name.includes('status') ? 'Status' : 'BusAttr';
+                                                                const ruleRole = field.fieldName?.endsWith('_id') ? 'Identifier' :
+                                                                    field.fieldName?.includes('time') ? 'EventHint' :
+                                                                        field.fieldName?.includes('status') ? 'Status' : 'BusAttr';
                                                                 const aiRole = field.suggestion ? field.suggestion : ruleRole;
-                                                                newOverrides[field.name] = {
+                                                                newOverrides[field.fieldName] = {
                                                                     role: choice === 'rule' ? ruleRole : aiRole,
                                                                     source: choice
                                                                 };
@@ -3030,7 +3072,7 @@ const DataSemanticUnderstandingView = ({
                                                                         const hasPkMeta = pkFromMeta.length > 0;
                                                                         const pkCount = hasPkMeta
                                                                             ? pkFromMeta.length
-                                                                            : allFields.filter((f: any) => f.name.endsWith('_id') || f.name === 'id').length;
+                                                                            : allFields.filter((f: any) => f.fieldName?.endsWith('_id') || f.fieldName === 'id').length;
                                                                         return (
                                                                             <div className="bg-white p-4 rounded-xl border border-slate-200 flex items-center justify-between shadow-sm relative overflow-hidden group hover:border-amber-300 transition-colors">
                                                                                 <div>
@@ -3059,7 +3101,7 @@ const DataSemanticUnderstandingView = ({
                                                                         <div>
                                                                             <div className="text-slate-500 text-xs font-medium mb-1">敏感字段</div>
                                                                             <div className="text-2xl font-bold text-slate-800">{allFields.filter((f: any) => {
-                                                                                const name = f.name.toLowerCase();
+                                                                                const name = f.fieldName.toLowerCase();
                                                                                 return name.includes('id_card') || name.includes('sfz') || name.includes('bank') ||
                                                                                     name.includes('mobile') || name.includes('phone') || name.includes('address');
                                                                             }).length}</div>
@@ -3343,10 +3385,10 @@ const DataSemanticUnderstandingView = ({
                                                                                         </td>
                                                                                     </tr>
                                                                                 ) : displayFields.map((field: any, idx: number) => {
-                                                                                    const ruleResult = getRuleResult(field.name, field.type || '');
+                                                                                    const ruleResult = getRuleResult(field.fieldName, field.type || '');
                                                                                     const ruleRole = ruleResult.role;
 
-                                                                                    const aiResult = getAIResult(field.name);
+                                                                                    const aiResult = getAIResult(field.fieldName);
                                                                                     const aiRole = field.suggestion || aiResult.role;
 
                                                                                     // Sample values for the field
@@ -3360,10 +3402,10 @@ const DataSemanticUnderstandingView = ({
                                                                                         if (type.includes('varchar')) return ['示例值A', '示例值B'];
                                                                                         return ['-'];
                                                                                     };
-                                                                                    const sampleValues = getSampleValues(field.name, field.type);
+                                                                                    const sampleValues = getSampleValues(field.fieldName, field.type);
 
                                                                                     // Check if user has resolved this conflict
-                                                                                    const override = fieldRoleOverrides[field.name];
+                                                                                    const override = fieldRoleOverrides[field.fieldName];
                                                                                     const isResolved = !!override;
                                                                                     const hasConflict = showSemanticColumns && ruleRole.toLowerCase() !== aiRole.toLowerCase() && aiRole !== 'unknown' && !isResolved;
                                                                                     const displayRole = override?.role || ruleRole; // Unused but kept for logic consistency if needed
@@ -3375,10 +3417,10 @@ const DataSemanticUnderstandingView = ({
                                                                                         if (name.includes('user') || name.includes('employee')) return 'L2';
                                                                                         return 'L1';
                                                                                     };
-                                                                                    const inferredSensitivity = getInferredSensitivity(field.name);
-                                                                                    const sensitivity = sensitivityOverrides[field.name] || inferredSensitivity;
-                                                                                    const isOverridden = !!sensitivityOverrides[field.name];
-                                                                                    const fieldGroup = fieldGroupMap.get(field.name) || 'B';
+                                                                                    const inferredSensitivity = getInferredSensitivity(field.fieldName);
+                                                                                    const sensitivity = sensitivityOverrides[field.fieldName] || inferredSensitivity;
+                                                                                    const isOverridden = !!sensitivityOverrides[field.fieldName];
+                                                                                    const fieldGroup = fieldGroupMap.get(field.fieldName) || 'B';
 
                                                                                     const sensitivityConfig: Record<string, { bg: string, text: string, label: string }> = {
                                                                                         'L1': { bg: 'bg-slate-100', text: 'text-slate-600', label: 'L1 公开' },
@@ -3388,19 +3430,19 @@ const DataSemanticUnderstandingView = ({
                                                                                     };
                                                                                     const reviewStatus = isTableConfirmed
                                                                                         ? 'confirmed'
-                                                                                        : fieldReviewStatus[field.name] || 'suggested';
+                                                                                        : fieldReviewStatus[field.fieldName] || 'suggested';
 
                                                                                     return (
-                                                                                        <tr key={idx} className={`group odd:bg-slate-50/40 hover:bg-slate-50/80 transition-colors ${hasConflict ? 'bg-amber-50/30' : ''} ${selectedFieldSet.has(field.name) ? 'bg-blue-50/40' : ''}`}>
+                                                                                        <tr key={idx} className={`group odd:bg-slate-50/40 hover:bg-slate-50/80 transition-colors ${hasConflict ? 'bg-amber-50/30' : ''} ${selectedFieldSet.has(field.fieldName) ? 'bg-blue-50/40' : ''}`}>
                                                                                             {showSemanticColumns && (
                                                                                                 <td className="px-4 py-4 align-top">
                                                                                                     <input
                                                                                                         type="checkbox"
-                                                                                                        checked={selectedFieldSet.has(field.name)}
+                                                                                                        checked={selectedFieldSet.has(field.fieldName)}
                                                                                                         disabled={isReadOnly}
                                                                                                         onChange={(e) => {
                                                                                                             if (isReadOnly) return;
-                                                                                                            handleToggleFieldSelection(field.name, e.target.checked);
+                                                                                                            handleToggleFieldSelection(field.fieldName, e.target.checked);
                                                                                                         }}
                                                                                                         className={`w-3.5 h-3.5 ${isReadOnly ? 'cursor-not-allowed' : 'cursor-pointer'}`}
                                                                                                     />
@@ -3410,7 +3452,7 @@ const DataSemanticUnderstandingView = ({
                                                                                             {/* Enhanced Physical Field */}
                                                                                             <td className="px-5 py-4 align-top">
                                                                                                 <div className="flex items-center gap-2">
-                                                                                                    <span className="font-mono text-sm font-bold text-slate-700">{field.name}</span>
+                                                                                                    <span className="font-mono text-sm font-bold text-slate-700">{field.fieldName}</span>
                                                                                                     {field.key === 'PK' && (
                                                                                                         <span title="主键" className="bg-amber-100 text-amber-600 p-1 rounded-md"><Key size={12} className="fill-amber-100" /></span>
                                                                                                     )}
@@ -3501,7 +3543,7 @@ const DataSemanticUnderstandingView = ({
                                                                                                             value={sensitivity}
                                                                                                             onChange={(e) => setSensitivityOverrides(prev => ({
                                                                                                                 ...prev,
-                                                                                                                [field.name]: e.target.value as 'L1' | 'L2' | 'L3' | 'L4'
+                                                                                                                [field.fieldName]: e.target.value as 'L1' | 'L2' | 'L3' | 'L4'
                                                                                                             }))}
                                                                                                             className={`px-2 py-1 rounded text-xs font-medium cursor-pointer outline-none border transition-all w-full appearance-none ${isOverridden ? 'border-2 border-emerald-400' : 'border-transparent'} ${sensitivityConfig[sensitivity].bg} ${sensitivityConfig[sensitivity].text}`}
                                                                                                         >
@@ -3606,10 +3648,10 @@ const DataSemanticUnderstandingView = ({
                     assist={{
                         ...DEFAULT_SEMANTIC_ASSIST,
                         enabled: isAssistEnabled,
-                        template: assistSettings.template,
+                        template: assistSettings.template as any,
                         runtimeConfig: {
                             ...DEFAULT_SEMANTIC_ASSIST.runtimeConfig,
-                            sampleRatio: assistSettings.sampleRatio * 100
+                            sampleRatio: (assistSettings.sampleRatio * 100) as any
                         },
                         systemConfig: {
                             maxRows: assistSettings.maxRows,
@@ -3621,12 +3663,10 @@ const DataSemanticUnderstandingView = ({
                     onApply={(newConfig) => {
                         setAssistSettings(prev => ({
                             ...prev,
-                            sampleRatio: newConfig.runtimeConfig?.sampleRatio ? newConfig.runtimeConfig.sampleRatio / 100 : prev.sampleRatio
+                            sampleRatio: newConfig.sampleRatio ? newConfig.sampleRatio / 100 : prev.sampleRatio
                             // Note: template, maxRows, ttl are currently fixed in UI updates but could be mapped here if editable
                         }));
-                        if (newConfig.enabled !== undefined) {
-                            setIsAssistEnabled(newConfig.enabled);
-                        }
+                        // property enabled does not exist on newConfig (SemanticAssistRuntimeConfig)
                         setShowAssistConfig(false);
                     }}
                     asModal={true}
@@ -3768,11 +3808,13 @@ const DataSemanticUnderstandingView = ({
                                             <div className="flex-1">
                                                 <div className="flex items-center gap-2">
                                                     <button
-                                                        onClick={() => setExpandedReviewItems(prev =>
-                                                            prev.includes(result.tableId)
-                                                                ? prev.filter(id => id !== result.tableId)
-                                                                : [...prev, result.tableId]
-                                                        )}
+                                                        onClick={() => {
+                                                            if (expandedReviewItems.includes(result.tableId)) {
+                                                                setExpandedReviewItems(prev => prev.filter(id => id !== result.tableId));
+                                                            } else {
+                                                                setExpandedReviewItems(prev => [...prev, result.tableId]);
+                                                            }
+                                                        }}
                                                         className="text-slate-400 hover:text-slate-600"
                                                     >
                                                         <ChevronRight size={16} className={`transition-transform ${expandedReviewItems.includes(result.tableId) ? 'rotate-90' : ''}`} />
@@ -3803,7 +3845,7 @@ const DataSemanticUnderstandingView = ({
                                                 {result.userAction === 'pending' ? (
                                                     <>
                                                         <button
-                                                            onClick={() => setBatchResults(prev => prev.map((r, i) =>
+                                                            onClick={() => setBatchResults((prev: any[]) => prev.map((r: any, i: number) =>
                                                                 i === idx ? { ...r, userAction: 'accepted' } : r
                                                             ))}
                                                             className="px-3 py-1.5 text-xs bg-emerald-600 text-white rounded hover:bg-emerald-700"
@@ -3811,7 +3853,7 @@ const DataSemanticUnderstandingView = ({
                                                             接受
                                                         </button>
                                                         <button
-                                                            onClick={() => setBatchResults(prev => prev.map((r, i) =>
+                                                            onClick={() => setBatchResults((prev: any[]) => prev.map((r: any, i: number) =>
                                                                 i === idx ? { ...r, userAction: 'rejected' } : r
                                                             ))}
                                                             className="px-3 py-1.5 text-xs bg-slate-200 text-slate-600 rounded hover:bg-slate-300"
@@ -3885,7 +3927,7 @@ const DataSemanticUnderstandingView = ({
                                                             <AlertTriangle size={12} /> 低置信度原因
                                                         </div>
                                                         <ul className="text-xs text-amber-600 space-y-1">
-                                                            {result.lowConfidenceReasons.map((reason, i) => (
+                                                            {result.lowConfidenceReasons.map((reason: any, i: number) => (
                                                                 <li key={i} className="flex items-start gap-1.5">
                                                                     <span className="text-amber-400 mt-0.5">•</span>
                                                                     {reason}
@@ -3934,7 +3976,7 @@ const DataSemanticUnderstandingView = ({
                                                                                 beforeState,
                                                                                 upgradeSuggestion.afterState
                                                                             );
-                                                                            setBatchResults(prev => prev.map((r) =>
+                                                                            setBatchResults((prev: any[]) => prev.map((r: any) =>
                                                                                 r.tableId === result.tableId
                                                                                     ? { ...r, upgradeDecision: 'accepted', upgradeRejectReason: undefined }
                                                                                     : r
@@ -3946,14 +3988,14 @@ const DataSemanticUnderstandingView = ({
                                                                             ));
                                                                         }}
                                                                         onReject={(reason) => {
-                                                                            setBatchResults(prev => prev.map((r) =>
+                                                                            setBatchResults((prev: any[]) => prev.map((r: any) =>
                                                                                 r.tableId === result.tableId
                                                                                     ? { ...r, upgradeDecision: 'rejected', upgradeRejectReason: reason }
                                                                                     : r
                                                                             ));
                                                                         }}
                                                                         onLater={() => {
-                                                                            setBatchResults(prev => prev.map((r) =>
+                                                                            setBatchResults((prev: any[]) => prev.map((r: any) =>
                                                                                 r.tableId === result.tableId
                                                                                     ? { ...r, upgradeDecision: 'later', upgradeRejectReason: undefined }
                                                                                     : r
@@ -3981,17 +4023,17 @@ const DataSemanticUnderstandingView = ({
                                                                             <tbody className="divide-y divide-slate-100">
                                                                                 {fields.slice(0, 10).map((field: any, i: number) => (
                                                                                     <tr key={i} className="hover:bg-white">
-                                                                                        <td className="px-2 py-1.5 font-mono text-blue-600">{field.name}</td>
+                                                                                        <td className="px-2 py-1.5 font-mono text-blue-600">{field.fieldName}</td>
                                                                                         <td className="px-2 py-1.5 text-slate-500">{field.type}</td>
                                                                                         <td className="px-2 py-1.5">
-                                                                                            <span className={`px-1.5 py-0.5 rounded text-[10px] ${field.name.includes('id') ? 'bg-purple-100 text-purple-700' :
-                                                                                                field.name.includes('time') || field.name.includes('date') ? 'bg-blue-100 text-blue-700' :
-                                                                                                    field.name.includes('status') ? 'bg-amber-100 text-amber-700' :
+                                                                                            <span className={`px-1.5 py-0.5 rounded text-[10px] ${field.fieldName.includes('id') ? 'bg-purple-100 text-purple-700' :
+                                                                                                field.fieldName.includes('time') || field.fieldName.includes('date') ? 'bg-blue-100 text-blue-700' :
+                                                                                                    field.fieldName.includes('status') ? 'bg-amber-100 text-amber-700' :
                                                                                                         'bg-slate-100 text-slate-600'
                                                                                                 }`}>
-                                                                                                {field.name.includes('id') ? '标识符' :
-                                                                                                    field.name.includes('time') || field.name.includes('date') ? '时间' :
-                                                                                                        field.name.includes('status') ? '状态' : '业务属性'}
+                                                                                                {field.fieldName.includes('id') ? '标识符' :
+                                                                                                    field.fieldName.includes('time') || field.fieldName.includes('date') ? '时间' :
+                                                                                                        field.fieldName.includes('status') ? '状态' : '业务属性'}
                                                                                             </span>
                                                                                         </td>
                                                                                         <td className="px-2 py-1.5 text-slate-400 truncate max-w-[120px]">{field.comment || '-'}</td>

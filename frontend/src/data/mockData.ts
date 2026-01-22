@@ -267,13 +267,13 @@ export const mockPhysicalTables = [
         rows: '1,204,500',
         semanticStage: 'FIELD_PENDING',
         fields: [
-            { name: 'id', type: 'bigint', key: 'PK', semanticStatus: 'DECIDED', riskLevel: 'LOW' },
-            { name: 'p_name', type: 'varchar(50)', semanticStatus: 'SUGGESTED', riskLevel: 'LOW' },
-            { name: 'id_card_num', type: 'varchar(18)', semanticStatus: 'SUGGESTED', riskLevel: 'HIGH' },
-            { name: 'birth_ts', type: 'datetime', semanticStatus: 'DECIDED', riskLevel: 'LOW' },
-            { name: 'weight_kg', type: 'decimal(4,2)', semanticStatus: 'UNANALYZED', riskLevel: 'MEDIUM' },
-            { name: 'hospital_id', type: 'int', semanticStatus: 'UNANALYZED', riskLevel: 'LOW' },
-            { name: 'is_deleted', type: 'tinyint', semanticStatus: 'DECIDED', riskLevel: 'LOW' }
+            { fieldName: 'id', type: 'bigint', key: 'PK', semanticStatus: 'DECIDED', riskLevel: 'LOW' },
+            { fieldName: 'p_name', type: 'varchar(50)', semanticStatus: 'SUGGESTED', riskLevel: 'LOW' },
+            { fieldName: 'id_card_num', type: 'varchar(18)', semanticStatus: 'SUGGESTED', riskLevel: 'HIGH' },
+            { fieldName: 'birth_ts', type: 'datetime', semanticStatus: 'DECIDED', riskLevel: 'LOW' },
+            { fieldName: 'weight_kg', type: 'decimal(4,2)', semanticStatus: 'UNANALYZED', riskLevel: 'MEDIUM' },
+            { fieldName: 'hospital_id', type: 'int', semanticStatus: 'UNANALYZED', riskLevel: 'LOW' },
+            { fieldName: 'is_deleted', type: 'tinyint', semanticStatus: 'DECIDED', riskLevel: 'LOW' }
         ]
     },
     // 1️⃣ IT Ops: 表 A (未分析 - 原始日志表)
@@ -285,12 +285,12 @@ export const mockPhysicalTables = [
         rows: '45,200,000',
         semanticStage: 'UNANALYZED', // 对应 "未开始语义建模"
         fields: [
-            { name: 'log_id', type: 'String', key: 'PK', semanticStatus: 'UNANALYZED', riskLevel: 'LOW' },
-            { name: 'client_ip', type: 'String', semanticStatus: 'UNANALYZED', riskLevel: 'LOW' },
-            { name: 'request_uri', type: 'String', semanticStatus: 'UNANALYZED', riskLevel: 'LOW' },
-            { name: 'status_code', type: 'UInt16', semanticStatus: 'UNANALYZED', riskLevel: 'HIGH_RISK', riskReason: 'ENUM_NOT_STABLE' }, // 模拟风险
-            { name: 'response_time_ms', type: 'UInt32', semanticStatus: 'UNANALYZED', riskLevel: 'LOW' },
-            { name: 'user_agent', type: 'String', semanticStatus: 'UNANALYZED', riskLevel: 'MEDIUM', riskReason: 'LOW_UNIQUENESS' } // 模拟风险
+            { fieldName: 'log_id', type: 'String', key: 'PK', semanticStatus: 'UNANALYZED', riskLevel: 'LOW' },
+            { fieldName: 'client_ip', type: 'String', semanticStatus: 'UNANALYZED', riskLevel: 'LOW' },
+            { fieldName: 'request_uri', type: 'String', semanticStatus: 'UNANALYZED', riskLevel: 'LOW' },
+            { fieldName: 'status_code', type: 'UInt16', semanticStatus: 'UNANALYZED', riskLevel: 'HIGH_RISK', riskReason: 'ENUM_NOT_STABLE' }, // 模拟风险
+            { fieldName: 'response_time_ms', type: 'UInt32', semanticStatus: 'UNANALYZED', riskLevel: 'LOW' },
+            { fieldName: 'user_agent', type: 'String', semanticStatus: 'UNANALYZED', riskLevel: 'MEDIUM', riskReason: 'LOW_UNIQUENESS' } // 模拟风险
         ]
     },
     // 2️⃣ IT Ops: 表 B (进行中 - 告警记录表)
@@ -302,12 +302,12 @@ export const mockPhysicalTables = [
         rows: '8,500',
         semanticStage: 'FIELD_PENDING', // 对应 "字段语义待确认" / "进行中"
         fields: [
-            { name: 'alert_id', type: 'bigint', key: 'PK', semanticStatus: 'DECIDED', riskLevel: 'LOW', role: 'Identifier', term: '告警ID' },
-            { name: 'service_name', type: 'varchar(100)', semanticStatus: 'SUGGESTED', riskLevel: 'LOW', suggestion: { term: '服务名称', confidence: 0.95 } },
-            { name: 'alert_level', type: 'varchar(20)', semanticStatus: 'SUGGESTED', riskLevel: 'HIGH', riskReason: 'ENUM_VALUE_MISSING', suggestion: { term: '告警级别', confidence: 0.85 } },
-            { name: 'trigger_time', type: 'timestamp', semanticStatus: 'DECIDED', riskLevel: 'LOW', role: 'Time', term: '触发时间' },
-            { name: 'handler_owner', type: 'varchar(50)', semanticStatus: 'PARTIALLY_DECIDED', riskLevel: 'LOW', suggestion: { term: '负责人', confidence: 0.60 } },
-            { name: 'resolved_time', type: 'timestamp', semanticStatus: 'UNANALYZED', riskLevel: 'LOW' }
+            { fieldName: 'alert_id', type: 'bigint', key: 'PK', semanticStatus: 'DECIDED', riskLevel: 'LOW', role: 'Identifier', term: '告警ID' },
+            { fieldName: 'service_name', type: 'varchar(100)', semanticStatus: 'SUGGESTED', riskLevel: 'LOW', suggestion: { term: '服务名称', confidence: 0.95 } },
+            { fieldName: 'alert_level', type: 'varchar(20)', semanticStatus: 'SUGGESTED', riskLevel: 'HIGH', riskReason: 'ENUM_VALUE_MISSING', suggestion: { term: '告警级别', confidence: 0.85 } },
+            { fieldName: 'trigger_time', type: 'timestamp', semanticStatus: 'DECIDED', riskLevel: 'LOW', role: 'Time', term: '触发时间' },
+            { fieldName: 'handler_owner', type: 'varchar(50)', semanticStatus: 'PARTIALLY_DECIDED', riskLevel: 'LOW', suggestion: { term: '负责人', confidence: 0.60 } },
+            { fieldName: 'resolved_time', type: 'timestamp', semanticStatus: 'UNANALYZED', riskLevel: 'LOW' }
         ]
     },
     // 3️⃣ IT Ops: 表 C (已完成 - 资产维表)
@@ -319,13 +319,13 @@ export const mockPhysicalTables = [
         rows: '2,400',
         semanticStage: 'PUBLISHED', // 对应 "可进入对象建模" / "已完成"
         fields: [
-            { name: 'asset_id', type: 'varchar(50)', key: 'PK', semanticStatus: 'DECIDED', riskLevel: 'LOW', role: 'Identifier', term: '资产编号' },
-            { name: 'hostname', type: 'varchar(100)', semanticStatus: 'DECIDED', riskLevel: 'LOW', role: 'Attribute', term: '主机名' },
-            { name: 'ip_address', type: 'varchar(50)', semanticStatus: 'DECIDED', riskLevel: 'LOW', role: 'Attribute', term: 'IP地址' },
-            { name: 'os_version', type: 'varchar(50)', semanticStatus: 'DECIDED', riskLevel: 'LOW', role: 'Attribute', term: 'OS版本' },
-            { name: 'cpu_cores', type: 'int', semanticStatus: 'DECIDED', riskLevel: 'LOW', role: 'Measure', term: 'CPU核数' },
-            { name: 'memory_gb', type: 'int', semanticStatus: 'DECIDED', riskLevel: 'LOW', role: 'Measure', term: '内存大小' },
-            { name: 'purchase_date', type: 'date', semanticStatus: 'DECIDED', riskLevel: 'LOW', role: 'Time', term: '采购日期' }
+            { fieldName: 'asset_id', type: 'varchar(50)', key: 'PK', semanticStatus: 'DECIDED', riskLevel: 'LOW', role: 'Identifier', term: '资产编号' },
+            { fieldName: 'hostname', type: 'varchar(100)', semanticStatus: 'DECIDED', riskLevel: 'LOW', role: 'Attribute', term: '主机名' },
+            { fieldName: 'ip_address', type: 'varchar(50)', semanticStatus: 'DECIDED', riskLevel: 'LOW', role: 'Attribute', term: 'IP地址' },
+            { fieldName: 'os_version', type: 'varchar(50)', semanticStatus: 'DECIDED', riskLevel: 'LOW', role: 'Attribute', term: 'OS版本' },
+            { fieldName: 'cpu_cores', type: 'int', semanticStatus: 'DECIDED', riskLevel: 'LOW', role: 'Measure', term: 'CPU核数' },
+            { fieldName: 'memory_gb', type: 'int', semanticStatus: 'DECIDED', riskLevel: 'LOW', role: 'Measure', term: '内存大小' },
+            { fieldName: 'purchase_date', type: 'date', semanticStatus: 'DECIDED', riskLevel: 'LOW', role: 'Time', term: '采购日期' }
         ]
     },
     // 4️⃣ Demo: 综合场景表 (Relationship Graph 演示)
@@ -343,25 +343,71 @@ export const mockPhysicalTables = [
         ],
         fields: [
             // Order Object
-            { name: 'order_id', type: 'bigint', key: 'PK', semanticStatus: 'DECIDED', role: 'Identifier', tags: ['BO:电商订单'], aiSuggestion: '订单编号' },
-            { name: 'user_id', type: 'bigint', semanticStatus: 'DECIDED', role: 'ForeignKey', tags: ['BO:电商订单'], aiSuggestion: '用户ID' },
-            { name: 'store_id', type: 'bigint', semanticStatus: 'DECIDED', role: 'ForeignKey', tags: ['BO:电商订单'], aiSuggestion: '店铺ID' },
-            { name: 'total_amount', type: 'decimal(12,2)', semanticStatus: 'DECIDED', role: 'Measure', tags: ['BO:电商订单'], aiSuggestion: '订单总额' },
-            { name: 'order_status', type: 'int', semanticStatus: 'DECIDED', role: 'Status', tags: ['BO:电商订单'], aiSuggestion: '订单状态' },
-            { name: 'created_time', type: 'datetime', semanticStatus: 'DECIDED', role: 'Time', tags: ['BO:电商订单'], aiSuggestion: '下单时间' },
+            { fieldName: 'order_id', type: 'bigint', key: 'PK', semanticStatus: 'DECIDED', role: 'Identifier', tags: ['BO:电商订单'], aiSuggestion: '订单编号' },
+            { fieldName: 'user_id', type: 'bigint', semanticStatus: 'DECIDED', role: 'ForeignKey', tags: ['BO:电商订单'], aiSuggestion: '用户ID' },
+            { fieldName: 'store_id', type: 'bigint', semanticStatus: 'DECIDED', role: 'ForeignKey', tags: ['BO:电商订单'], aiSuggestion: '店铺ID' },
+            { fieldName: 'total_amount', type: 'decimal(12,2)', semanticStatus: 'DECIDED', role: 'Measure', tags: ['BO:电商订单'], aiSuggestion: '订单总额' },
+            { fieldName: 'order_status', type: 'int', semanticStatus: 'DECIDED', role: 'Status', tags: ['BO:电商订单'], aiSuggestion: '订单状态' },
+            { fieldName: 'created_time', type: 'datetime', semanticStatus: 'DECIDED', role: 'Time', tags: ['BO:电商订单'], aiSuggestion: '下单时间' },
 
             // Payment Object (Split from same table)
-            { name: 'payment_id', type: 'varchar(64)', semanticStatus: 'SUGGESTED', role: 'Identifier', tags: ['BO:支付信息'], aiSuggestion: '支付流水号' },
-            { name: 'payment_method', type: 'varchar(20)', semanticStatus: 'SUGGESTED', role: 'Attribute', tags: ['BO:支付信息'], aiSuggestion: '支付方式' },
-            { name: 'payment_time', type: 'datetime', semanticStatus: 'SUGGESTED', role: 'Time', tags: ['BO:支付信息'], aiSuggestion: '支付时间' },
-            { name: 'payment_status', type: 'int', semanticStatus: 'SUGGESTED', role: 'Status', tags: ['BO:支付信息'], aiSuggestion: '支付状态' },
+            { fieldName: 'payment_id', type: 'varchar(64)', semanticStatus: 'SUGGESTED', role: 'Identifier', tags: ['BO:支付信息'], aiSuggestion: '支付流水号' },
+            { fieldName: 'payment_method', type: 'varchar(20)', semanticStatus: 'SUGGESTED', role: 'Attribute', tags: ['BO:支付信息'], aiSuggestion: '支付方式' },
+            { fieldName: 'payment_time', type: 'datetime', semanticStatus: 'SUGGESTED', role: 'Time', tags: ['BO:支付信息'], aiSuggestion: '支付时间' },
+            { fieldName: 'payment_status', type: 'int', semanticStatus: 'SUGGESTED', role: 'Status', tags: ['BO:支付信息'], aiSuggestion: '支付状态' },
 
             // Logistics Object (Split)
-            { name: 'logistics_code', type: 'varchar(64)', semanticStatus: 'SUGGESTED', role: 'Identifier', tags: ['BO:物流信息'], aiSuggestion: '物流单号' },
-            { name: 'logistics_company', type: 'varchar(50)', semanticStatus: 'SUGGESTED', role: 'Attribute', tags: ['BO:物流信息'], aiSuggestion: '物流公司' },
-            { name: 'receiver_address', type: 'varchar(255)', semanticStatus: 'SUGGESTED', role: 'Attribute', tags: ['BO:物流信息'], aiSuggestion: '收货地址' }
+            { fieldName: 'logistics_code', type: 'varchar(64)', semanticStatus: 'SUGGESTED', role: 'Identifier', tags: ['BO:物流信息'], aiSuggestion: '物流单号' },
+            { fieldName: 'logistics_company', type: 'varchar(50)', semanticStatus: 'SUGGESTED', role: 'Attribute', tags: ['BO:物流信息'], aiSuggestion: '物流公司' },
+            { fieldName: 'receiver_address', type: 'varchar(255)', semanticStatus: 'SUGGESTED', role: 'Attribute', tags: ['BO:物流信息'], aiSuggestion: '收货地址' }
+        ]
+    },
+    // 5️⃣ HR: 部门信息表 (Demo for Relationship Graph)
+    {
+        id: 'TBL_HR_DEPT',
+        name: 't_hr_department',
+        source: 'HR_Master_DB (MySQL)',
+        scannedAt: '2026-01-21 18:00:00',
+        rows: '150',
+        status: 'analyzed',
+        semanticStage: 'READY_FOR_OBJECT',
+        businessName: '部门信息表', // Default Object Name
+        relationships: [
+            { targetTable: 't_hr_employee', type: 'HasMany', key: 'department_id', description: '包含员工' },
+            { targetTable: 't_hr_department', type: 'Tree', key: 'parent_id', description: '上级部门' }
+        ],
+        fields: [
+            { fieldName: 'department_id', type: 'bigint', key: 'PK', semanticStatus: 'DECIDED', role: 'Identifier', tags: ['BO:部门信息表'], aiSuggestion: '部门ID' },
+            { fieldName: 'department_name', type: 'varchar(100)', semanticStatus: 'DECIDED', role: 'Attribute', tags: ['BO:部门信息表'], aiSuggestion: '部门名称' },
+            { fieldName: 'parent_id', type: 'bigint', semanticStatus: 'DECIDED', role: 'ForeignKey', tags: ['BO:部门信息表'], aiSuggestion: '上级部门ID' },
+            { fieldName: 'manager_id', type: 'bigint', semanticStatus: 'DECIDED', role: 'ForeignKey', tags: ['BO:部门信息表'], aiSuggestion: '部门负责人ID' },
+            { fieldName: 'level', type: 'int', semanticStatus: 'DECIDED', role: 'Attribute', tags: ['BO:部门信息表'], aiSuggestion: '部门层级' },
+            { fieldName: 'create_time', type: 'datetime', semanticStatus: 'DECIDED', role: 'Time', tags: ['BO:部门信息表'], aiSuggestion: '创建时间' },
+            { fieldName: 'update_time', type: 'datetime', semanticStatus: 'DECIDED', role: 'Time', tags: ['BO:部门信息表'], aiSuggestion: '更新时间' }
         ]
     }
+    },
+// 6️⃣ HR: 员工信息表 (Fix for missing table error)
+{
+    id: 'TBL_HR_EMP',
+        name: 't_hr_employee',
+            source: 'HR_Master_DB (MySQL)',
+                scannedAt: '2026-01-21 18:00:00',
+                    rows: '3,500',
+                        status: 'analyzed',
+                            semanticStage: 'READY_FOR_OBJECT',
+                                businessName: '员工信息表',
+                                    relationships: [
+                                        { targetTable: 't_hr_department', type: 'BelongsTo', key: 'department_id', description: '所属部门' }
+                                    ],
+                                        fields: [
+                                            { fieldName: 'employee_id', type: 'varchar(20)', key: 'PK', semanticStatus: 'DECIDED', role: 'Identifier', tags: ['BO:员工信息'], aiSuggestion: '工号' },
+                                            { fieldName: 'name', type: 'varchar(50)', semanticStatus: 'DECIDED', role: 'Attribute', tags: ['BO:员工信息'], aiSuggestion: '姓名' },
+                                            { fieldName: 'department_id', type: 'bigint', semanticStatus: 'DECIDED', role: 'ForeignKey', tags: ['BO:员工信息'], aiSuggestion: '部门ID' },
+                                            { fieldName: 'level', type: 'varchar(10)', semanticStatus: 'DECIDED', role: 'Attribute', tags: ['BO:员工信息'], aiSuggestion: '职级' },
+                                            { fieldName: 'join_date', type: 'date', semanticStatus: 'DECIDED', role: 'Time', tags: ['BO:员工信息'], aiSuggestion: '入职日期' }
+                                        ]
+}
 ];
 
 // SG: 映射关系 (Enhanced with BO-to-Table structure)
@@ -444,30 +490,30 @@ export const mockDataSources = [
         tables: [
             {
                 id: 'TBL_001', name: 't_pop_base_info', comment: '人口基础信息表', rows: '1.2M', updateTime: '2024-05-20 10:00', columns: [
-                    { name: 'id', type: 'bigint', comment: '主键' },
-                    { name: 'name', type: 'varchar(50)', comment: '姓名' },
-                    { name: 'id_card', type: 'varchar(18)', comment: '身份证号' },
-                    { name: 'dob', type: 'datetime', comment: '出生日期' }
+                    { fieldName: 'id', type: 'bigint', comment: '主键' },
+                    { fieldName: 'name', type: 'varchar(50)', comment: '姓名' },
+                    { fieldName: 'id_card', type: 'varchar(18)', comment: '身份证号' },
+                    { fieldName: 'dob', type: 'datetime', comment: '出生日期' }
                 ]
             },
             {
                 id: 'TBL_002', name: 't_med_birth_cert', comment: '出生证明记录', rows: '450K', updateTime: '2024-05-19 15:30', columns: [
-                    { name: 'cert_id', type: 'varchar(32)', comment: '证明编号' },
-                    { name: 'baby_name', type: 'varchar(50)', comment: '新生儿姓名' },
-                    { name: 'issue_date', type: 'datetime', comment: '签发日期' }
+                    { fieldName: 'cert_id', type: 'varchar(32)', comment: '证明编号' },
+                    { fieldName: 'baby_name', type: 'varchar(50)', comment: '新生儿姓名' },
+                    { fieldName: 'issue_date', type: 'datetime', comment: '签发日期' }
                 ]
             },
             {
                 id: 'TBL_003', name: 't_hosp_dict', comment: '医院字典表', rows: '200', updateTime: '2024-01-01 00:00', columns: [
-                    { name: 'hosp_code', type: 'varchar(20)', comment: '医院编码' },
-                    { name: 'hosp_name', type: 'varchar(100)', comment: '医院名称' }
+                    { fieldName: 'hosp_code', type: 'varchar(20)', comment: '医院编码' },
+                    { fieldName: 'hosp_name', type: 'varchar(100)', comment: '医院名称' }
                 ]
             },
             {
                 id: 'TBL_004', name: 't_vac_record', comment: '疫苗接种记录', rows: '3.5M', updateTime: '2024-05-20 09:45', columns: [
-                    { name: 'record_id', type: 'bigint', comment: '记录ID' },
-                    { name: 'vac_code', type: 'varchar(20)', comment: '疫苗编码' },
-                    { name: 'inject_time', type: 'datetime', comment: '接种时间' }
+                    { fieldName: 'record_id', type: 'bigint', comment: '记录ID' },
+                    { fieldName: 'vac_code', type: 'varchar(20)', comment: '疫苗编码' },
+                    { fieldName: 'inject_time', type: 'datetime', comment: '接种时间' }
                 ]
             }
         ]
@@ -486,16 +532,16 @@ export const mockDataSources = [
         tables: [
             {
                 id: 'TBL_ORC_001', name: 'V_CITIZEN_INFO', comment: '公民基本信息视图', rows: '8.2M', updateTime: '2024-05-21 08:00', columns: [
-                    { name: 'CITIZEN_ID', type: 'VARCHAR2(18)', comment: '身份证号' },
-                    { name: 'FULL_NAME', type: 'VARCHAR2(50)', comment: '姓名' },
-                    { name: 'GENDER', type: 'CHAR(1)', comment: '性别' }
+                    { fieldName: 'CITIZEN_ID', type: 'VARCHAR2(18)', comment: '身份证号' },
+                    { fieldName: 'FULL_NAME', type: 'VARCHAR2(50)', comment: '姓名' },
+                    { fieldName: 'GENDER', type: 'CHAR(1)', comment: '性别' }
                 ]
             },
             {
                 id: 'TBL_ORC_002', name: 'T_FAMILY_REL', comment: '家庭关系表', rows: '12.5M', updateTime: '2024-05-20 22:00', columns: [
-                    { name: 'REL_ID', type: 'NUMBER(20)', comment: '关系ID' },
-                    { name: 'MEMBER_ID', type: 'VARCHAR2(18)', comment: '成员身份证' },
-                    { name: 'REL_TYPE', type: 'VARCHAR2(10)', comment: '关系类型' }
+                    { fieldName: 'REL_ID', type: 'NUMBER(20)', comment: '关系ID' },
+                    { fieldName: 'MEMBER_ID', type: 'VARCHAR2(18)', comment: '成员身份证' },
+                    { fieldName: 'REL_TYPE', type: 'VARCHAR2(10)', comment: '关系类型' }
                 ]
             }
         ]
@@ -527,16 +573,16 @@ export const mockDataSources = [
         tables: [
             {
                 id: 'TBL_LAKE_001', name: 'ods_enterprise', comment: '企业原始数据', rows: '520K', updateTime: '2024-05-21 02:00', columns: [
-                    { name: 'ent_id', type: 'varchar(50)', comment: '企业ID' },
-                    { name: 'ent_name', type: 'varchar(200)', comment: '企业名称' },
-                    { name: 'reg_capital', type: 'decimal(18,2)', comment: '注册资本' }
+                    { fieldName: 'ent_id', type: 'varchar(50)', comment: '企业ID' },
+                    { fieldName: 'ent_name', type: 'varchar(200)', comment: '企业名称' },
+                    { fieldName: 'reg_capital', type: 'decimal(18,2)', comment: '注册资本' }
                 ]
             },
             {
                 id: 'TBL_LAKE_002', name: 'ods_license', comment: '许可证原始数据', rows: '180K', updateTime: '2024-05-20 18:00', columns: [
-                    { name: 'license_no', type: 'varchar(50)', comment: '许可证号' },
-                    { name: 'license_type', type: 'varchar(20)', comment: '许可类型' },
-                    { name: 'valid_until', type: 'date', comment: '有效期至' }
+                    { fieldName: 'license_no', type: 'varchar(50)', comment: '许可证号' },
+                    { fieldName: 'license_type', type: 'varchar(20)', comment: '许可类型' },
+                    { fieldName: 'valid_until', type: 'date', comment: '有效期至' }
                 ]
             }
         ]
@@ -584,7 +630,7 @@ export const mockDataSources = [
 ];
 
 // SG-01: BO-to-Table Mapping Configuration
-export const mockBOTableMappings: Record<string, { tableId: string; tableName: string; source: string; mappings: { boField: string; tblField: string; rule: string }[]; fields: { name: string; type: string; key?: string; semanticStatus?: string; riskLevel?: string; role?: string; term?: string; suggestion?: any; riskReason?: string }[] }> = {
+export const mockBOTableMappings: Record<string, { tableId: string; tableName: string; source: string; mappings: { boField: string; tblField: string; rule: string }[]; fields: { fieldName: string; type: string; key?: string; semanticStatus?: string; riskLevel?: string; role?: string; term?: string; suggestion?: any; riskReason?: string }[] }> = {
     'BO_NEWBORN': {
         tableId: 'TBL_POP_BASE',
         tableName: 't_pop_base_info_2024',
@@ -596,13 +642,13 @@ export const mockBOTableMappings: Record<string, { tableId: string; tableName: s
             { boField: '出生体重', tblField: 'weight_kg', rule: 'Direct Copy' },
         ],
         fields: [
-            { name: 'id', type: 'bigint', key: 'PK', semanticStatus: 'DECIDED', riskLevel: 'LOW', role: 'Identifier' },
-            { name: 'p_name', type: 'varchar(50)', semanticStatus: 'SUGGESTED', riskLevel: 'LOW', role: 'Attribute' },
-            { name: 'id_card_num', type: 'varchar(18)', semanticStatus: 'SUGGESTED', riskLevel: 'HIGH', role: 'Attribute' },
-            { name: 'birth_ts', type: 'datetime', semanticStatus: 'DECIDED', riskLevel: 'LOW', role: 'Time' },
-            { name: 'weight_kg', type: 'decimal(4,2)', semanticStatus: 'UNANALYZED', riskLevel: 'MEDIUM', role: 'Measure' },
-            { name: 'hospital_id', type: 'int', semanticStatus: 'UNANALYZED', riskLevel: 'LOW', role: 'ForeignKey' },
-            { name: 'is_deleted', type: 'tinyint', semanticStatus: 'DECIDED', riskLevel: 'LOW', role: 'Status' }
+            { fieldName: 'id', type: 'bigint', key: 'PK', semanticStatus: 'DECIDED', riskLevel: 'LOW', role: 'Identifier' },
+            { fieldName: 'p_name', type: 'varchar(50)', semanticStatus: 'SUGGESTED', riskLevel: 'LOW', role: 'Attribute' },
+            { fieldName: 'id_card_num', type: 'varchar(18)', semanticStatus: 'SUGGESTED', riskLevel: 'HIGH', role: 'Attribute' },
+            { fieldName: 'birth_ts', type: 'datetime', semanticStatus: 'DECIDED', riskLevel: 'LOW', role: 'Time' },
+            { fieldName: 'weight_kg', type: 'decimal(4,2)', semanticStatus: 'UNANALYZED', riskLevel: 'MEDIUM', role: 'Measure' },
+            { fieldName: 'hospital_id', type: 'int', semanticStatus: 'UNANALYZED', riskLevel: 'LOW', role: 'ForeignKey' },
+            { fieldName: 'is_deleted', type: 'tinyint', semanticStatus: 'DECIDED', riskLevel: 'LOW', role: 'Status' }
         ]
     },
     'BO_CERT': {
@@ -611,11 +657,11 @@ export const mockBOTableMappings: Record<string, { tableId: string; tableName: s
         source: 'HOSP_DB_01 (MySQL)',
         mappings: [],
         fields: [
-            { name: 'cert_id', type: 'bigint', key: 'PK' },
-            { name: 'cert_no', type: 'varchar(32)' },
-            { name: 'issue_date', type: 'date' },
-            { name: 'hospital_code', type: 'varchar(20)' },
-            { name: 'mother_id', type: 'varchar(18)' }
+            { fieldName: 'cert_id', type: 'bigint', key: 'PK' },
+            { fieldName: 'cert_no', type: 'varchar(32)' },
+            { fieldName: 'issue_date', type: 'date' },
+            { fieldName: 'hospital_code', type: 'varchar(20)' },
+            { fieldName: 'mother_id', type: 'varchar(18)' }
         ]
     },
     // 以下是与 mockScanResults 表名匹配的映射
@@ -629,9 +675,9 @@ export const mockBOTableMappings: Record<string, { tableId: string; tableName: s
             { boField: '手机号', tblField: 'mobile', rule: 'Direct Copy' },
         ],
         fields: [
-            { name: 'user_id', type: 'bigint', key: 'PK' },
-            { name: 'name', type: 'varchar(50)' },
-            { name: 'mobile', type: 'varchar(20)' }
+            { fieldName: 'user_id', type: 'bigint', key: 'PK' },
+            { fieldName: 'name', type: 'varchar(50)' },
+            { fieldName: 'mobile', type: 'varchar(20)' }
         ]
     },
     'BO_ORDER': {
@@ -645,11 +691,11 @@ export const mockBOTableMappings: Record<string, { tableId: string; tableName: s
             { boField: '订单状态', tblField: 'status', rule: 'Direct Copy' },
         ],
         fields: [
-            { name: 'order_id', type: 'bigint', key: 'PK' },
-            { name: 'user_id', type: 'bigint' },
-            { name: 'total_amount', type: 'decimal(10,2)' },
-            { name: 'status', type: 'int' },
-            { name: 'create_time', type: 'datetime' }
+            { fieldName: 'order_id', type: 'bigint', key: 'PK' },
+            { fieldName: 'user_id', type: 'bigint' },
+            { fieldName: 'total_amount', type: 'decimal(10,2)' },
+            { fieldName: 'status', type: 'int' },
+            { fieldName: 'create_time', type: 'datetime' }
         ]
     },
     'BO_PRODUCT': {
@@ -662,10 +708,10 @@ export const mockBOTableMappings: Record<string, { tableId: string; tableName: s
             { boField: '售价', tblField: 'price', rule: 'Direct Copy' },
         ],
         fields: [
-            { name: 'product_id', type: 'bigint', key: 'PK' },
-            { name: 'name', type: 'varchar(200)' },
-            { name: 'price', type: 'decimal(10,2)' },
-            { name: 'category_id', type: 'int' }
+            { fieldName: 'product_id', type: 'bigint', key: 'PK' },
+            { fieldName: 'name', type: 'varchar(200)' },
+            { fieldName: 'price', type: 'decimal(10,2)' },
+            { fieldName: 'category_id', type: 'int' }
         ]
     },
     // 🚚 SG-DEMO: Supply Chain Mappings (Inventory intentionally omitted for demo)
@@ -679,9 +725,9 @@ export const mockBOTableMappings: Record<string, { tableId: string; tableName: s
             { boField: '评级', tblField: 'rating', rule: 'Direct Copy' },
         ],
         fields: [
-            { name: 'supplier_id', type: 'varchar(20)', key: 'PK' },
-            { name: 'supplier_name', type: 'varchar(100)' },
-            { name: 'rating', type: 'char(1)' }
+            { fieldName: 'supplier_id', type: 'varchar(20)', key: 'PK' },
+            { fieldName: 'supplier_name', type: 'varchar(100)' },
+            { fieldName: 'rating', type: 'char(1)' }
         ]
     },
     'BO_SCM_PO': {
@@ -694,10 +740,10 @@ export const mockBOTableMappings: Record<string, { tableId: string; tableName: s
             { boField: '单据流转状态', tblField: 'status', rule: 'Direct Copy' },
         ],
         fields: [
-            { name: 'po_id', type: 'varchar(20)', key: 'PK' },
-            { name: 'supplier_id', type: 'varchar(20)' },
-            { name: 'total_amount', type: 'decimal(12,2)' },
-            { name: 'status', type: 'int' }
+            { fieldName: 'po_id', type: 'varchar(20)', key: 'PK' },
+            { fieldName: 'supplier_id', type: 'varchar(20)' },
+            { fieldName: 'total_amount', type: 'decimal(12,2)' },
+            { fieldName: 'status', type: 'int' }
         ]
     },
     'BO_SCM_DELIVERY': {
@@ -710,9 +756,9 @@ export const mockBOTableMappings: Record<string, { tableId: string; tableName: s
             { boField: '配送状态', tblField: 'status', rule: 'Direct Copy' },
         ],
         fields: [
-            { name: 'delivery_id', type: 'varchar(30)', key: 'PK' },
-            { name: 'tracking_no', type: 'varchar(50)' },
-            { name: 'status', type: 'varchar(20)' }
+            { fieldName: 'delivery_id', type: 'varchar(30)', key: 'PK' },
+            { fieldName: 'tracking_no', type: 'varchar(50)' },
+            { fieldName: 'status', type: 'varchar(20)' }
         ]
     },
     // 🖥️ IT Ops Mapping
@@ -730,13 +776,13 @@ export const mockBOTableMappings: Record<string, { tableId: string; tableName: s
             { boField: '采购日期', tblField: 'purchase_date', rule: 'Direct Copy' },
         ],
         fields: [
-            { name: 'asset_id', type: 'varchar(50)', key: 'PK', semanticStatus: 'DECIDED', riskLevel: 'LOW', role: 'Identifier', term: '资产编号' },
-            { name: 'hostname', type: 'varchar(100)', semanticStatus: 'DECIDED', riskLevel: 'LOW', role: 'Attribute', term: '主机名' },
-            { name: 'ip_address', type: 'varchar(50)', semanticStatus: 'DECIDED', riskLevel: 'LOW', role: 'Attribute', term: 'IP地址' },
-            { name: 'os_version', type: 'varchar(50)', semanticStatus: 'DECIDED', riskLevel: 'LOW', role: 'Attribute', term: 'OS版本' },
-            { name: 'cpu_cores', type: 'int', semanticStatus: 'DECIDED', riskLevel: 'LOW', role: 'Measure', term: 'CPU核数' },
-            { name: 'memory_gb', type: 'int', semanticStatus: 'DECIDED', riskLevel: 'LOW', role: 'Measure', term: '内存大小' },
-            { name: 'purchase_date', type: 'date', semanticStatus: 'DECIDED', riskLevel: 'LOW', role: 'Time', term: '采购日期' }
+            { fieldName: 'asset_id', type: 'varchar(50)', key: 'PK', semanticStatus: 'DECIDED', riskLevel: 'LOW', role: 'Identifier', term: '资产编号' },
+            { fieldName: 'hostname', type: 'varchar(100)', semanticStatus: 'DECIDED', riskLevel: 'LOW', role: 'Attribute', term: '主机名' },
+            { fieldName: 'ip_address', type: 'varchar(50)', semanticStatus: 'DECIDED', riskLevel: 'LOW', role: 'Attribute', term: 'IP地址' },
+            { fieldName: 'os_version', type: 'varchar(50)', semanticStatus: 'DECIDED', riskLevel: 'LOW', role: 'Attribute', term: 'OS版本' },
+            { fieldName: 'cpu_cores', type: 'int', semanticStatus: 'DECIDED', riskLevel: 'LOW', role: 'Measure', term: 'CPU核数' },
+            { fieldName: 'memory_gb', type: 'int', semanticStatus: 'DECIDED', riskLevel: 'LOW', role: 'Measure', term: '内存大小' },
+            { fieldName: 'purchase_date', type: 'date', semanticStatus: 'DECIDED', riskLevel: 'LOW', role: 'Time', term: '采购日期' }
         ]
     }
 };
@@ -2043,18 +2089,18 @@ export const mockScanResults = [
         tables: [
             {
                 id: 'TBL_HR_01', name: 't_hr_employee', comment: '企业核心人力资源主数据', rows: '3.5K', updateTime: '2024-06-20 10:00', columns: [
-                    { name: 'employee_id', type: 'varchar(20)', comment: '工号' },
-                    { name: 'name', type: 'varchar(50)', comment: '姓名' },
-                    { name: 'department_id', type: 'int', comment: '部门ID' },
-                    { name: 'level', type: 'varchar(10)', comment: '职级' },
-                    { name: 'join_date', type: 'date', comment: '入职日期' }
+                    { fieldName: 'employee_id', type: 'varchar(20)', comment: '工号' },
+                    { fieldName: 'name', type: 'varchar(50)', comment: '姓名' },
+                    { fieldName: 'department_id', type: 'int', comment: '部门ID' },
+                    { fieldName: 'level', type: 'varchar(10)', comment: '职级' },
+                    { fieldName: 'join_date', type: 'date', comment: '入职日期' }
                 ]
             },
             {
                 id: 'TBL_HR_02', name: 't_hr_department', comment: '企业组织架构部门信息', rows: '120', updateTime: '2024-06-20 10:00', columns: [
-                    { name: 'dept_id', type: 'int', comment: '部门ID' },
-                    { name: 'dept_name', type: 'varchar(100)', comment: '部门名称' },
-                    { name: 'parent_id', type: 'int', comment: '上级部门ID' }
+                    { fieldName: 'dept_id', type: 'int', comment: '部门ID' },
+                    { fieldName: 'dept_name', type: 'varchar(100)', comment: '部门名称' },
+                    { fieldName: 'parent_id', type: 'int', comment: '上级部门ID' }
                 ]
             }
         ]

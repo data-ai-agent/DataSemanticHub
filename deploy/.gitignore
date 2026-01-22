@@ -1,0 +1,21 @@
+# Git ignore file for deploy directory
+
+# Environment variables (contains sensitive data)
+.env
+
+# Data directories (contains persistent data)
+data/
+logs/
+
+# Temporary files
+*.tmp
+*.log
+.DS_Store
+
+# Docker artifacts
+.docker/
+
+# Backup files
+*.bak
+*.backup
+*.sql

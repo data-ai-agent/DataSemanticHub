@@ -15,12 +15,12 @@ interface QualityIssue {
 
 function detectQualityIssue(field: any, roleLabel: string): QualityIssue {
     // Mock quality metrics (in real app, these would come from field analysis)
-    const nullRate = field.name.includes('name') ? 39 :
-        field.name.includes('created') ? 0 :
+    const nullRate = ((field.fieldName || field.name || "").includes('name') ? 39 :
+        ((field.fieldName || field.name || "").includes('created') ? 0 :
             Math.random() * 10;
 
-    const uniqueness = field.name.includes('id') ? 100 :
-        field.name.includes('name') ? 78 :
+    const uniqueness = ((field.fieldName || field.name || "").includes('id') ? 100 :
+        ((field.fieldName || field.name || "").includes('name') ? 78 :
             Math.random() * 100;
 
     // Rule 1: Identifiers/PKs must have zero nulls and 100% uniqueness
@@ -69,14 +69,14 @@ function detectQualityIssue(field: any, roleLabel: string): QualityIssue {
 
 export const EnhancedFieldRow: React.FC<EnhancedFieldRowProps> = ({ field, index }) => {
     // Determine field role and security level
-    const isSensitive = field.name.includes('phone') || field.name.includes('mobile') ||
-        field.name.includes('id_card') || field.name.includes('name') ||
-        field.name.includes('email') || field.name.includes('address');
+    const isSensitive = ((field.fieldName || field.name || "").includes('phone') || ((field.fieldName || field.name || "").includes('mobile') ||
+        ((field.fieldName || field.name || "").includes('id_card') || ((field.fieldName || field.name || "").includes('name') ||
+        ((field.fieldName || field.name || "").includes('email') || ((field.fieldName || field.name || "").includes('address');
     const securityLevel = isSensitive ? (Math.random() > 0.5 ? 'L3' : 'L2') : 'L1';
 
-    const roleInfo = field.name.includes('id') ? { label: '标识符', color: 'purple' } :
-        field.name.includes('time') || field.name.includes('date') || field.name.includes('created') ? { label: '时间', color: 'blue' } :
-            field.name.includes('status') || field.name.includes('state') ? { label: '状态', color: 'amber' } :
+    const roleInfo = ((field.fieldName || field.name || "").includes('id') ? { label: '标识符', color: 'purple' } :
+        ((field.fieldName || field.name || "").includes('time') || ((field.fieldName || field.name || "").includes('date') || ((field.fieldName || field.name || "").includes('created') ? { label: '时间', color: 'blue' } :
+            ((field.fieldName || field.name || "").includes('status') || ((field.fieldName || field.name || "").includes('state') ? { label: '状态', color: 'amber' } :
                 { label: '业务属性', color: 'slate' };
 
     // Detect quality issues based on role
