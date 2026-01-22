@@ -1,0 +1,210 @@
+{
+  "connector": "dameng",
+  "type": [
+    {
+      "source_type": "tinyint",
+      "vega_type": "integer",
+      "target_type": "bigint"
+    },
+    {
+      "source_type": "byte",
+      "vega_type": "integer",
+      "target_type": "bigint"
+    },
+    {
+      "source_type": "smallint",
+      "vega_type": "integer",
+      "target_type": "bigint"
+    },
+    {
+      "source_type": "int",
+      "vega_type": "integer",
+      "target_type": "bigint"
+    },
+    {
+      "source_type": "integer",
+      "vega_type": "integer",
+      "target_type": "bigint"
+    },
+    {
+      "source_type": "pls_integer",
+      "vega_type": "integer",
+      "target_type": "bigint"
+    },
+    {
+      "source_type": "bigint",
+      "vega_type": "integer",
+      "target_type": "bigint"
+    },
+    {
+      "source_type": "float",
+      "vega_type": "float",
+      "target_type": "double"
+    },
+    {
+      "source_type": "double",
+      "vega_type": "float",
+      "target_type": "double"
+    },
+    {
+      "source_type": "double precision",
+      "vega_type": "float",
+      "target_type": "double"
+    },
+    {
+      "source_type": "real",
+      "vega_type": "float",
+      "target_type": "double"
+    },
+    {
+      "source_type": "decimal",
+      "vega_type": "decimal",
+      "target_type": "decimal"
+    },
+    {
+      "source_type": "numeric",
+      "vega_type": "decimal",
+      "target_type": "decimal"
+    },
+    {
+      "source_type": "number",
+      "vega_type": "decimal",
+      "target_type": "decimal"
+    },
+    {
+      "source_type": "dec",
+      "vega_type": "decimal",
+      "target_type": "decimal"
+    },
+    {
+      "source_type": "char",
+      "vega_type": "string",
+      "target_type": "varchar"
+    },
+    {
+      "source_type": "character",
+      "vega_type": "string",
+      "target_type": "varchar"
+    },
+    {
+      "source_type": "rowid",
+      "vega_type": "string",
+      "target_type": "varchar"
+    },
+    {
+      "source_type": "varchar",
+      "vega_type": "string",
+      "target_type": "varchar"
+    },
+    {
+      "source_type": "varchar2",
+      "vega_type": "string",
+      "target_type": "varchar"
+    },
+    {
+      "source_type": "text",
+      "vega_type": "text",
+      "target_type": "text"
+    },
+    {
+      "source_type": "long",
+      "vega_type": "text",
+      "target_type": "text"
+    },
+    {
+      "source_type": "longvarchar",
+      "vega_type": "text",
+      "target_type": "text"
+    },
+    {
+      "source_type": "date",
+      "vega_type": "date",
+      "target_type": "date"
+    },
+    {
+      "source_type": "timestamp",
+      "vega_type": "timestamp",
+      "target_type": "timestamp"
+    },
+    {
+      "source_type": "timestamp with time zone",
+      "vega_type": "timestamp",
+      "target_type": "timestamp"
+    },
+    {
+      "source_type": "timestamp with local time zone",
+      "vega_type": "timestamp",
+      "target_type": "timestamp"
+    },
+    {
+      "source_type": "time",
+      "vega_type": "time",
+      "target_type": "time"
+    },
+    {
+      "source_type": "time with time zone",
+      "vega_type": "time",
+      "target_type": "time"
+    },
+    {
+      "source_type": "datetime",
+      "vega_type": "datetime",
+      "target_type": "datetime"
+    },
+    {
+      "source_type": "bit",
+      "vega_type": "boolean",
+      "target_type": "boolean"
+    },
+    {
+      "source_type": "bool",
+      "vega_type": "boolean",
+      "target_type": "boolean"
+    },
+    {
+      "source_type": "boolean",
+      "vega_type": "boolean",
+      "target_type": "boolean"
+    },
+    {
+      "source_type": "binary",
+      "vega_type": "binary",
+      "target_type": "blob"
+    },
+    {
+      "source_type": "varbinary",
+      "vega_type": "binary",
+      "target_type": "blob"
+    },
+    {
+      "source_type": "raw",
+      "vega_type": "binary",
+      "target_type": "blob"
+    },
+    {
+      "source_type": "image",
+      "vega_type": "binary",
+      "target_type": "blob"
+    },
+    {
+      "source_type": "longvarbinary",
+      "vega_type": "binary",
+      "target_type": "blob"
+    },
+    {
+      "source_type": "blob",
+      "vega_type": "binary",
+      "target_type": "blob"
+    },
+    {
+      "source_type": "clob",
+      "vega_type": "binary",
+      "target_type": "blob"
+    },
+    {
+      "source_type": "bfile",
+      "vega_type": "binary",
+      "target_type": "blob"
+    }
+  ]
+}

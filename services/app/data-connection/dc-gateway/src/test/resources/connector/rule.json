@@ -1,0 +1,58 @@
+{
+  "rules": [
+    {
+      "ruleName": "FilterNode",
+      "operators": ["like", "between", "is null", "is not null", "in", "exists", "=", "<", ">", "<=", ">=", "<>", "and", "or", "not"],
+      "description": "谓词下推",
+      "defaultBehavior": "默认内置下推"
+    },
+    {
+      "ruleName": "ProjectNode",
+      "operators": ["select"],
+      "description": "投影下推",
+      "defaultBehavior": "默认内置下推"
+    },
+    {
+      "ruleName": "AggregationNode",
+      "operators": ["count", "avg", "sum","max", "min"],
+      "description": "聚合函数下推",
+      "defaultBehavior": ""
+    },
+    {
+      "ruleName": "TopNNode",
+      "operators": ["order by"],
+      "description": "排序下推",
+      "defaultBehavior": ""
+    },
+    {
+      "ruleName": "MarkDistinctNode",
+      "operators": ["distinct"],
+      "description": "distinct下推",
+      "defaultBehavior": ""
+    },
+    {
+      "ruleName": "LimitNode",
+      "operators": ["limit","offset"],
+      "description": "limit下推",
+      "defaultBehavior": ""
+    },
+    {
+      "ruleName": "JoinNode",
+      "operators": ["inner join","left join","right join","cross join"],
+      "description": "连接下推",
+      "defaultBehavior": ""
+    },
+    {
+      "ruleName": "GroupIdNode",
+      "operators": ["group by"],
+      "description": "分组下推",
+      "defaultBehavior": ""
+    },
+    {
+      "ruleName": "UnionNode",
+      "operators": ["union"],
+      "description": "union下推",
+      "defaultBehavior": ""
+    }
+  ]
+}

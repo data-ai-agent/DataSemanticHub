@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.eisoo.dc.common.metadata.mapper.FieldScanMapper">
+
+    <select id="getFieldListByTableId" resultType="com.eisoo.dc.common.metadata.entity.FieldScanEntity">
+        SELECT f_id FROM t_table_field_scan
+        WHERE f_table_id = #{tableId} AND f_operation_type != 1
+        <if test="keyword != null and keyword != ''">
+            AND (f_field_name LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+    </select>
+    <select id="getAllFieldListByTableId" resultType="com.eisoo.dc.common.metadata.entity.FieldScanEntity">
+        SELECT f_field_name,
+        f_table_id,
+        f_table_name,
+        f_field_type,
+        f_field_length,
+        f_field_precision,
+        f_field_comment,
+        f_field_order_no,
+        f_advanced_params
+        FROM t_table_field_scan
+        WHERE f_table_id IN
+        <foreach item="includeId" collection="includeIds" open="(" separator="," close=")">
+            #{includeId}
+        </foreach>
+        AND f_operation_type != 1
+        UNION ALL
+        SELECT f_field_name,
+        f_table_id,
+        "" AS f_table_name,
+        f_field_type,
+        f_field_length,
+        f_field_precision,
+        f_field_comment,
+        null as f_field_order_no,
+        f_advanced_params
+        FROM t_table_field
+        WHERE f_table_id IN
+        <foreach item="includeId" collection="includeIds" open="(" separator="," close=")">
+            #{includeId}
+        </foreach>
+        AND f_delete_flag != 1
+    </select>
+
+    <select id="selectPage" resultType="com.eisoo.dc.common.metadata.entity.FieldScanEntity">
+        SELECT * FROM t_table_field_scan
+        WHERE 1=1
+        <if test="includeIds != null">
+            AND f_id IN
+            <foreach item="includeId" collection="includeIds" open="(" separator="," close=")">
+                #{includeId}
+            </foreach>
+        </if>
+        AND f_operation_type != 1
+        <if test="keyword != null and keyword != ''">
+            AND (f_field_name LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        ORDER BY ${sortOrder} ${direction}
+        <if test="limit > 0">
+            LIMIT #{limit} OFFSET #{offset}
+        </if>
+    </select>
+    <select id="selectCount" resultType="long">
+        SELECT COUNT(*) FROM t_table_field_scan
+        WHERE f_table_id = #{tableId} AND f_operation_type != 1
+        <if test="keyword != null and keyword != ''">
+            AND f_field_name LIKE CONCAT('%', #{keyword}, '%')
+        </if>
+    </select>
+    <delete id="deleteByDsId">
+        DELETE
+        FROM t_table_field_scan
+        WHERE f_table_id IN (SELECT f_id
+                             FROM t_table_scan
+                             WHERE f_data_source_id = #{id})
+    </delete>
+</mapper>

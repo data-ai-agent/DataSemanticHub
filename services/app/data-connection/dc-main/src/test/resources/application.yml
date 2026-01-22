@@ -1,0 +1,156 @@
+server:
+  port: 8098
+  max-http-header-size: 512KB
+  tomcat:
+    accept-count: 1000
+    max-threads: 800
+    min-spare-threads: 100
+spring:
+  main:
+    allow-circular-references: true
+  application:
+    name: data-connection
+    version: 1.0.0
+    queryName: vega-calculate-coordinator
+    dbType: mysql
+  mvc:
+    throw-exception-if-no-handler-found: true
+    pathmatch:
+      matching-strategy: ANT_PATH_MATCHER
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+  datasource:
+    dynamic:
+      primary: default  # 指定默认数据源
+      strict: false # true：找不到数据源报错
+      lazy: false
+      datasource:
+        default:
+          driver-class-name: org.mariadb.jdbc.Driver
+          url: jdbc:mariadb://10.4.110.188:3330/adp?useUnicode=true&useSSL=false&characterEncoding=utf8mb4&serverTimezone=GMT%2B8
+          username: root
+          password: eisoo.com123
+          #          driver-class-name: dm.jdbc.driver.DmDriver
+          #          url: jdbc:dm://192.168.173.16:5236?schema=adp
+          #          username: SYSDBA
+          #          password: HUN_SYSDBA2023
+          type: com.alibaba.druid.pool.DruidDataSource #引入自定义的Druid数据源
+          druid:
+            default-auto-commit: false
+            #初始化时建立物理连接的个数
+            initial-size: 5
+            #最小连接池数量
+            min-idle: 5
+            #最大连接池数量 maxIdle已经不再使用
+            max-active: 20
+            #获取连接时最大等待时间，单位毫秒
+            max-wait: 60000
+            #申请连接的时候检测，如果空闲时间大于timeBetweenEvictionRunsMillis，执行validationQuery检测连接是否有效。
+            test-while-idle: true
+            #既作为检测的间隔时间又作为testWhileIdel执行的依据
+            time-between-eviction-runs-millis: 60000
+            #销毁线程时检测当前连接的最后活动时间和当前时间差大于该值时，关闭当前连接
+            min-evictable-idle-time-millis: 30000
+            #用来检测连接是否有效的sql 必须是一个查询语句
+            validation-query: select 'x'
+            #申请连接时会执行validationQuery检测连接是否有效,开启会降低性能,默认为true
+            test-on-borrow: false
+            #归还连接时会执行validationQuery检测连接是否有效,开启会降低性能,默认为true
+            test-on-return: false
+            #是否缓存preparedStatement,mysql5.5+建议开启
+            pool-prepared-statements: true
+            #当值大于0时poolPreparedStatements会自动修改为true
+            max-pool-prepared-statement-per-connection-size: 20
+
+#mybatis-plus配置
+mybatis-plus:
+  global-config:
+    banner: false
+    enable-sql-runner: true
+  mapper-locations: classpath*:mapper/*.xml
+  configuration:
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
+
+#openlook相关配置
+openlookeng:
+  url: http://10.4.111.176:8090
+  connect-timeout: 3000
+  jdbc:
+    pushdown-module: FULL_PUSHDOWN
+
+olk:
+  view:
+    catalog: olk_view_vdm
+  connector:
+    name: mysql,maria,hive-hadoop2,postgresql,clickhouse,doris,oracle,sqlserver,hive-jdbc
+
+#AF权限相关配置
+af-auth:
+  is-open: true
+  pwd-auth-url: http://10.4.109.201:30974/api/authentication/v1/pwd-auth
+  data-view-url: http://10.4.109.201/api/data-view/v1/user/form-view
+  register-clientid-url: http://10.4.110.188:4445/admin/clients
+  clientid-token: http://10.4.110.188:4444/oauth2/token
+  token-introspect: http://10.4.110.188:4445/admin/oauth2/introspect
+  row-column-rule: http://10.4.109.201:31125/admin/clients
+
+#提供jdbc代理服务的ip和端口
+gateway-jdbc:
+  ip: 10.4.37.7
+  port: 8099
+
+sql:
+  enabled: true
+
+#service相关配置
+services:
+  is-local: true
+  vega-calculate-coordinator: http://10.4.110.188:8090
+  hydra-admin: http://10.4.110.188:4445
+  user-management-private: http://10.4.110.188:30980
+  authorization-private: http://10.4.110.188:30920
+  efast-public: http://10.4.110.188:9124
+  efast-private: http://10.4.110.188:9123
+
+
+  #anyrobot:
+  #  log:
+  #enabled: false
+  #endpoint: http://10.4.104.243/api/feed_ingester/v1/jobs/otl-test4-log/events
+  #level: INFO
+  #trace:
+  #enabled: false
+  #endpoint: http://10.4.104.243/api/feed_ingester/v1/jobs/otl-test3/events
+
+
+logging:
+  #  config: classpath:logback-debug.xml
+  config: classpath:logback-spring.xml
+
+collector-data-source: mymaria_fast2 #扫描用数据源，列表过滤时使用
+
+http:
+  client:
+    connect-timeout: 6000    # 连接超时时间（毫秒）
+    read-timeout: 15000      # 读超时时间（毫秒）
+
+mq:
+  mqHost: 10.4.110.188
+  mqPort: 31000
+  mqLookupdHost: proton-mq-nsq-nsqlookupd.resource
+  mqLookupdPort: 4160
+  mqType: kafka
+  auth:
+    username: anyrobot
+    password: eisoo.com123
+    mechanism: PLAIN
+metadata:
+  scanUrl: http://localhost:8888/api/metadata-manage/v1/task/fillMetaDataByVirtual/%s
+scan:
+  numThread: 2
+
+rsa:
+  publicKeyPath: public_key.pem
+  privateKeyPath: private_key.pem

@@ -1,0 +1,95 @@
+{
+  "connector": "opensearch",
+  "type": [
+    {
+      "source_type": "byte",
+      "vega_type": "integer",
+      "target_type": "long"
+    },
+    {
+      "source_type": "short",
+      "vega_type": "integer",
+      "target_type": "long"
+    },
+    {
+      "source_type": "integer",
+      "vega_type": "integer",
+      "target_type": "long"
+    },
+    {
+      "source_type": "long",
+      "vega_type": "integer",
+      "target_type": "long"
+    },
+    {
+      "source_type": "unsigned_long",
+      "vega_type": "unsigned integer",
+      "target_type": "unsigned_long"
+    },
+    {
+      "source_type": "double",
+      "vega_type": "float",
+      "target_type": "double"
+    },
+    {
+      "source_type": "float",
+      "vega_type": "float",
+      "target_type": "double"
+    },
+    {
+      "source_type": "half_float",
+      "vega_type": "float",
+      "target_type": "double"
+    },
+    {
+      "source_type": "scaled_float",
+      "vega_type": "float",
+      "target_type": "double"
+    },
+    {
+      "source_type": "keyword",
+      "vega_type": "string",
+      "target_type": "keyword"
+    },
+    {
+      "source_type": "text",
+      "vega_type": "text",
+      "target_type": "text"
+    },
+    {
+      "source_type": "date",
+      "vega_type": "datetime",
+      "target_type": "date"
+    },
+    {
+      "source_type": "boolean",
+      "vega_type": "boolean",
+      "target_type": "boolean"
+    },
+    {
+      "source_type": "binary",
+      "vega_type": "binary",
+      "target_type": "binary"
+    },
+    {
+      "source_type": "geo_point",
+      "vega_type": "point",
+      "target_type": "geo_point"
+    },
+    {
+      "source_type": "geo_shape",
+      "vega_type": "shape",
+      "target_type": "geo_shape"
+    },
+    {
+      "source_type": "knn_vector",
+      "vega_type": "vector",
+      "target_type": "knn_vector"
+    },
+    {
+      "source_type": "ip",
+      "vega_type": "ip",
+      "target_type": "ip"
+    }
+  ]
+}

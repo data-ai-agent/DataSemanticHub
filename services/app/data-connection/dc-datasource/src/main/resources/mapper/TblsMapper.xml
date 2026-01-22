@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.eisoo.dc.common.metadata.mapper.TblsMapper">
+
+    <resultMap type="com.eisoo.dc.common.metadata.entity.TblsEntity" id="baseMap">
+        <result property="id" column="id"/>
+        <result property="databaseId" column="database_id"/>
+        <result property="tableName" column="table_name"/>
+        <result property="type" column="type"/>
+        <result property="viewOriginalText" column="view_original_text"/>
+        <result property="createTime" column="create_time"/>
+        <result property="owner" column="owner"/>
+        <result property="comment" column="comment"/>
+    </resultMap>
+
+    <delete id="deleteByView">
+        delete
+        from hetu_tbls
+        where table_name = #{viewName}
+          and database_id in (
+            select id
+            from hetu_dbs
+            where catalog_name = #{catalogName}
+        )
+    </delete>
+
+    <select id="existView" resultType="java.lang.String">
+        select vvm.table_name as viewName
+        from hetu_tbls vvm
+                 left join hetu_dbs vc on vvm.database_id = vc.id
+        where 1 = 1
+          and vvm.table_name = #{viewName}
+          and vc.catalog_name = #{catalogName}
+            limit 1
+    </select>
+
+
+</mapper>

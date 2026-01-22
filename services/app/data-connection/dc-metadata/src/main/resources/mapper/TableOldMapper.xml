@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.eisoo.dc.common.metadata.mapper.TableOldMapper">
+    <select id="selectByDsId" resultType="com.eisoo.dc.common.metadata.entity.TableOldEntity">
+        SELECT *
+        FROM t_table
+        WHERE f_data_source_id = #{id}
+    </select>
+
+    <select id="getTableListByDsId" resultType="com.eisoo.dc.common.metadata.entity.TableOldEntity">
+        SELECT f_id FROM t_table
+        WHERE f_data_source_id = #{dsId} and f_delete_flag != 1
+        <if test="keyword != null and keyword != ''">
+            AND f_name LIKE CONCAT('%', #{keyword}, '%')
+        </if>
+    </select>
+
+    <select id="selectPage" resultType="com.eisoo.dc.common.metadata.entity.TableOldEntity">
+        SELECT * FROM t_table
+        WHERE 1=1
+        <if test="includeIds != null">
+            AND f_id IN
+            <foreach item="includeId" collection="includeIds" open="(" separator="," close=")">
+                #{includeId}
+            </foreach>
+        </if>
+        AND f_delete_flag != 1
+        <if test="keyword != null and keyword != ''">
+            AND f_name LIKE CONCAT('%', #{keyword}, '%')
+        </if>
+        ORDER BY ${sortOrder} ${direction}
+        <if test="limit > 0">
+            LIMIT #{limit} OFFSET #{offset}
+        </if>
+    </select>
+    <select id="selectCount" resultType="long">
+        SELECT COUNT(*) FROM t_table
+        WHERE f_data_source_id = #{dsId} AND f_delete_flag != 1
+        <if test="keyword != null and keyword != ''">
+            AND f_name LIKE CONCAT('%', #{keyword}, '%')
+        </if>
+    </select>
+</mapper>

@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.eisoo.dc.common.metadata.mapper.DataSourceMapper">
+
+    <select id="selectAllId" resultType="string">
+        SELECT f_id FROM t_data_source_info WHERE f_is_built_in > 0
+        <if test="includeIds != null">
+            AND f_id IN
+            <foreach item="includeId" collection="includeIds" open="(" separator="," close=")">
+                #{includeId}
+            </foreach>
+        </if>
+    </select>
+    <select id="selectByCatalogNameAndId" resultType="com.eisoo.dc.common.metadata.entity.DataSourceEntity">
+        SELECT * FROM t_data_source_info
+        WHERE f_name = #{name}
+        <if test="id != null">
+            AND f_id != #{id}
+        </if>
+    </select>
+
+    <update id="updateById" parameterType="com.eisoo.dc.common.metadata.entity.DataSourceEntity">
+        UPDATE t_data_source_info
+        <set>
+            <if test="entity.fName != null">f_name = #{entity.fName},</if>
+            <if test="entity.fType != null">f_type = #{entity.fType},</if>
+            <if test="entity.fCatalog != null">f_catalog = #{entity.fCatalog},</if>
+            <if test="entity.fDatabase != null">f_database = #{entity.fDatabase},</if>
+            <if test="entity.fSchema != null">f_schema = #{entity.fSchema},</if>
+            <if test="entity.fConnectProtocol != null">f_connect_protocol = #{entity.fConnectProtocol},</if>
+            <if test="entity.fHost != null">f_host = #{entity.fHost},</if>
+            <if test="entity.fPort != 0">f_port = #{entity.fPort},</if>
+            <if test="entity.fAccount != null">f_account = #{entity.fAccount},</if>
+            <if test="entity.fPassword != null">f_password = #{entity.fPassword},</if>
+            <if test="entity.fStorageProtocol != null">f_storage_protocol = #{entity.fStorageProtocol},</if>
+            <if test="entity.fStorageBase != null">f_storage_base = #{entity.fStorageBase},</if>
+            <if test="entity.fToken != null">f_token = #{entity.fToken},</if>
+            <if test="entity.fReplicaSet != null">f_replica_set = #{entity.fReplicaSet},</if>
+            <if test="entity.fIsBuiltIn != 0">f_is_built_in = #{entity.fIsBuiltIn},</if>
+            <if test="entity.fComment != null">f_comment= #{entity.fComment},</if>
+            <if test="entity.fUpdatedByUid != null">f_updated_by_uid = #{entity.fUpdatedByUid},</if>
+            <if test="entity.fUpdatedAt != null">f_updated_at = #{entity.fUpdatedAt}</if>
+        </set>
+        WHERE f_id = #{entity.fId}
+    </update>
+
+    <select id="selectPage" resultType="com.eisoo.dc.common.metadata.entity.DataSourceEntity">
+        SELECT * FROM t_data_source_info
+        WHERE f_is_built_in > 0
+        <if test="keyword != null and keyword != ''">
+            AND (f_name LIKE CONCAT('%', #{keyword}, '%') OR f_host LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        <if test="includeIds != null">
+            AND f_id IN
+            <foreach item="includeId" collection="includeIds" open="(" separator="," close=")">
+                #{includeId}
+            </foreach>
+        </if>
+        <if test="connectors != null">
+            AND f_type IN
+            <foreach item="connector" collection="connectors" open="(" separator="," close=")">
+                #{connector}
+            </foreach>
+        </if>
+        ORDER BY f_${sortOrder} ${direction}
+        <if test="limit != -1">
+            LIMIT #{limit} OFFSET #{offset}
+        </if>
+    </select>
+
+    <select id="selectCount" resultType="long">
+        SELECT COUNT(*) FROM t_data_source_info
+        WHERE f_is_built_in > 0
+        <if test="keyword != null and keyword != ''">
+            AND (f_name LIKE CONCAT('%', #{keyword}, '%') OR f_host LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        <if test="includeIds != null">
+            AND f_id IN
+            <foreach item="includeId" collection="includeIds" open="(" separator="," close=")">
+                #{includeId}
+            </foreach>
+        </if>
+        <if test="connectors != null">
+            AND f_type IN
+            <foreach item="connector" collection="connectors" open="(" separator="," close=")">
+                #{connector}
+            </foreach>
+        </if>
+    </select>
+
+    <select id="selectDataSources" resultType="com.eisoo.dc.common.metadata.entity.DataSourceEntity">
+        SELECT f_id FROM t_data_source_info
+        WHERE f_is_built_in > 0
+        <if test="id != null and id != ''">
+            AND f_id = #{id}
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (f_name LIKE CONCAT('%', #{keyword}, '%') OR f_host LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        <if test="connectors != null">
+            AND f_type IN
+            <foreach item="connector" collection="connectors" open="(" separator="," close=")">
+                #{connector}
+            </foreach>
+        </if>
+    </select>
+
+    <insert id="insert" parameterType="com.eisoo.dc.common.metadata.entity.DataSourceEntity">
+        INSERT INTO t_data_source_info
+        VALUES (#{entity.fId}, #{entity.fName}, #{entity.fType}, #{entity.fCatalog}, #{entity.fDatabase},
+                #{entity.fSchema},
+                #{entity.fConnectProtocol}, #{entity.fHost}, #{entity.fPort}, #{entity.fAccount}, #{entity.fPassword},
+                #{entity.fStorageProtocol},
+                #{entity.fStorageBase}, #{entity.fToken}, #{entity.fReplicaSet}, #{entity.fIsBuiltIn},
+                #{entity.fComment},
+                #{entity.fCreatedByUid}, #{entity.fCreatedAt}, #{entity.fUpdatedByUid}, #{entity.fUpdatedAt})
+    </insert>
+</mapper>

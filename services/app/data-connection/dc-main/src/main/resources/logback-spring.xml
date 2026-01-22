@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <!-- 日志存放路径 -->
+    <property name="log.path" value="/opt/vega/logs"/>
+    <springProperty scope="context" name="anyrobotLogggerEnabled" source="anyrobot.log.enabled" defaultValue="false"/>
+    <springProperty scope="context" name="anyrobotLogggerEndpointUrl" source="anyrobot.log.endpoint" defaultValue=""/>
+    <springProperty scope="context" name="loggerLevel" source="anyrobot.log.level" defaultValue="INFO"/>
+    <springProperty scope="context" name="serviceName" source="spring.application.name" defaultValue=""/>
+    <springProperty scope="context" name="serviceVersion" source="spring.application.version" defaultValue="1.0.0"/>
+    <!-- 日志输出格式 -->
+    <property name="logPattern" value="[%level] %d{yyyy-MM-dd HH:mm:ss.SSS Z} [TraceId:%X{trace-id:-0}][SpanId:%X{span-id:-0}] %logger{96}:[%method,%line] - %msg%n"/>
+
+    <!-- 控制台输出 -->
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <!-- 日志收集最低日志级别 -->
+            <level>INFO</level>
+        </filter>
+        <encoder>
+            <pattern>${logPattern}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!-- 系统日志输出 -->
+    <appender name="file_info" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${log.path}/service.log</file>
+        <!-- 循环政策：基于时间创建日志文件 -->
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <!-- 日志文件名格式 -->
+            <fileNamePattern>${log.path}/service.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <!-- 日志最大的历史 60天 -->
+            <maxHistory>60</maxHistory>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${logPattern}</pattern>
+        </encoder>
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <!-- 过滤的级别 -->
+            <level>INFO</level>
+            <!-- 匹配时的操作：接收（记录） -->
+            <onMatch>ACCEPT</onMatch>
+            <!-- 不匹配时的操作：拒绝（不记录） -->
+            <onMismatch>DENY</onMismatch>
+        </filter>
+    </appender>
+
+    <appender name="file_error" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${log.path}/service-error.log</file>
+        <!-- 循环政策：基于时间创建日志文件 -->
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <!-- 日志文件名格式 -->
+            <fileNamePattern>${log.path}/service-error.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <!-- 日志最大的历史 60天 -->
+            <maxHistory>60</maxHistory>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${logPattern}</pattern>
+        </encoder>
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <!-- 过滤的级别 -->
+            <level>ERROR</level>
+            <!-- 匹配时的操作：接收（记录） -->
+            <onMatch>ACCEPT</onMatch>
+            <!-- 不匹配时的操作：拒绝（不记录） -->
+            <onMismatch>DENY</onMismatch>
+        </filter>
+    </appender>
+
+    <appender name="AnyRobotLog" class="com.eisoo.dc.common.logback.appender.AnyRobotLogAppender">
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <!-- 日志收集最低日志级别 -->
+            <level>${loggerLevel}</level>
+        </filter>
+        <layout class="ch.qos.logback.classic.PatternLayout">
+            <pattern>${logPattern}</pattern>
+        </layout>
+        <enabled>${anyrobotLogggerEnabled}</enabled>
+        <endpointUrl>${anyrobotLogggerEndpointUrl}</endpointUrl>
+        <serviceName>${serviceName}</serviceName>
+        <serviceVersion>${serviceVersion}</serviceVersion>
+    </appender>
+
+    <!-- 系统模块日志级别控制  -->
+    <logger name="com.eisoo.dc" level="info"/>
+    <!-- Spring日志级别控制  -->
+    <logger name="org.springframework" level="warn"/>
+
+    <root level="DEBUG">
+        <appender-ref ref="AnyRobotLog"/>
+        <appender-ref ref="STDOUT"/>
+    </root>
+
+    <!--系统操作日志-->
+    <root level="info">
+        <appender-ref ref="file_info"/>
+        <appender-ref ref="file_error"/>
+    </root>
+</configuration>

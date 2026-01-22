@@ -1,0 +1,90 @@
+{
+  "connector": "hive",
+  "type": [
+    {
+      "source_type": "tinyint",
+      "vega_type": "integer",
+      "target_type": "bigint"
+    },
+    {
+      "source_type": "smallint",
+      "vega_type": "integer",
+      "target_type": "bigint"
+    },
+    {
+      "source_type": "int",
+      "vega_type": "integer",
+      "target_type": "bigint"
+    },
+    {
+      "source_type": "integer",
+      "vega_type": "integer",
+      "target_type": "bigint"
+    },
+    {
+      "source_type": "bigint",
+      "vega_type": "integer",
+      "target_type": "bigint"
+    },
+    {
+      "source_type": "float",
+      "vega_type": "float",
+      "target_type": "double"
+    },
+    {
+      "source_type": "double",
+      "vega_type": "float",
+      "target_type": "double"
+    },
+    {
+      "source_type": "decimal",
+      "vega_type": "decimal",
+      "target_type": "decimal"
+    },
+    {
+      "source_type": "numeric",
+      "vega_type": "decimal",
+      "target_type": "decimal"
+    },
+    {
+      "source_type": "string",
+      "vega_type": "string",
+      "target_type": "string"
+    },
+    {
+      "source_type": "varchar",
+      "vega_type": "string",
+      "target_type": "string"
+    },
+    {
+      "source_type": "char",
+      "vega_type": "string",
+      "target_type": "string"
+    },
+    {
+      "source_type": "interval",
+      "vega_type": "string",
+      "target_type": "string"
+    },
+    {
+      "source_type": "date",
+      "vega_type": "date",
+      "target_type": "date"
+    },
+    {
+      "source_type": "timestamp",
+      "vega_type": "timestamp",
+      "target_type": "timestamp"
+    },
+    {
+      "source_type": "boolean",
+      "vega_type": "boolean",
+      "target_type": "boolean"
+    },
+    {
+      "source_type": "binary",
+      "vega_type": "binary",
+      "target_type": "binary"
+    }
+  ]
+}

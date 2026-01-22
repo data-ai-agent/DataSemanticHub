@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.eisoo.dc.common.metadata.mapper.TaskScanTableMapper">
+    <!-- 批量删除：使用 foreach 遍历 ids 集合 -->
+    <delete id="deleteBatchByTaskIdAndTableId">
+        DELETE FROM t_task_scan_table
+        WHERE
+        <foreach collection="list" item="item" open="(" separator="OR" close=")">
+            (task_id = #{item.taskId} AND table_id = #{item.tableId})
+        </foreach>
+    </delete>
+
+    <select id="selectByTaskIdAndIds" resultType="com.eisoo.dc.common.metadata.entity.TaskScanTableEntity">
+        SELECT * FROM t_task_scan_table
+        WHERE task_id= #{taskId} AND table_id IN
+        <foreach collection="list" item="id" open="(" close=")" separator=",">
+            #{id}
+        </foreach>
+    </select>
+    <update id="updateScanStatusById">
+        UPDATE t_task_scan_table
+        SET scan_status = #{status},
+            start_time  = NOW()
+        WHERE id = #{id}
+    </update>
+    <select id="selectTaskScanTables" resultType="com.eisoo.dc.common.metadata.entity.TaskScanTableEntity">
+        SELECT * FROM t_task_scan_table
+        WHERE 1=1 AND task_id= #{taskId} AND (operation_type != 3 or (operation_type=3 AND scan_status=3))
+        <if test="statusList != null">
+            AND scan_status IN
+            <foreach item="status" collection="statusList" open="(" separator="," close=")">
+                #{status}
+            </foreach>
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (table_name LIKE CONCAT('%', #{keyword}, '%') OR start_time = CONCAT('%', #{keyword}, '%'))
+        </if>
+    </select>
+    <select id="selectCountTaskScanTables" resultType="long">
+        SELECT COUNT(*) FROM t_task_scan_table
+        WHERE 1=1 AND task_id = #{taskId} AND (operation_type != 3 or (operation_type=3 AND scan_status=3))
+        <if test="includeIds != null">
+            AND id IN
+            <foreach item="includeId" collection="includeIds" open="(" separator="," close=")">
+                #{includeId}
+            </foreach>
+        </if>
+        AND scan_status IN
+        <foreach item="status" collection="statusList" open="(" separator="," close=")">
+            #{status}
+        </foreach>
+        <if test="keyword != null and keyword != ''">
+            AND (table_name LIKE CONCAT('%', #{keyword}, '%') OR start_time = CONCAT('%', #{keyword}, '%'))
+        </if>
+    </select>
+    <select id="selectPageTaskScanTables" resultType="com.eisoo.dc.common.metadata.entity.TaskScanTableEntity">
+        SELECT * FROM t_task_scan_table
+        WHERE 1=1
+        <if test="includeIds != null">
+            AND id IN
+            <foreach item="includeId" collection="includeIds" open="(" separator="," close=")">
+                #{includeId}
+            </foreach>
+        </if>
+        <if test="keyword != null and keyword != ''">
+            AND (table_name LIKE CONCAT('%', #{keyword}, '%') OR start_time = CONCAT('%', #{keyword}, '%'))
+        </if>
+        ORDER BY ${sortOrder} ${direction}
+        <if test="limit > 0">
+            LIMIT #{limit} OFFSET #{offset}
+        </if>
+    </select>
+</mapper>
