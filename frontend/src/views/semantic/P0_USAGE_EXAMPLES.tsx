@@ -26,16 +26,16 @@ const OverviewTabIntegrationExample = () => {
     const gateReviewable = true; // 示例：从你的实际状态获取
     const semanticProfile = {
         gateResult: {
-            result: 'REVIEW',
+            result: 'REVIEW' as 'PASS' | 'REJECT' | 'REVIEW',
             details: { primaryKey: false, lifecycle: false, tableType: true },
             reasons: ['未找到主键字段', '未找到生命周期字段'],
             actionItems: [
                 {
-                    type: 'sql',
+                    type: 'sql' as 'sql' | 'workflow' | 'manual',
                     title: '添加主键字段',
                     description: '为表添加主键约束以确保数据唯一性',
                     sqlTemplate: `ALTER TABLE your_table \n  ADD COLUMN id BIGINT AUTO_INCREMENT PRIMARY KEY FIRST;`,
-                    priority: 'high'
+                    priority: 'high' as 'high' | 'medium' | 'low'
                 }
             ]
         }
@@ -87,18 +87,18 @@ const FieldTabIntegrationExample = () => {
             {
                 fieldName: 'id',
                 dataType: 'bigint',
-                role: 'Identifier',
+                role: 'Identifier' as 'Identifier',
                 roleConfidence: 0.95,
-                sensitivity: 'L1',
-                quality: 'A'
+                sensitivity: 'L1' as 'L1' | 'L2' | 'L3' | 'L4',
+                quality: 'A' as 'A' | 'B' | 'C' | 'D'
             },
             {
                 fieldName: 'mobile',
                 dataType: 'varchar',
-                role: 'BusAttr',
+                role: 'BusAttr' as 'BusAttr',
                 roleConfidence: 0.6, // 低置信度 -> 问题字段
-                sensitivity: 'L3', // 敏感字段
-                quality: 'C' // 低质量 -> 问题字段
+                sensitivity: 'L3' as 'L1' | 'L2' | 'L3' | 'L4', // 敏感字段
+                quality: 'C' as 'A' | 'B' | 'C' | 'D' // 低质量 -> 问题字段
             }
         ]
     };

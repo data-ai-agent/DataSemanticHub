@@ -25,7 +25,9 @@ import {
     CheckCircle,
     UserPlus,
     Settings,
-    Briefcase
+    Briefcase,
+    Star,
+    Layout
 } from 'lucide-react';
 
 type OrgStatus = '启用' | '停用';
@@ -44,6 +46,11 @@ type Department = {
     description?: string;
     builtIn?: boolean; // built-in nodes
     functions?: string[]; // Governance functions assigned to this org
+
+    // New Fields
+    type?: 'organization' | 'department';
+    isMainDepartment?: boolean;
+    responsibilities?: string;
 };
 
 type Member = {
@@ -89,7 +96,8 @@ const initialDepartments: Department[] = [
         functions: ['语义治理', '版本管理'],
         description: '负责语义治理、版本管理与统一裁决。',
         builtIn: true,
-        updatedAt: '2024-06-26'
+        updatedAt: '2024-06-26',
+        type: 'organization'
     },
     {
         id: 'dept_semantic_ops',
@@ -453,7 +461,10 @@ const OrgManagementView = () => {
             order: 0,
             builtIn: false,
             updatedAt: formatDate(),
-            functions: []
+            functions: [],
+            type: 'department', // Default to department
+            isMainDepartment: false,
+            responsibilities: ''
         });
         setModalOpen(true);
     };
@@ -698,13 +709,26 @@ const OrgManagementView = () => {
                                     </button>
 
                                     <div
-                                        className="flex-1 flex items-center gap-2 cursor-pointer"
+                                        className="flex-1 flex items-center gap-2 cursor-pointer min-w-0"
                                         onClick={() => setActiveDeptId(item.id)}
                                     >
-                                        <span className={`font-medium ${isActive ? 'text-indigo-700' : 'text-slate-700'}`}>
-                                            {item.name}
-                                        </span>
-                                        <span className="text-xs text-slate-400 scale-90 origin-left">
+                                        {/* Type Icon */}
+                                        {item.type === 'organization' ? (
+                                            <Building2 size={14} className={isActive ? 'text-indigo-600' : 'text-slate-400'} />
+                                        ) : (
+                                            <Layout size={14} className={isActive ? 'text-indigo-600' : 'text-slate-400'} />
+                                        )}
+
+                                        <div className="flex items-center gap-1.5 min-w-0">
+                                            <span className={`font-medium truncate ${isActive ? 'text-indigo-700' : 'text-slate-700'}`}>
+                                                {item.name}
+                                            </span>
+                                            {item.isMainDepartment && (
+                                                <Star size={10} className="text-amber-500 fill-amber-500 shrink-0" />
+                                            )}
+                                        </div>
+
+                                        <span className="text-xs text-slate-400 scale-90 origin-left ml-auto whitespace-nowrap">
                                             {item.members}人
                                         </span>
                                     </div>
@@ -727,8 +751,30 @@ const OrgManagementView = () => {
                 <section className="bg-white rounded-lg border border-slate-200 shadow-sm p-5 flex flex-col gap-5">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div>
-                            <h3 className="text-xl font-semibold text-slate-800">{activeDept?.name ?? '—'}</h3>
+                            <div className="flex items-center gap-3">
+                                <h3 className="text-xl font-semibold text-slate-800 flex items-center gap-2">
+                                    {activeDept?.name ?? '—'}
+                                </h3>
+                                {activeDept?.type === 'organization' && <span className="px-2 py-0.5 rounded text-xs bg-indigo-50 text-indigo-600 border border-indigo-100">组织</span>}
+                                {activeDept?.type === 'department' && <span className="px-2 py-0.5 rounded text-xs bg-slate-100 text-slate-600 border border-slate-200">部门</span>}
+                                {activeDept?.isMainDepartment && (
+                                    <span className="flex items-center gap-1 px-2 py-0.5 rounded text-xs bg-amber-50 text-amber-600 border border-amber-100">
+                                        <Star size={10} className="fill-amber-500 text-amber-500" />
+                                        主部门
+                                    </span>
+                                )}
+                            </div>
                             <p className="mt-1 text-sm text-slate-500">{activeDept?.description ?? '暂无描述'}</p>
+
+                            {/* Responsibilities Display */}
+                            {activeDept?.responsibilities && (
+                                <div className="mt-3 p-3 bg-slate-50 rounded-lg border border-slate-100">
+                                    <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1">
+                                        <Briefcase size={12} /> 部门职责
+                                    </h4>
+                                    <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">{activeDept.responsibilities}</p>
+                                </div>
+                            )}
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
                             <button
@@ -949,6 +995,32 @@ const OrgManagementView = () => {
                                         <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">基本信息</h4>
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="space-y-2 col-span-2">
+                                                <label className="text-sm font-semibold text-slate-700">组织类型 <span className="text-rose-500">*</span></label>
+                                                <div className="flex items-center gap-6 mt-1.5 px-1 py-1">
+                                                    <label className="flex items-center gap-2 cursor-pointer group">
+                                                        <input
+                                                            type="radio"
+                                                            name="orgType"
+                                                            checked={draftDept.type === 'organization'}
+                                                            onChange={() => setDraftDept({ ...draftDept, type: 'organization', isMainDepartment: false, responsibilities: '' })}
+                                                            className="w-4 h-4 text-indigo-600 border-slate-300 focus:ring-indigo-500"
+                                                        />
+                                                        <span className={`text-sm ${draftDept.type === 'organization' ? 'text-indigo-700 font-medium' : 'text-slate-600'}`}>组织 (Organization)</span>
+                                                    </label>
+                                                    <label className="flex items-center gap-2 cursor-pointer group">
+                                                        <input
+                                                            type="radio"
+                                                            name="orgType"
+                                                            checked={draftDept.type === 'department'}
+                                                            onChange={() => setDraftDept({ ...draftDept, type: 'department' })}
+                                                            className="w-4 h-4 text-indigo-600 border-slate-300 focus:ring-indigo-500"
+                                                        />
+                                                        <span className={`text-sm ${draftDept.type === 'department' ? 'text-indigo-700 font-medium' : 'text-slate-600'}`}>部门 (Department)</span>
+                                                    </label>
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-2 col-span-2">
                                                 <label className="text-sm font-semibold text-slate-700">组织名称 <span className="text-rose-500">*</span></label>
                                                 <input
                                                     type="text"
@@ -1003,6 +1075,38 @@ const OrgManagementView = () => {
                                                     </button>
                                                 </div>
                                             </div>
+
+                                            {draftDept.type === 'department' && (
+                                                <>
+                                                    <div className="col-span-2 pt-2 border-t border-slate-100 mt-1">
+                                                        <div className="flex items-start gap-3 p-2 bg-slate-50/50 rounded-lg border border-slate-100">
+                                                            <div className="pt-0.5">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    id="isMain"
+                                                                    checked={draftDept.isMainDepartment || false}
+                                                                    onChange={(e) => setDraftDept({ ...draftDept, isMainDepartment: e.target.checked })}
+                                                                    className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-4 h-4 cursor-pointer"
+                                                                />
+                                                            </div>
+                                                            <div>
+                                                                <label htmlFor="isMain" className="text-sm font-medium text-slate-700 cursor-pointer select-none">设为主部门 (Main Department)</label>
+                                                                <p className="text-xs text-slate-400 mt-0.5">主部门通常承载该层级的核心业务职能，将在架构图中高亮显示。</p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="space-y-2 col-span-2">
+                                                        <label className="text-sm font-semibold text-slate-700">部门职责</label>
+                                                        <textarea
+                                                            value={draftDept.responsibilities || ''}
+                                                            onChange={(e) => setDraftDept({ ...draftDept, responsibilities: e.target.value })}
+                                                            placeholder="请输入部门的主要职责描述、负责业务范围等..."
+                                                            rows={3}
+                                                            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none resize-none placeholder:text-slate-400"
+                                                        />
+                                                    </div>
+                                                </>
+                                            )}
                                         </div>
                                     </div>
 

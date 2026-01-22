@@ -1,0 +1,410 @@
+# DataSemanticHub Docker Compose Configuration
+# 开发环境部署配置
+
+networks:
+  datasemantichub-network:
+    driver: bridge
+    name: datasemantichub-network
+
+volumes:
+  mariadb-data:
+    name: datasemantichub-mariadb-data
+  redis-data:
+    name: datasemantichub-redis-data
+  kafka-data:
+    name: datasemantichub-kafka-data
+  opensearch-data:
+    name: datasemantichub-opensearch-data
+  prometheus-data:
+    name: datasemantichub-prometheus-data
+  grafana-data:
+    name: datasemantichub-grafana-data
+
+services:
+  # ==================== 数据存储层 ====================
+
+  # MariaDB 数据库
+  mariadb:
+    image: mariadb:11
+    container_name: datasemantichub-mariadb
+    restart: unless-stopped
+    environment:
+      - MYSQL_ROOT_PASSWORD=${DB_PASSWORD}
+      - MYSQL_DATABASE=${DB_NAME}
+      - TZ=Asia/Shanghai
+    ports:
+      - "${DB_PORT:-3306}:3306"
+    volumes:
+      - mariadb-data:/var/lib/mysql
+      - ./init-scripts/mariadb:/docker-entrypoint-initdb.d:ro
+      - ./config/mariadb/my.cnf:/etc/mysql/conf.d/custom.cnf:ro
+    networks:
+      - datasemantichub-network
+    healthcheck:
+      test: [ "CMD", "healthcheck.sh", "--connect", "--innodb_initialized" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # Redis 缓存
+  redis:
+    image: redis:7-alpine
+    container_name: datasemantichub-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+      - ./config/redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    networks:
+      - datasemantichub-network
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+  # OpenSearch 搜索引擎
+  opensearch:
+    image: opensearchproject/opensearch:2.11.0
+    container_name: datasemantichub-opensearch
+    restart: unless-stopped
+    environment:
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+      - DISABLE_SECURITY_PLUGIN=true
+      - TZ=Asia/Shanghai
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    ports:
+      - "${OPENSEARCH_PORT:-9200}:9200"
+      - "${OPENSEARCH_PERF_PORT:-9600}:9600"
+    volumes:
+      - opensearch-data:/usr/share/opensearch/data
+    networks:
+      - datasemantichub-network
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # OpenSearch Dashboards (可选)
+  opensearch-dashboards:
+    image: opensearchproject/opensearch-dashboards:2.11.0
+    container_name: datasemantichub-opensearch-dashboards
+    restart: unless-stopped
+    environment:
+      - OPENSEARCH_HOSTS=http://opensearch:9200
+      - DISABLE_SECURITY_DASHBOARDS_PLUGIN=true
+      - TZ=Asia/Shanghai
+    ports:
+      - "${OPENSEARCH_DASHBOARDS_PORT:-5601}:5601"
+    networks:
+      - datasemantichub-network
+    depends_on:
+      opensearch:
+        condition: service_healthy
+    profiles:
+      - with-dashboards
+
+  # ==================== 消息队列层 ====================
+
+
+
+  # Kafka (KRaft mode - No Zookeeper)
+  kafka:
+    image: confluentinc/cp-kafka:8.1.1
+    container_name: datasemantichub-kafka
+    restart: unless-stopped
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://kafka:9092,CONTROLLER://kafka:9093,PLAINTEXT_HOST://0.0.0.0:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      # KRaft 集群 ID (必须)
+      CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
+      TZ: Asia/Shanghai
+    ports:
+      - "${KAFKA_PORT:-9092}:9092"
+      - "29092:29092"
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    networks:
+      - datasemantichub-network
+    healthcheck:
+      test: [ "CMD-SHELL", "kafka-topics --bootstrap-server kafka:9092 --list" ]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+
+  # ==================== 可观测性层 ====================
+
+  # Jaeger 链路追踪
+  jaeger:
+    image: jaegertracing/all-in-one:1.51
+    container_name: datasemantichub-jaeger
+    restart: unless-stopped
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+      - TZ=Asia/Shanghai
+    ports:
+      - "${JAEGER_UI_PORT:-16686}:16686" # UI
+      - "${JAEGER_COLLECTOR_HTTP_PORT:-14268}:14268" # HTTP
+      - "${JAEGER_COLLECTOR_UDP_PORT:-6831}:6831/udp" # UDP
+    networks:
+      - datasemantichub-network
+    healthcheck:
+      test: [ "CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:14269/ || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # Prometheus 监控
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    container_name: datasemantichub-prometheus
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - ./config/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./config/prometheus/rules:/etc/prometheus/rules:ro
+      - prometheus-data:/prometheus
+    networks:
+      - datasemantichub-network
+    healthcheck:
+      test: [ "CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:9090/-/healthy || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # Grafana 可视化
+  grafana:
+    image: grafana/grafana:10.2.0
+    container_name: datasemantichub-grafana
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_INSTALL_PLUGINS=
+      - TZ=Asia/Shanghai
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./config/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./config/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+    networks:
+      - datasemantichub-network
+    depends_on:
+      prometheus:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  # ==================== 应用服务层 ====================
+
+  # System Service (Go-Zero)
+  system-service:
+    build:
+      context: ..
+      dockerfile: deploy/backend/go/Dockerfile
+      args:
+        - SERVICE_NAME=system-service
+    container_name: datasemantichub-system-service
+    restart: unless-stopped
+    environment:
+      - TZ=Asia/Shanghai
+      - ENVIRONMENT=${ENVIRONMENT:-dev}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - DB_HOST=mariadb
+      - DB_PORT=3306
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRE=${JWT_EXPIRE:-7200}
+      - ACCESS_SECRET=${ACCESS_SECRET}
+      - ACCESS_EXPIRE=${ACCESS_EXPIRE:-7200}
+      - JAEGER_ENDPOINT=${JAEGER_ENDPOINT:-http://jaeger:14268/api/traces}
+      - PROMETHEUS_ENDPOINT=${PROMETHEUS_ENDPOINT:-http://prometheus:9090}
+    ports:
+      - "${SYSTEM_SERVICE_PORT:-8888}:8888"
+    volumes:
+      - ./logs/system-service:/app/logs
+    networks:
+      - datasemantichub-network
+    depends_on:
+      mariadb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:8888/api/v1/health || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  # Python AI Service (Vanna)
+  agent-service:
+    build:
+      context: ..
+      dockerfile: deploy/backend/python/Dockerfile
+    container_name: datasemantichub-agen-service
+    restart: unless-stopped
+    environment:
+      - TZ=Asia/Shanghai
+      - ENVIRONMENT=${ENVIRONMENT:-dev}
+      - DB_HOST=mariadb
+      - DB_PORT=3306
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - VANNA_API_KEY=${VANNA_API_KEY}
+      - VANNA_MODEL=${VANNA_MODEL}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    ports:
+      - "${PYTHON_SERVICE_PORT:-8891}:8891"
+    networks:
+      - datasemantichub-network
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:8891/health || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # Frontend (React + Vite)
+  frontend:
+    build:
+      context: ..
+      dockerfile: deploy/frontend/Dockerfile
+    container_name: datasemantichub-frontend
+    restart: unless-stopped
+    environment:
+      - TZ=Asia/Shanghai
+      - VITE_API_BASE_URL=http://localhost:8888
+    ports:
+      - "${FRONTEND_PORT:-5173}:80"
+    networks:
+      - datasemantichub-network
+    depends_on:
+      system-service:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:80 || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+  # ==================== 预留服务（已注释） ====================
+
+  # Metadata Service (预留)
+  # metadata-service:
+  #   build:
+  #     context: ..
+  #     dockerfile: deploy/backend/go/Dockerfile
+  #     args:
+  #       - SERVICE_NAME=metadata-service
+  #   container_name: datasemantichub-metadata-service
+  #   restart: unless-stopped
+  #   environment:
+  #     - TZ=Asia/Shanghai
+  #     - ENVIRONMENT=${ENVIRONMENT:-dev}
+  #     - DB_HOST=mariadb
+  #     - DB_PORT=3306
+  #     - DB_NAME=${DB_NAME}
+  #     - DB_USER=${DB_USER}
+  #     - DB_PASSWORD=${DB_PASSWORD}
+  #   ports:
+  #     - "${METADATA_SERVICE_PORT:-8889}:8889"
+  #   networks:
+  #     - datasemantichub-network
+  #   depends_on:
+  #     mariadb:
+  #       condition: service_healthy
+
+  # Java Service (预留)
+  # java-service:
+  #   build:
+  #     context: ..
+  #     dockerfile: deploy/backend/java/Dockerfile
+  #   container_name: datasemantichub-java-service
+  #   restart: unless-stopped
+  #   environment:
+  #     - TZ=Asia/Shanghai
+  #     - SPRING_PROFILES_ACTIVE=${ENVIRONMENT:-dev}
+  #     - DB_HOST=mariadb
+  #     - DB_PORT=3306
+  #     - DB_NAME=${DB_NAME}
+  #     - DB_USER=${DB_USER}
+  #     - DB_PASSWORD=${DB_PASSWORD}
+  #   ports:
+  #     - "${JAVA_SERVICE_PORT:-8890}:8890"
+  #   networks:
+  #     - datasemantichub-network
+  #   depends_on:
+  #     mariadb:
+  #       condition: service_healthy
+
+  # Python Service (预留)
+  # python-service:
+  #   build:
+  #     context: ..
+  #     dockerfile: deploy/backend/python/Dockerfile
+  #   container_name: datasemantichub-python-service
+  #   restart: unless-stopped
+  #   environment:
+  #     - TZ=Asia/Shanghai
+  #     - APP_ENV=${ENVIRONMENT:-dev}
+  #     - DB_HOST=mariadb
+  #     - DB_PORT=3306
+  #     - DB_NAME=${DB_NAME}
+  #     - DB_USER=${DB_USER}
+  #     - DB_PASSWORD=${DB_PASSWORD}
+  #   ports:
+  #     - "${PYTHON_SERVICE_PORT:-8891}:8891"
+  #   networks:
+  #     - datasemantichub-network
+  #   depends_on:
+  #     mariadb:
+  #       condition: service_healthy

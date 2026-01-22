@@ -54,8 +54,16 @@ func (l *LoginLogic) Login(req *types.LoginReq) (resp *types.LoginResp, err erro
 		return nil, baseErrorx.New(errorx.ErrPasswordIncorrect, "用户名或密码错误")
 	}
 
-	// 5. 检查用户状态（启用/禁用）BR-02
-	if user.Status != 1 {
+	// 5. 检查用户状态并处理首次登录自动激活
+	if user.Status == 0 {
+		// 未激活状态：首次登录时自动激活（更新状态为"启用"）
+		user.Status = 1
+		if err := l.svcCtx.UserModel.UpdateStatus(l.ctx, user.Id, 1, nil, nil); err != nil {
+			l.Errorf("激活用户失败: %v", err)
+			return nil, baseErrorx.New(50000, "系统错误")
+		}
+	} else if user.Status != 1 {
+		// 其他非启用状态（停用、锁定、归档）：不允许登录
 		return nil, baseErrorx.New(errorx.ErrUserDisabled, "用户已被禁用")
 	}
 

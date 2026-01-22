@@ -72,6 +72,7 @@ const Sidebar = ({ activeModule, setActiveModule }: SidebarProps) => {
                         { id: 'modeling_overview', label: '语义建模概览', icon: Activity },
                         { id: 'td_goals', label: '业务梳理', icon: FileText },
                         { id: 'bu_semantic', label: '逻辑视图', icon: FileText },
+                        { id: 'bu_semantic_v2', label: '逻辑视图2', icon: FileText },
                         { id: 'field_semantic', label: '字段语义理解', icon: ScanText },
 
                         { id: 'td_modeling', label: '业务对象建模', icon: Layout }

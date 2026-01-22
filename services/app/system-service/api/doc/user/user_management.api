@@ -1,0 +1,227 @@
+syntax = "v1"
+
+info(
+    title: "用户管理 API"
+    desc: "用户管理模块：用户列表、详情、创建、更新、删除、状态管理、角色绑定等"
+    version: "v1"
+)
+
+import "../base.api"
+
+type (
+    // === 用户列表查询 ===
+    ListUsersReq {
+        Page          int    `form:"page,default=1" validate:"min=1"`
+        PageSize      int    `form:"page_size,default=10" validate:"min=1,max=100"`
+        Keyword       string `form:"keyword,optional"`
+        DeptId        string `form:"dept_id,optional"`
+        Status        int8   `form:"status,optional"`
+        AccountSource string `form:"account_source,optional"`
+        PermissionRole string `form:"permission_role,optional"`
+        SortField     string `form:"sort_field,optional"` // name,created_at,last_login
+        SortOrder     string `form:"sort_order,optional"` // asc,desc
+    }
+    
+    ListUsersResp {
+        Total    int64   `json:"total"`
+        Page     int     `json:"page"`
+        PageSize int     `json:"page_size"`
+        Users    []User  `json:"users"`
+    }
+    
+    // === 用户详情 ===
+    GetUserResp {
+        User       User        `json:"user"`
+        RoleBindings []RoleBinding `json:"role_bindings"`
+        AuditLogs []AuditLog   `json:"audit_logs"`
+    }
+    
+    // === 创建用户 ===
+    CreateUserReq {
+        Name          string         `json:"name" validate:"required,min=2,max=50"`
+        Email         string         `json:"email" validate:"required,email"`
+        Phone         string         `json:"phone,optional" validate:"omitempty,len=11"`
+        DeptId        string         `json:"dept_id" validate:"required"`
+        RoleBindings  []RoleBindingInput `json:"role_bindings,optional"`
+        AccountSource string         `json:"account_source" validate:"required,oneof=local sso"`
+        SendInvitation bool          `json:"send_invitation,optional"`
+        InitialPassword string       `json:"initial_password,optional"`
+    }
+    
+    CreateUserResp {
+        UserId          string `json:"user_id"`
+        InitialPassword string `json:"initial_password,optional"`
+    }
+    
+    // === 更新用户 ===
+    UpdateUserReq {
+        Name         string               `json:"name,optional"`
+        Phone        string               `json:"phone,optional"`
+        DeptId       string               `json:"dept_id,optional"`
+        RoleBindings []RoleBindingInput   `json:"role_bindings,optional"`
+    }
+    
+    // === 批量更新状态 ===
+    BatchUpdateStatusReq {
+        UserIds []string `json:"user_ids" validate:"required,min=1,max=100"`
+        Status  int8     `json:"status" validate:"required,oneof=1 2 3 4"`
+        Reason  string   `json:"reason,optional"`
+    }
+    
+    BatchUpdateStatusResp {
+        SuccessCount int              `json:"success_count"`
+        FailedCount  int              `json:"failed_count"`
+        Errors       []OperationError `json:"errors,optional"`
+    }
+    
+    // === 解锁用户 ===
+    UnlockUserReq {
+        Reason string `json:"reason,optional"`
+    }
+    
+    // === 删除用户 ===
+    DeleteUserReq {
+        TransferTo string `json:"transfer_to,optional"`
+        Force      bool   `json:"force,optional"`
+    }
+    
+    DeleteUserResp {
+        Archived         bool `json:"archived"`
+        ImpactsTransferred bool `json:"impacts_transferred"`
+    }
+    
+    // === 重置密码 ===
+    ResetPasswordReq {
+        NewPassword string `json:"new_password,optional"`
+        SendEmail   bool   `json:"send_email,optional"`
+    }
+    
+    ResetPasswordResp {
+        TemporaryPassword string `json:"temporary_password"`
+    }
+    
+    // === 批量导入 ===
+    BatchImportReq {
+        DryRun bool `form:"dry_run,optional"`
+    }
+    
+    BatchImportResp {
+        TotalRows   int              `json:"total_rows"`
+        SuccessCount int             `json:"success_count"`
+        FailedCount  int             `json:"failed_count"`
+        Errors      []ImportError    `json:"errors,optional"`
+        UserIds     []string         `json:"user_ids"`
+    }
+    
+    // === 统计信息 ===
+    GetStatisticsResp {
+        Total            int64   `json:"total"`
+        Active           int64   `json:"active"`
+        Locked           int64   `json:"locked"`
+        Inactive         int64   `json:"inactive"`
+        NoOrgBinding     int64   `json:"no_org_binding"`
+        NoPermissionRole int64   `json:"no_permission_role"`
+        RecentActiveRate float64 `json:"recent_active_rate"`
+    }
+    
+    // === 通用类型 ===
+    User {
+        Id            string    `json:"id"`
+        Name          string    `json:"name"`
+        Email         string    `json:"email"`
+        Phone         string    `json:"phone,optional"`
+        DeptId        string    `json:"dept_id,optional"`
+        Status        int8      `json:"status"`
+        AccountSource string    `json:"account_source"`
+        LastLogin     string    `json:"last_login,optional"`
+        CreatedAt     string    `json:"created_at"`
+        CreatedBy     string    `json:"created_by,optional"`
+        UpdatedAt     string    `json:"updated_at"`
+        UpdatedBy     string    `json:"updated_by,optional"`
+    }
+    
+    RoleBinding {
+        Id             int64  `json:"id"`
+        UserId         string `json:"user_id"`
+        OrgId          string `json:"org_id"`
+        Position       string `json:"position,optional"`
+        PermissionRole string `json:"permission_role,optional"`
+    }
+    
+    RoleBindingInput {
+        OrgId          string `json:"org_id" validate:"required"`
+        Position       string `json:"position,optional"`
+        PermissionRole string `json:"permission_role,optional"`
+    }
+    
+    AuditLog {
+        Id         int64             `json:"id"`
+        Action     string            `json:"action"`
+        Operator   string            `json:"operator"`
+        OperatorId string            `json:"operator_id"`
+        Changes    map[string]interface{} `json:"changes,optional"`
+        Timestamp  string            `json:"timestamp"`
+    }
+    
+    OperationError {
+        UserId string `json:"user_id"`
+        Reason string `json:"reason"`
+    }
+    
+    ImportError {
+        Row    int    `json:"row"`
+        Field  string `json:"field"`
+        Reason string `json:"reason"`
+    }
+)
+
+@server(
+    prefix: /api/v1/user_management
+    group: user_management
+    jwt: Auth
+)
+service api {
+    @doc "用户列表查询"
+    @handler ListUsers
+    get /users (ListUsersReq) returns (ListUsersResp)
+    
+    @doc "用户详情查询"
+    @handler GetUser
+    get /users/:id returns (GetUserResp)
+    
+    @doc "创建用户"
+    @handler CreateUser
+    post /users (CreateUserReq) returns (CreateUserResp)
+    
+    @doc "更新用户"
+    @handler UpdateUser
+    put /users/:id (UpdateUserReq) returns (EmptyResp)
+    
+    @doc "批量更新用户状态"
+    @handler BatchUpdateStatus
+    post /users/batch-status (BatchUpdateStatusReq) returns (BatchUpdateStatusResp)
+    
+    @doc "解锁用户"
+    @handler UnlockUser
+    post /users/:id/unlock (UnlockUserReq) returns (EmptyResp)
+    
+    @doc "删除用户"
+    @handler DeleteUser
+    delete /users/:id (DeleteUserReq) returns (DeleteUserResp)
+    
+    @doc "重置用户密码"
+    @handler ResetPassword
+    post /users/:id/reset-password (ResetPasswordReq) returns (ResetPasswordResp)
+    
+    @doc "批量导入用户"
+    @handler BatchImport
+    post /users/batch-import (BatchImportReq) returns (BatchImportResp)
+    
+    @doc "导出用户数据"
+    @handler ExportUsers
+    get /users/export (ListUsersReq) returns (EmptyResp)
+    
+    @doc "获取统计数据"
+    @handler GetStatistics
+    get /statistics returns (GetStatisticsResp)
+}

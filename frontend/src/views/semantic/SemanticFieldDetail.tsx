@@ -38,7 +38,7 @@ export const SemanticFieldDetail: React.FC<SemanticFieldDetailProps> = ({
 }) => {
     // Generate AI suggestions based on field characteristics
     const generateAISuggestion = () => {
-        const fieldName = field.name.toLowerCase();
+        const fieldName = (field.fieldName || field.name || '').toLowerCase();
 
         // Rule-based role inference
         if (fieldName.endsWith('_id') || fieldName.endsWith('id') || fieldName === 'id') {
@@ -108,7 +108,7 @@ export const SemanticFieldDetail: React.FC<SemanticFieldDetailProps> = ({
                     </div>
                     <div>
                         <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                            {field.name}
+                            {field.fieldName || field.name || 'Unknown Field'}
                             <span className="px-2 py-0.5 rounded text-xs bg-slate-100 text-slate-500 font-normal font-mono">
                                 {field.type}
                             </span>

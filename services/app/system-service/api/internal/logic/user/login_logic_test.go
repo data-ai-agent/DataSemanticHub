@@ -46,6 +46,22 @@ func (m *MockUserModel) FindOneByEmail(ctx context.Context, email string) (*user
 	return args.Get(0).(*users.User), args.Error(1)
 }
 
+func (m *MockUserModel) FindOneByPhone(ctx context.Context, phone string) (*users.User, error) {
+	args := m.Called(ctx, phone)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*users.User), args.Error(1)
+}
+
+func (m *MockUserModel) FindList(ctx context.Context, req *users.FindListReq) ([]*users.User, int64, error) {
+	args := m.Called(ctx, req)
+	if args.Get(0) == nil {
+		return nil, 0, args.Error(2)
+	}
+	return args.Get(0).([]*users.User), args.Get(1).(int64), args.Error(2)
+}
+
 func (m *MockUserModel) Update(ctx context.Context, data *users.User) error {
 	args := m.Called(ctx, data)
 	return args.Error(0)
@@ -54,6 +70,32 @@ func (m *MockUserModel) Update(ctx context.Context, data *users.User) error {
 func (m *MockUserModel) UpdateLastLoginAt(ctx context.Context, id string, loginAt time.Time) error {
 	args := m.Called(ctx, id, loginAt)
 	return args.Error(0)
+}
+
+func (m *MockUserModel) UpdateStatus(ctx context.Context, id string, status int8, lockReason *string, lockBy *string) error {
+	args := m.Called(ctx, id, status, lockReason, lockBy)
+	return args.Error(0)
+}
+
+func (m *MockUserModel) BatchUpdateStatus(ctx context.Context, userIds []string, status int8, lockReason *string, lockBy *string) ([]string, []users.BatchUpdateError, error) {
+	args := m.Called(ctx, userIds, status, lockReason, lockBy)
+	if args.Get(0) == nil {
+		return nil, nil, args.Error(2)
+	}
+	successIds := args.Get(0).([]string)
+	var errors []users.BatchUpdateError
+	if args.Get(1) != nil {
+		errors = args.Get(1).([]users.BatchUpdateError)
+	}
+	return successIds, errors, args.Error(2)
+}
+
+func (m *MockUserModel) GetStatistics(ctx context.Context) (*users.Statistics, error) {
+	args := m.Called(ctx)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*users.Statistics), args.Error(1)
 }
 
 func (m *MockUserModel) Delete(ctx context.Context, id string) error {
@@ -210,12 +252,101 @@ func TestLogin_UserNotFound_ReturnsError(t *testing.T) {
 	mockModel.AssertExpectations(t)
 }
 
+// TestLogin_FirstLogin_AutoActivatesUser 测试首次登录自动激活场景（T122）
+func TestLogin_FirstLogin_AutoActivatesUser(t *testing.T) {
+	mockModel := new(MockUserModel)
+	logic, _ := setupTestLogic(mockModel)
+
+	// 准备测试数据（未激活用户）
+	userID, _ := uuid.NewV7()
+	password := "password123"
+	passwordHash, _ := bcrypt.GenerateFromPassword([]byte(password), 10)
+
+	user := &users.User{
+		Id:           userID.String(),
+		FirstName:    "John",
+		LastName:     "Doe",
+		Email:        "john.doe@example.com",
+		Organization: "Test Org",
+		PasswordHash: string(passwordHash),
+		Status:       0, // 未激活
+		LastLoginAt:  nil,
+	}
+
+	// 设置 mock 期望
+	mockModel.On("FindOneByEmail", mock.Anything, "john.doe@example.com").Return(user, nil)
+	mockModel.On("UpdateStatus", mock.Anything, userID.String(), int8(1), (*string)(nil), (*string)(nil)).Return(nil)
+	mockModel.On("UpdateLastLoginAt", mock.Anything, userID.String(), mock.AnythingOfType("time.Time")).Return(nil)
+
+	// 执行登录
+	req := &types.LoginReq{
+		Email:      "john.doe@example.com",
+		Password:   password,
+		RememberMe: false,
+	}
+
+	resp, err := logic.Login(req)
+
+	// 验证结果
+	require.NoError(t, err)
+	assert.NotNil(t, resp)
+	assert.NotEmpty(t, resp.Token)
+	assert.Equal(t, userID.String(), resp.UserInfo.Id)
+
+	// 验证 mock 调用（应该调用了 UpdateStatus 来激活用户）
+	mockModel.AssertExpectations(t)
+}
+
+// TestLogin_ActivatedUser_LoginSuccess 测试已激活用户登录场景（T122）
+func TestLogin_ActivatedUser_LoginSuccess(t *testing.T) {
+	mockModel := new(MockUserModel)
+	logic, _ := setupTestLogic(mockModel)
+
+	// 准备测试数据（已激活用户）
+	userID, _ := uuid.NewV7()
+	password := "password123"
+	passwordHash, _ := bcrypt.GenerateFromPassword([]byte(password), 10)
+
+	user := &users.User{
+		Id:           userID.String(),
+		FirstName:    "Jane",
+		LastName:     "Smith",
+		Email:        "jane.smith@example.com",
+		Organization: "Test Org",
+		PasswordHash: string(passwordHash),
+		Status:       1, // 已激活
+		LastLoginAt:  nil,
+	}
+
+	// 设置 mock 期望
+	mockModel.On("FindOneByEmail", mock.Anything, "jane.smith@example.com").Return(user, nil)
+	mockModel.On("UpdateLastLoginAt", mock.Anything, userID.String(), mock.AnythingOfType("time.Time")).Return(nil)
+
+	// 执行登录
+	req := &types.LoginReq{
+		Email:      "jane.smith@example.com",
+		Password:   password,
+		RememberMe: false,
+	}
+
+	resp, err := logic.Login(req)
+
+	// 验证结果
+	require.NoError(t, err)
+	assert.NotNil(t, resp)
+	assert.NotEmpty(t, resp.Token)
+
+	// 验证 mock 调用（不应该调用 UpdateStatus，因为用户已经激活）
+	mockModel.AssertExpectations(t)
+	mockModel.AssertNotCalled(t, "UpdateStatus", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+}
+
 // TestLogin_UserDisabled_ReturnsError 测试用户已禁用（BR-02）
 func TestLogin_UserDisabled_ReturnsError(t *testing.T) {
 	mockModel := new(MockUserModel)
 	logic, _ := setupTestLogic(mockModel)
 
-	// 准备测试数据（用户已禁用）
+	// 准备测试数据（用户已停用）
 	userID, _ := uuid.NewV7()
 	password := "password123"
 	passwordHash, _ := bcrypt.GenerateFromPassword([]byte(password), 10)
@@ -226,7 +357,7 @@ func TestLogin_UserDisabled_ReturnsError(t *testing.T) {
 		LastName:     "Doe",
 		Email:        "john.doe@example.com",
 		PasswordHash: string(passwordHash),
-		Status:       0, // 禁用
+		Status:       2, // 停用（不是未激活）
 	}
 
 	// 设置 mock 期望

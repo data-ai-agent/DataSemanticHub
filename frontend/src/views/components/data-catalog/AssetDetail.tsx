@@ -267,7 +267,7 @@ export const AssetDetail: React.FC<AssetDetailProps> = ({
                                                             <div className="flex items-center gap-2">
                                                                 <span className="font-medium text-slate-800">{field.name || '-'}</span>
                                                                 {field.primaryKey && (
-                                                                    <Key size={14} className="text-amber-500" title="主键" />
+                                                                    <Key size={14} className="text-amber-500" />
                                                                 )}
                                                             </div>
                                                         </td>
@@ -287,28 +287,28 @@ export const AssetDetail: React.FC<AssetDetailProps> = ({
                                                         </td>
                                                         <td className="py-3 px-4 text-center">
                                                             {field.nullable === false ? (
-                                                                <CheckCircle2 size={16} className="text-emerald-600 mx-auto" title="必填" />
+                                                                <CheckCircle2 size={16} className="text-emerald-600 mx-auto" />
                                                             ) : (
-                                                                <XCircle size={16} className="text-slate-300 mx-auto" title="可选" />
+                                                                <XCircle size={16} className="text-slate-300 mx-auto" />
                                                             )}
                                                         </td>
                                                         <td className="py-3 px-4 text-center">
                                                             {field.primaryKey ? (
-                                                                <Key size={16} className="text-amber-600 mx-auto" title="主键" />
+                                                                <Key size={16} className="text-amber-600 mx-auto" />
                                                             ) : (
                                                                 <span className="text-slate-300">-</span>
                                                             )}
                                                         </td>
                                                         <td className="py-3 px-4 text-center">
                                                             {field.indexed ? (
-                                                                <Hash size={16} className="text-blue-600 mx-auto" title="已索引" />
+                                                                <Hash size={16} className="text-blue-600 mx-auto" />
                                                             ) : (
                                                                 <span className="text-slate-300">-</span>
                                                             )}
                                                         </td>
                                                         <td className="py-3 px-4 text-center">
                                                             {field.sensitive ? (
-                                                                <Lock size={16} className="text-orange-600 mx-auto" title="敏感字段" />
+                                                                <Lock size={16} className="text-orange-600 mx-auto" />
                                                             ) : (
                                                                 <span className="text-slate-300">-</span>
                                                             )}

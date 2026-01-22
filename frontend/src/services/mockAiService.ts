@@ -29,9 +29,9 @@ const inferObjectType = (tableName: string, fields: any[]): { type: ObjectType; 
         return { type: 'attribute', reason: '表名包含标签/汇总关键词' };
     }
 
-    // 默认: 主体对象 (含 base/info/main 或普通表)
-    if (/base|info|main|master|profile/.test(name) || fields.some(f => /^id$|_id$/.test(f.name))) {
-        return { type: 'entity', reason: '表名包含实体关键词或含主键字段' };
+    // Default: Entity Object (has base/info/main or primary key)
+    if (/base|info|main|master|profile/.test(name) || fields.some(f => /^id$|_id$/.test((f.fieldName || f.name || '').toLowerCase()))) {
+        return { type: 'entity', reason: 'Table name contains entity keywords or has PK' };
     }
 
     return { type: 'entity', reason: '默认判断为主体对象' };
@@ -61,7 +61,7 @@ const inferDataGrain = (tableName: string, fields: any[]): string => {
     if (/snapshot|daily|monthly/.test(name)) return '快照粒度';
 
     // 如果有聚合字段，判断为汇总粒度
-    if (fields.some(f => /total|sum|count|avg/.test(f.name.toLowerCase()))) {
+    if (fields.some(f => /total|sum|count|avg/.test((f.fieldName || f.name || '').toLowerCase()))) {
         return '汇总粒度';
     }
 
@@ -84,7 +84,8 @@ interface EvidenceItem {
 
 const generateFieldSuggestions = (fields: any[]): FieldSuggestion[] => {
     return fields.map(field => {
-        const name = field.name.toLowerCase();
+        const name = (field.fieldName || field.name || '').toLowerCase();
+        const display = field.fieldName || field.name || 'unknown';
         let role = '业务属性';
         let description = field.comment || '待补充业务描述';
         let sensitivity: 'L1' | 'L2' | 'L3' | 'L4' = 'L1';
@@ -92,7 +93,7 @@ const generateFieldSuggestions = (fields: any[]): FieldSuggestion[] => {
         // 识别主键
         if (name === 'id' || name.endsWith('_id')) {
             role = '标识符';
-            description = description || `${field.name.replace('_id', '')} 的唯一标识`;
+            description = description || `${display.replace('_id', '')} 的唯一标识`;
         }
 
         // 识别时间字段
@@ -126,7 +127,7 @@ const generateFieldSuggestions = (fields: any[]): FieldSuggestion[] => {
         }
 
         return {
-            name: field.name,
+            name: display,
             suggestedRole: role,
             description,
             sensitivity
@@ -364,6 +365,10 @@ export const generateBoostingTasks = (
 ): BoostingTask[] => {
     const tasks: BoostingTask[] = [];
 
+    // Safe field name accessor
+    const getName = (f: any) => (f.fieldName || f.name || '').toLowerCase();
+    const getDisplay = (f: any) => f.fieldName || f.name || 'unknown';
+
     // Task 1: 字段注释覆盖率
     const commentedFields = fields.filter(f => f.comment && f.comment.trim()).length;
     const commentCoverage = fields.length > 0 ? commentedFields / fields.length : 0;
@@ -381,7 +386,10 @@ export const generateBoostingTasks = (
     });
 
     // Task 2: 语义主键识别
-    const hasPrimaryKey = fields.some(f => f.name.toLowerCase().endsWith('_id') || f.name.toLowerCase() === 'id');
+    const hasPrimaryKey = fields.some(f => {
+        const name = getName(f);
+        return name.endsWith('_id') || name === 'id';
+    });
     tasks.push({
         factor: '主键语义',
         status: hasPrimaryKey ? 'OK' : 'LOW',
@@ -394,9 +402,9 @@ export const generateBoostingTasks = (
 
     // Task 3: 特殊字段识别
     const unknownFields = fields.filter(f =>
-        /ext_|extra_|json|clob|text/.test(f.name.toLowerCase()) ||
-        f.type?.toLowerCase().includes('json') ||
-        f.type?.toLowerCase().includes('text')
+        /ext_|extra_|json|clob|text/.test(getName(f)) ||
+        (f.type || '').toLowerCase().includes('json') ||
+        (f.type || '').toLowerCase().includes('text')
     );
 
     if (unknownFields.length > 0) {
@@ -407,13 +415,13 @@ export const generateBoostingTasks = (
             action: '识别 JSON 结构',
             actionType: 'IDENTIFY_JSON',
             scoreImpact: 0.05,
-            description: `如: ${unknownFields[0].name}`
+            description: `如: ${getDisplay(unknownFields[0])}`
         });
     }
 
     // Task 4: 生命周期字段
     const hasTimeFields = fields.some(f =>
-        /(create|update|modify)_(time|at|date)/.test(f.name.toLowerCase())
+        /(create|update|modify)_(time|at|date)/.test(getName(f))
     );
     tasks.push({
         factor: '时间维度',

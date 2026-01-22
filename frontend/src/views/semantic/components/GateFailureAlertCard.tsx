@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { AlertTriangle, X, Copy } from 'lucide-react';
-import { SemanticGateResult } from '../../types/semantic';
+import { SemanticGateResult } from '../../../types/semantic';
 
 interface GateFailureAlertCardProps {
     gateResult: SemanticGateResult;

@@ -3,7 +3,13 @@
 
 package types
 
-type EmptyResp struct {
+type AuditLog struct {
+	Id         int64                  `json:"id"`
+	Action     string                 `json:"action"`
+	Operator   string                 `json:"operator"`
+	OperatorId string                 `json:"operator_id"`
+	Changes    map[string]interface{} `json:"changes,optional"`
+	Timestamp  string                 `json:"timestamp"`
 }
 
 type HealthResp struct {
@@ -18,8 +24,19 @@ type IdsReq struct {
 	Ids []int64 `json:"ids"`
 }
 
+type ImportError struct {
+	Row    int    `json:"row"`
+	Field  string `json:"field"`
+	Reason string `json:"reason"`
+}
+
 type KeywordInfo struct {
 	Keyword string `form:"keyword,optional"` // 关键字查询
+}
+
+type OperationError struct {
+	UserId string `json:"user_id"`
+	Reason string `json:"reason"`
 }
 
 type PageBaseInfo struct {
@@ -41,6 +58,35 @@ type PageInfoWithKeyword struct {
 type PageResp struct {
 	Entries    interface{} `json:"entries"`     // 数据列表
 	TotalCount int64       `json:"total_count"` // 总记录数
+}
+
+type RoleBinding struct {
+	Id             int64  `json:"id"`
+	UserId         string `json:"user_id"`
+	OrgId          string `json:"org_id"`
+	Position       string `json:"position,optional"`
+	PermissionRole string `json:"permission_role,optional"`
+}
+
+type RoleBindingInput struct {
+	OrgId          string `json:"org_id" validate:"required"`
+	Position       string `json:"position,optional"`
+	PermissionRole string `json:"permission_role,optional"`
+}
+
+type User struct {
+	Id            string `json:"id"`
+	Name          string `json:"name"`
+	Email         string `json:"email"`
+	Phone         string `json:"phone,optional"`
+	DeptId        string `json:"dept_id,optional"`
+	Status        int8   `json:"status"`
+	AccountSource string `json:"account_source"`
+	LastLogin     string `json:"last_login,optional"`
+	CreatedAt     string `json:"created_at"`
+	CreatedBy     string `json:"created_by,optional"`
+	UpdatedAt     string `json:"updated_at"`
+	UpdatedBy     string `json:"updated_by,optional"`
 }
 
 type UserInfo struct {

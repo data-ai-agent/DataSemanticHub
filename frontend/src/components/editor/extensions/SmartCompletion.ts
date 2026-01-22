@@ -29,7 +29,7 @@ export const SmartCompletion = Extension.create({
             items: DEFAULT_SUGGESTION_ITEMS,
             suggestion: {
                 char: '/',
-                command: ({ editor, range, props }) => {
+                command: ({ editor, range, props }: any) => {
                     editor
                         .chain()
                         .focus()
@@ -95,7 +95,7 @@ export const SmartCompletion = Extension.create({
                                 return true;
                             }
 
-                            return component.ref?.onKeyDown(props);
+                            return (component.ref as any)?.onKeyDown?.(props) || false;
                         },
 
                         onExit() {

@@ -69,14 +69,18 @@ func (l *RegisterLogic) Register(req *types.RegisterReq) (resp *types.RegisterRe
 	}
 
 	// 6. 创建用户
+	firstName := strings.TrimSpace(req.FirstName)
+	lastName := strings.TrimSpace(req.LastName)
 	user := &users.User{
-		Id:           userID.String(),
-		FirstName:    strings.TrimSpace(req.FirstName),
-		LastName:     strings.TrimSpace(req.LastName),
-		Email:        email,
-		Organization: strings.TrimSpace(req.Organization),
-		PasswordHash: string(passwordHash),
-		Status:       1, // 启用
+		Id:            userID.String(),
+		FirstName:     firstName,
+		LastName:      lastName,
+		Name:          firstName + " " + lastName, // 合并FirstName和LastName
+		Email:         email,
+		Organization:  strings.TrimSpace(req.Organization),
+		PasswordHash:  string(passwordHash),
+		Status:        0,              // 未激活（首次登录时自动激活）
+		AccountSource: "local",        // 账号来源：本地注册
 	}
 
 	createdUser, err := l.svcCtx.UserModel.Insert(l.ctx, user)
