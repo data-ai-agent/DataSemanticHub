@@ -102,7 +102,7 @@ export const GovernanceFieldList: React.FC<GovernanceFieldListProps> = ({
             // Search
             const matchesSearch = !searchTerm ||
                 ((field.fieldName || field.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-                (field.comment || '').toLowerCase().includes(searchTerm.toLowerCase());
+                (field.comment || '').toLowerCase().includes(searchTerm.toLowerCase()));
 
             // Status Filter
             const matchesStatus = filterStatus === 'all' ||

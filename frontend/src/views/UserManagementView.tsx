@@ -35,7 +35,8 @@ import {
     type User as ApiUser,
     type RoleBinding as ApiRoleBinding,
     type AuditLog as ApiAuditLog,
-    type GetStatisticsResp
+    type GetStatisticsResp,
+    type UserStatusCode
 } from '../services/userManagement';
 
 
@@ -127,7 +128,7 @@ const statusLabelMap: Record<number, UserStatus> = {
     4: '归档'
 };
 
-const statusCodeMap: Record<UserStatus, number> = {
+const statusCodeMap: Record<UserStatus, UserStatusCode> = {
     '未激活': 0,
     '启用': 1,
     '停用': 2,
@@ -306,7 +307,7 @@ const UserManagementView = () => {
                 page_size: pageSize,
                 keyword: debouncedSearchTerm.trim() || undefined,
                 dept_id: activeDeptId === 'all' ? undefined : activeDeptId,
-                status: statusFilter === 'all' ? undefined : (statusCodeMap[statusFilter] as number),
+                status: statusFilter === 'all' ? undefined : statusCodeMap[statusFilter],
                 sort_field: resolveSortField(sortField),
                 sort_order: resolveSortField(sortField) ? sortOrder : undefined
             });

@@ -188,9 +188,11 @@ export const DeepAnalysisTabs: React.FC<DeepAnalysisTabsProps> = ({
                                     {fields
                                         .filter((field: any) => {
                                             if (!fieldSearchTerm.trim()) return true;
-                                            return ((field.fieldName || field.name || "").toLowerCase().includes(fieldSearchTerm.toLowerCase()) ||
+                                            return (
+                                                (field.fieldName || field.name || "").toLowerCase().includes(fieldSearchTerm.toLowerCase()) ||
                                                 field.type?.toLowerCase().includes(fieldSearchTerm.toLowerCase()) ||
-                                                field.comment?.toLowerCase().includes(fieldSearchTerm.toLowerCase());
+                                                field.comment?.toLowerCase().includes(fieldSearchTerm.toLowerCase())
+                                            );
                                         })
                                         .map((field: any, idx: number) => {
                                             const role = getSemanticRole(field.name, field.primaryKey);
@@ -198,10 +200,13 @@ export const DeepAnalysisTabs: React.FC<DeepAnalysisTabsProps> = ({
                                             const isHighlighted = highlightedField === field.name;
 
                                             // Mock sample values
-                                            const samples = isIdentifier ? ['1001', '1002', '1003'] :
-                                                ((field.fieldName || field.name || "").includes('status') ? ['1', '2', '3'] :
-                                                    field.type === 'datetime' ? ['-'] :
-                                                        ['1001', '1002', '1003'];
+                                            const samples = isIdentifier
+                                                ? ['1001', '1002', '1003']
+                                                : ((field.fieldName || field.name || "").includes('status')
+                                                    ? ['1', '2', '3']
+                                                    : field.type === 'datetime'
+                                                        ? ['-']
+                                                        : ['1001', '1002', '1003']);
 
                                             return (
                                                 <tr
@@ -272,4 +277,3 @@ export const DeepAnalysisTabs: React.FC<DeepAnalysisTabsProps> = ({
         </div >
     );
 };
-

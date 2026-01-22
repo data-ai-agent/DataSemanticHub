@@ -15,13 +15,18 @@ interface QualityIssue {
 
 function detectQualityIssue(field: any, roleLabel: string): QualityIssue {
     // Mock quality metrics (in real app, these would come from field analysis)
-    const nullRate = ((field.fieldName || field.name || "").includes('name') ? 39 :
-        ((field.fieldName || field.name || "").includes('created') ? 0 :
-            Math.random() * 10;
+    const fieldKey = (field.fieldName || field.name || "").toLowerCase();
+    const nullRate = fieldKey.includes('name')
+        ? 39
+        : fieldKey.includes('created')
+            ? 0
+            : Math.random() * 10;
 
-    const uniqueness = ((field.fieldName || field.name || "").includes('id') ? 100 :
-        ((field.fieldName || field.name || "").includes('name') ? 78 :
-            Math.random() * 100;
+    const uniqueness = fieldKey.includes('id')
+        ? 100
+        : fieldKey.includes('name')
+            ? 78
+            : Math.random() * 100;
 
     // Rule 1: Identifiers/PKs must have zero nulls and 100% uniqueness
     if (roleLabel === '标识符' || field.key === 'PK') {
@@ -69,15 +74,22 @@ function detectQualityIssue(field: any, roleLabel: string): QualityIssue {
 
 export const EnhancedFieldRow: React.FC<EnhancedFieldRowProps> = ({ field, index }) => {
     // Determine field role and security level
-    const isSensitive = ((field.fieldName || field.name || "").includes('phone') || ((field.fieldName || field.name || "").includes('mobile') ||
-        ((field.fieldName || field.name || "").includes('id_card') || ((field.fieldName || field.name || "").includes('name') ||
-        ((field.fieldName || field.name || "").includes('email') || ((field.fieldName || field.name || "").includes('address');
+    const fieldKey = (field.fieldName || field.name || "").toLowerCase();
+    const isSensitive = fieldKey.includes('phone')
+        || fieldKey.includes('mobile')
+        || fieldKey.includes('id_card')
+        || fieldKey.includes('name')
+        || fieldKey.includes('email')
+        || fieldKey.includes('address');
     const securityLevel = isSensitive ? (Math.random() > 0.5 ? 'L3' : 'L2') : 'L1';
 
-    const roleInfo = ((field.fieldName || field.name || "").includes('id') ? { label: '标识符', color: 'purple' } :
-        ((field.fieldName || field.name || "").includes('time') || ((field.fieldName || field.name || "").includes('date') || ((field.fieldName || field.name || "").includes('created') ? { label: '时间', color: 'blue' } :
-            ((field.fieldName || field.name || "").includes('status') || ((field.fieldName || field.name || "").includes('state') ? { label: '状态', color: 'amber' } :
-                { label: '业务属性', color: 'slate' };
+    const roleInfo = fieldKey.includes('id')
+        ? { label: '标识符', color: 'purple' }
+        : (fieldKey.includes('time') || fieldKey.includes('date') || fieldKey.includes('created'))
+            ? { label: '时间', color: 'blue' }
+            : (fieldKey.includes('status') || fieldKey.includes('state'))
+                ? { label: '状态', color: 'amber' }
+                : { label: '业务属性', color: 'slate' };
 
     // Detect quality issues based on role
     const qualityCheck = detectQualityIssue(field, roleInfo.label);

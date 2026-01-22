@@ -385,29 +385,28 @@ export const mockPhysicalTables = [
             { fieldName: 'create_time', type: 'datetime', semanticStatus: 'DECIDED', role: 'Time', tags: ['BO:部门信息表'], aiSuggestion: '创建时间' },
             { fieldName: 'update_time', type: 'datetime', semanticStatus: 'DECIDED', role: 'Time', tags: ['BO:部门信息表'], aiSuggestion: '更新时间' }
         ]
-    }
     },
-// 6️⃣ HR: 员工信息表 (Fix for missing table error)
-{
-    id: 'TBL_HR_EMP',
+    // 6️⃣ HR: 员工信息表 (Fix for missing table error)
+    {
+        id: 'TBL_HR_EMP',
         name: 't_hr_employee',
-            source: 'HR_Master_DB (MySQL)',
-                scannedAt: '2026-01-21 18:00:00',
-                    rows: '3,500',
-                        status: 'analyzed',
-                            semanticStage: 'READY_FOR_OBJECT',
-                                businessName: '员工信息表',
-                                    relationships: [
-                                        { targetTable: 't_hr_department', type: 'BelongsTo', key: 'department_id', description: '所属部门' }
-                                    ],
-                                        fields: [
-                                            { fieldName: 'employee_id', type: 'varchar(20)', key: 'PK', semanticStatus: 'DECIDED', role: 'Identifier', tags: ['BO:员工信息'], aiSuggestion: '工号' },
-                                            { fieldName: 'name', type: 'varchar(50)', semanticStatus: 'DECIDED', role: 'Attribute', tags: ['BO:员工信息'], aiSuggestion: '姓名' },
-                                            { fieldName: 'department_id', type: 'bigint', semanticStatus: 'DECIDED', role: 'ForeignKey', tags: ['BO:员工信息'], aiSuggestion: '部门ID' },
-                                            { fieldName: 'level', type: 'varchar(10)', semanticStatus: 'DECIDED', role: 'Attribute', tags: ['BO:员工信息'], aiSuggestion: '职级' },
-                                            { fieldName: 'join_date', type: 'date', semanticStatus: 'DECIDED', role: 'Time', tags: ['BO:员工信息'], aiSuggestion: '入职日期' }
-                                        ]
-}
+        source: 'HR_Master_DB (MySQL)',
+        scannedAt: '2026-01-21 18:00:00',
+        rows: '3,500',
+        status: 'analyzed',
+        semanticStage: 'READY_FOR_OBJECT',
+        businessName: '员工信息表',
+        relationships: [
+            { targetTable: 't_hr_department', type: 'BelongsTo', key: 'department_id', description: '所属部门' }
+        ],
+        fields: [
+            { fieldName: 'employee_id', type: 'varchar(20)', key: 'PK', semanticStatus: 'DECIDED', role: 'Identifier', tags: ['BO:员工信息'], aiSuggestion: '工号' },
+            { fieldName: 'name', type: 'varchar(50)', semanticStatus: 'DECIDED', role: 'Attribute', tags: ['BO:员工信息'], aiSuggestion: '姓名' },
+            { fieldName: 'department_id', type: 'bigint', semanticStatus: 'DECIDED', role: 'ForeignKey', tags: ['BO:员工信息'], aiSuggestion: '部门ID' },
+            { fieldName: 'level', type: 'varchar(10)', semanticStatus: 'DECIDED', role: 'Attribute', tags: ['BO:员工信息'], aiSuggestion: '职级' },
+            { fieldName: 'join_date', type: 'date', semanticStatus: 'DECIDED', role: 'Time', tags: ['BO:员工信息'], aiSuggestion: '入职日期' }
+        ]
+    }
 ];
 
 // SG: 映射关系 (Enhanced with BO-to-Table structure)

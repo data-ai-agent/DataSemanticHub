@@ -1,0 +1,742 @@
+basePath: /
+consumes:
+- application/json
+info:
+  title: system-service API
+  version: v1
+paths:
+  /api/v1/health:
+    get:
+      operationId: healthCheck
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ""
+          schema:
+            properties:
+              status:
+                type: string
+            type: object
+      schemes:
+      - https
+      summary: HealthCheck
+  /api/v1/user/info:
+    get:
+      operationId: userGetUserInfo
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ""
+          schema:
+            properties:
+              user_info:
+                properties:
+                  email:
+                    type: string
+                  first_name:
+                    type: string
+                  id:
+                    type: string
+                  last_name:
+                    type: string
+                  organization:
+                    type: string
+                required:
+                - id
+                - first_name
+                - last_name
+                - email
+                type: object
+            type: object
+      schemes:
+      - https
+      summary: 获取当前用户信息
+  /api/v1/user/login:
+    post:
+      consumes:
+      - application/json
+      operationId: userLogin
+      parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          properties:
+            email:
+              type: string
+            password:
+              type: string
+            remember_me:
+              type: boolean
+          required:
+          - email
+          - password
+          - remember_me
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ""
+          schema:
+            properties:
+              expires_in:
+                type: integer
+              refresh_token:
+                type: string
+              token:
+                type: string
+              user_info:
+                properties:
+                  email:
+                    type: string
+                  first_name:
+                    type: string
+                  id:
+                    type: string
+                  last_name:
+                    type: string
+                  organization:
+                    type: string
+                required:
+                - id
+                - first_name
+                - last_name
+                - email
+                type: object
+            type: object
+      schemes:
+      - https
+      summary: 用户登录
+  /api/v1/user/logout:
+    post:
+      operationId: userLogout
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ""
+          schema:
+            properties:
+              message:
+                type: string
+            type: object
+      schemes:
+      - https
+      summary: 退出登录
+  /api/v1/user/register:
+    post:
+      consumes:
+      - application/json
+      operationId: userRegister
+      parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          properties:
+            agree_terms:
+              type: boolean
+            confirm_password:
+              type: string
+            email:
+              type: string
+            first_name:
+              type: string
+            last_name:
+              type: string
+            organization:
+              type: string
+            password:
+              type: string
+          required:
+          - first_name
+          - last_name
+          - email
+          - organization
+          - password
+          - confirm_password
+          - agree_terms
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ""
+          schema:
+            properties:
+              email:
+                type: string
+              first_name:
+                type: string
+              id:
+                type: string
+              last_name:
+                type: string
+              token:
+                type: string
+            type: object
+      schemes:
+      - https
+      summary: 用户注册
+  /api/v1/user_management/statistics:
+    get:
+      operationId: userManagementGetStatistics
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ""
+          schema:
+            properties:
+              active:
+                type: integer
+              inactive:
+                type: integer
+              locked:
+                type: integer
+              no_org_binding:
+                type: integer
+              no_permission_role:
+                type: integer
+              recent_active_rate:
+                type: number
+              total:
+                type: integer
+            type: object
+      schemes:
+      - https
+      summary: 获取统计数据
+  /api/v1/user_management/users:
+    get:
+      operationId: userManagementListUsers
+      parameters:
+      - default: 1
+        in: query
+        name: page
+        required: true
+        type: integer
+      - default: 10
+        in: query
+        name: page_size
+        required: true
+        type: integer
+      - allowEmptyValue: true
+        in: query
+        name: keyword
+        type: string
+      - allowEmptyValue: true
+        in: query
+        name: dept_id
+        type: string
+      - allowEmptyValue: true
+        in: query
+        name: status
+        type: integer
+      - allowEmptyValue: true
+        in: query
+        name: account_source
+        type: string
+      - allowEmptyValue: true
+        in: query
+        name: permission_role
+        type: string
+      - allowEmptyValue: true
+        description: name,created_at,last_login
+        in: query
+        name: sort_field
+        type: string
+      - allowEmptyValue: true
+        description: asc,desc
+        in: query
+        name: sort_order
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ""
+          schema:
+            properties:
+              page:
+                type: integer
+              page_size:
+                type: integer
+              total:
+                type: integer
+              users:
+                items:
+                  properties:
+                    account_source:
+                      type: string
+                    created_at:
+                      type: string
+                    created_by:
+                      type: string
+                    dept_id:
+                      type: string
+                    email:
+                      type: string
+                    id:
+                      type: string
+                    last_login:
+                      type: string
+                    name:
+                      type: string
+                    phone:
+                      type: string
+                    status:
+                      type: integer
+                    updated_at:
+                      type: string
+                    updated_by:
+                      type: string
+                  required:
+                  - id
+                  - name
+                  - email
+                  - status
+                  - account_source
+                  - created_at
+                  - updated_at
+                  type: object
+                type: array
+            type: object
+      schemes:
+      - https
+      summary: 用户列表查询
+    post:
+      consumes:
+      - application/json
+      operationId: userManagementCreateUser
+      parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          properties:
+            account_source:
+              type: string
+            dept_id:
+              type: string
+            email:
+              type: string
+            initial_password:
+              type: string
+            name:
+              type: string
+            phone:
+              type: string
+            role_bindings:
+              items:
+                properties:
+                  org_id:
+                    type: string
+                  permission_role:
+                    type: string
+                  position:
+                    type: string
+                required:
+                - org_id
+                type: object
+              type: array
+            send_invitation:
+              type: boolean
+          required:
+          - name
+          - email
+          - dept_id
+          - account_source
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ""
+          schema:
+            properties:
+              initial_password:
+                type: string
+              user_id:
+                type: string
+            type: object
+      schemes:
+      - https
+      summary: 创建用户
+  /api/v1/user_management/users/{id}:
+    delete:
+      consumes:
+      - application/json
+      operationId: userManagementDeleteUser
+      parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          properties:
+            force:
+              type: boolean
+            transfer_to:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ""
+          schema:
+            properties:
+              archived:
+                type: boolean
+              impacts_transferred:
+                type: boolean
+            type: object
+      schemes:
+      - https
+      summary: 删除用户
+    get:
+      operationId: userManagementGetUser
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ""
+          schema:
+            properties:
+              audit_logs:
+                items:
+                  properties:
+                    action:
+                      type: string
+                    changes:
+                      additionalProperties: {}
+                      type: object
+                    id:
+                      type: integer
+                    operator:
+                      type: string
+                    operator_id:
+                      type: string
+                    timestamp:
+                      type: string
+                  required:
+                  - id
+                  - action
+                  - operator
+                  - operator_id
+                  - timestamp
+                  type: object
+                type: array
+              role_bindings:
+                items:
+                  properties:
+                    id:
+                      type: integer
+                    org_id:
+                      type: string
+                    permission_role:
+                      type: string
+                    position:
+                      type: string
+                    user_id:
+                      type: string
+                  required:
+                  - id
+                  - user_id
+                  - org_id
+                  type: object
+                type: array
+              user:
+                properties:
+                  account_source:
+                    type: string
+                  created_at:
+                    type: string
+                  created_by:
+                    type: string
+                  dept_id:
+                    type: string
+                  email:
+                    type: string
+                  id:
+                    type: string
+                  last_login:
+                    type: string
+                  name:
+                    type: string
+                  phone:
+                    type: string
+                  status:
+                    type: integer
+                  updated_at:
+                    type: string
+                  updated_by:
+                    type: string
+                required:
+                - id
+                - name
+                - email
+                - status
+                - account_source
+                - created_at
+                - updated_at
+                type: object
+            type: object
+      schemes:
+      - https
+      summary: 用户详情查询
+    put:
+      consumes:
+      - application/json
+      operationId: userManagementUpdateUser
+      parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          properties:
+            dept_id:
+              type: string
+            name:
+              type: string
+            phone:
+              type: string
+            role_bindings:
+              items:
+                properties:
+                  org_id:
+                    type: string
+                  permission_role:
+                    type: string
+                  position:
+                    type: string
+                required:
+                - org_id
+                type: object
+              type: array
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ""
+          schema:
+            type: object
+      schemes:
+      - https
+      summary: 更新用户
+  /api/v1/user_management/users/{id}/reset-password:
+    post:
+      consumes:
+      - application/json
+      operationId: userManagementResetPassword
+      parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          properties:
+            new_password:
+              type: string
+            send_email:
+              type: boolean
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ""
+          schema:
+            properties:
+              temporary_password:
+                type: string
+            type: object
+      schemes:
+      - https
+      summary: 重置用户密码
+  /api/v1/user_management/users/{id}/unlock:
+    post:
+      consumes:
+      - application/json
+      operationId: userManagementUnlockUser
+      parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          properties:
+            reason:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ""
+          schema:
+            type: object
+      schemes:
+      - https
+      summary: 解锁用户
+  /api/v1/user_management/users/batch-import:
+    post:
+      consumes:
+      - application/x-www-form-urlencoded
+      operationId: userManagementBatchImport
+      parameters:
+      - allowEmptyValue: true
+        in: formData
+        name: dry_run
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ""
+          schema:
+            properties:
+              errors:
+                items:
+                  properties:
+                    field:
+                      type: string
+                    reason:
+                      type: string
+                    row:
+                      type: integer
+                  required:
+                  - row
+                  - field
+                  - reason
+                  type: object
+                type: array
+              failed_count:
+                type: integer
+              success_count:
+                type: integer
+              total_rows:
+                type: integer
+              user_ids:
+                items:
+                  type: string
+                type: array
+            type: object
+      schemes:
+      - https
+      summary: 批量导入用户
+  /api/v1/user_management/users/batch-status:
+    post:
+      consumes:
+      - application/json
+      operationId: userManagementBatchUpdateStatus
+      parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          properties:
+            reason:
+              type: string
+            status:
+              type: integer
+            user_ids:
+              items:
+                type: string
+              type: array
+          required:
+          - user_ids
+          - status
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ""
+          schema:
+            properties:
+              errors:
+                items:
+                  properties:
+                    reason:
+                      type: string
+                    user_id:
+                      type: string
+                  required:
+                  - user_id
+                  - reason
+                  type: object
+                type: array
+              failed_count:
+                type: integer
+              success_count:
+                type: integer
+            type: object
+      schemes:
+      - https
+      summary: 批量更新用户状态
+  /api/v1/user_management/users/export:
+    get:
+      operationId: userManagementExportUsers
+      parameters:
+      - default: 1
+        in: query
+        name: page
+        required: true
+        type: integer
+      - default: 10
+        in: query
+        name: page_size
+        required: true
+        type: integer
+      - allowEmptyValue: true
+        in: query
+        name: keyword
+        type: string
+      - allowEmptyValue: true
+        in: query
+        name: dept_id
+        type: string
+      - allowEmptyValue: true
+        in: query
+        name: status
+        type: integer
+      - allowEmptyValue: true
+        in: query
+        name: account_source
+        type: string
+      - allowEmptyValue: true
+        in: query
+        name: permission_role
+        type: string
+      - allowEmptyValue: true
+        description: name,created_at,last_login
+        in: query
+        name: sort_field
+        type: string
+      - allowEmptyValue: true
+        description: asc,desc
+        in: query
+        name: sort_order
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ""
+          schema:
+            type: object
+      schemes:
+      - https
+      summary: 导出用户数据
+produces:
+- application/json
+schemes:
+- https
+swagger: "2.0"
+x-date: "2026-01-22 23:55:29"
+x-description: This is a goctl generated swagger file.
+x-github: https://github.com/zeromicro/go-zero
+x-go-zero-doc: https://go-zero.dev/
+x-goctl-version: 1.9.2
