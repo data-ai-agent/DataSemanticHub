@@ -26,23 +26,6 @@
             <version>4.5.13</version>
         </dependency>
         <dependency>
-            <groupId>cn.aishu</groupId>
-            <artifactId>opentelemetry-exporter-ar-trace</artifactId>
-            <version>2.4.0</version>
-        </dependency>
-
-        <dependency>
-            <groupId>cn.aishu</groupId>
-            <artifactId>opentelemetry-exporter-ar-log</artifactId>
-            <version>2.4.0</version>
-        </dependency>
-
-        <dependency>
-            <groupId>cn.aishu</groupId>
-            <artifactId>opentelemetry-exporter-common</artifactId>
-            <version>2.4.0</version>
-        </dependency>
-        <dependency>
             <groupId>com.baomidou</groupId>
             <artifactId>mybatis-plus</artifactId>
         </dependency>
@@ -61,31 +44,10 @@
             <artifactId>kafka-clients</artifactId>
             <version>3.4.0</version>
         </dependency>
-        <!-- nsq client -->
+                <!-- 使用Spring Kafka作为消息队列替代方案 -->
         <dependency>
-            <groupId>com.sproutsocial</groupId>
-            <artifactId>nsq-j</artifactId>
-            <version>1.4.1</version>
-        </dependency>
-        <!-- 906 -->
-        <dependency>
-            <groupId>aishu.mq</groupId>
-            <artifactId>tlq9-client</artifactId>
-            <version>1.0.0</version>
-            <classifier>9.0.6</classifier>
-        </dependency>
-        <!-- tlqHTP2.0 -->
-        <dependency>
-            <groupId>aishu.mq</groupId>
-            <artifactId>tlqHTP2.0-client</artifactId>
-            <version>1.0.0</version>
-            <classifier>2023-08-16</classifier>
-        </dependency>
-        <!-- bemsq -->
-        <dependency>
-            <groupId>aishu.mq</groupId>
-            <artifactId>besmq-client</artifactId>
-            <version>1.0.0</version>
+            <groupId>org.springframework.kafka</groupId>
+            <artifactId>spring-kafka</artifactId>
         </dependency>
         <!-- Kubernetes Java客户端 -->
         <dependency>
@@ -115,13 +77,6 @@
             <groupId>com.oracle.ojdbc</groupId>
             <artifactId>ojdbc8</artifactId>
             <version>19.3.0.0</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.inceptor</groupId>
-            <artifactId>inceptor-driver</artifactId>
-            <version>8.37.3</version>
-            <!--            <scope>system</scope>-->
-            <!--            <systemPath>D:/dip/vega-calculate/config/inceptorlib/inceptor-driver-8.37.3.jar</systemPath>-->
         </dependency>
     </dependencies>
 

@@ -37,6 +37,21 @@
             <groupId>com.eisoo</groupId>
             <artifactId>dc-common</artifactId>
             <version>1.0-SNAPSHOT</version>
+            <!-- 排除有问题的传递依赖 -->
+            <exclusions>
+                <exclusion>
+                    <groupId>com.aishu.af.vega</groupId>
+                    <artifactId>vega-sql-tools</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>cn.aishu</groupId>
+                    <artifactId>opentelemetry-exporter-common</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>cn.aishu</groupId>
+                    <artifactId>opentelemetry-exporter-ar-log</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.hibernate.validator</groupId>
@@ -50,11 +65,13 @@
             <groupId>mysql</groupId>
             <artifactId>mysql-connector-java</artifactId>
         </dependency>
+        <!-- 移除达梦数据库驱动，使用标准JDBC驱动
         <dependency>
             <groupId>com.dameng</groupId>
             <artifactId>DmJdbcDriver18</artifactId>
             <version>8.1.3.140</version>
         </dependency>
+        -->
         <dependency>
             <groupId>com.baomidou</groupId>
             <artifactId>mybatis-plus-annotation</artifactId>
@@ -127,6 +144,22 @@
             <groupId>cn.hutool</groupId>
             <artifactId>hutool-all</artifactId>
             <version>5.8.0</version>
+        </dependency>
+        <!-- 添加测试依赖 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 </project>
