@@ -57,7 +57,7 @@ fi
 echo "Building all services..."
 echo ""
 
-SERVICES=("system-service" "frontend")
+SERVICES=("system-service" "agent-service" "data-connection" "frontend")
 FAILED_SERVICES=()
 
 for service in "${SERVICES[@]}"; do

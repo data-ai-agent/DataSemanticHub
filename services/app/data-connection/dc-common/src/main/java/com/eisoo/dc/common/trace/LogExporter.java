@@ -42,7 +42,7 @@ public class LogExporter  implements SpanExporter {
 
 
     public CompletableResultCode flush() {
-        CompletableResultCode resultCode = new CompletableResultCode();
+        CompletableResultCode resultCode = CompletableResultCode.ofSuccess();
 
         return resultCode.succeed();
     }
