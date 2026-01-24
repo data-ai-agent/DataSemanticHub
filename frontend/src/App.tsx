@@ -153,7 +153,7 @@ export default function SemanticLayerApp() {
             case 'resource_knowledge_network': return <ResourceKnowledgeNetworkView />;
             case 'scenario_orchestration': return <ScenarioOrchestrationView businessObjects={businessObjects} />;
             case 'bu_connect': return <DataSourceManagementView />;
-            case 'bu_scan': return <AssetScanningView onNavigate={setActiveModule} onAddScanResults={(results) => setScanResults(prev => [...prev, ...results])} />;
+            case 'bu_scan': return <AssetScanningView onNavigate={setActiveModule} />;
             case 'bu_discovery': return <TechDiscoveryView onAddBusinessObject={handleAddBusinessObject} scanResults={scanResults} setScanResults={setScanResults} />;
             case 'bu_semantic': return <DataSemanticUnderstandingView
                 scanResults={scanResults}
