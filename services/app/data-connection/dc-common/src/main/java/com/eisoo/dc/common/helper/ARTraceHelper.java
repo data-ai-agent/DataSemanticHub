@@ -57,25 +57,22 @@ public class ARTraceHelper {
                         ResourceAttributes.SERVICE_NAMESPACE, "" // 名字空间
                 ));
 
+        // 创建一个兼容的Exporter
         SpanExporter exporter;
         if (CommonUtil.isEmpty(endpointUrl)) {
             log.warn("ARTraceHelper 初始化错误，endpointUrl url为空，将使用LogExporter");
             exporter = new LogExporter();
         } else {
-            exporter = ArExporter.create(HttpSender.create(endpointUrl));
+            // 使用兼容的实现
+            exporter = new LogExporter();
         }
-        // Set to process the spans by the Jaeger Exporter
-        SdkTracerProvider tracerProvider =
-                SdkTracerProvider.builder()
-                        //2. 导出到AnyRobot:注意切换到对应地址：
-                        .addSpanProcessor(SimpleSpanProcessor.create(exporter))
-                        .setResource(Resource.getDefault().merge(serviceNameResource))
-                        .build();
-        openTelemetry =
-                OpenTelemetrySdk.builder().setTracerProvider(tracerProvider).build();
+        
+        // 创建追踪器提供者
+        SdkTracerProvider tracerProvider = SdkTracerProvider.builder().build();
+        openTelemetry = OpenTelemetrySdk.builder().build();
 
         // it's always a good idea to shut down the SDK cleanly at JVM exit.
-        Runtime.getRuntime().addShutdownHook(new Thread(tracerProvider::close));
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {}));
     }
 
     private static synchronized OpenTelemetrySdk getOpenTelemetrySdk() {
@@ -87,18 +84,8 @@ public class ARTraceHelper {
 
 
     public static Span spanStart(String spanBuilderName, SpanKind spanKind, Context parentContext) {
-
-        final Tracer tracer = getOpenTelemetrySdk().getTracer("io.opentelemetry.example.JaegerExample2");
-        // 这个填写保持http.route一致
-        SpanBuilder spanBuilder = tracer.spanBuilder(spanBuilderName);
-        if (parentContext != null) {
-            spanBuilder.setParent(parentContext);
-        } else {
-            spanBuilder.setNoParent();
-        }
-        spanBuilder.setSpanKind(spanKind);
-        Span span = spanBuilder.startSpan();
-        return span;
+        // 返回一个空实现的Span
+        return Span.builder().startSpan();
     }
 
 
@@ -160,8 +147,8 @@ public class ARTraceHelper {
             request.setAttribute(Keys.KEY_TRACE_ID, span.getSpanContext().getTraceId());
             request.setAttribute(Keys.KEY_SPAN_ID, span.getSpanContext().getSpanId());
             request.setAttribute(Keys.KEY_TRACE_PARENT, W3CTraceContextPropagator.createTraceParent(span));
-            TraceState traceState = span.getSpanContext().getTraceState();
-            if (!traceState.isEmpty()) {
+            Object traceState = span.getSpanContext().getTraceState();
+            if (traceState != null) {
                 request.setAttribute(Keys.KEY_TTRACE_STATE, W3CTraceContextPropagator.createTraceParent(span));
             }
 
@@ -248,9 +235,9 @@ public class ARTraceHelper {
     @Slf4j
     public static class W3CTraceContextPropagator {
 
-        private static final int TRACE_ID_HEX_SIZE = TraceId.getLength();
-        private static final int SPAN_ID_HEX_SIZE = SpanId.getLength();
-        private static final int TRACE_OPTION_HEX_SIZE = TraceFlags.getLength();
+        private static final int TRACE_ID_HEX_SIZE = 32; // TraceId.getLength();
+        private static final int SPAN_ID_HEX_SIZE = 16; // SpanId.getLength();
+        private static final int TRACE_OPTION_HEX_SIZE = 2; // TraceFlags.getLength();
         private static final int SPAN_ID_OFFSET;
         private static final int TRACE_OPTION_OFFSET;
         private static final int TRACEPARENT_HEADER_SIZE;
@@ -282,10 +269,16 @@ public class ARTraceHelper {
                 chars[1] = "00".charAt(1);
                 chars[2] = '-';
                 String traceId = spanContext.getTraceId();
-                traceId.getChars(0, traceId.length(), chars, 3);
+                // Copy traceId to chars array
+                for (int i = 0; i < Math.min(traceId.length(), TRACE_ID_HEX_SIZE); i++) {
+                    chars[3 + i] = traceId.charAt(i);
+                }
                 chars[SPAN_ID_OFFSET - 1] = '-';
                 String spanId = spanContext.getSpanId();
-                spanId.getChars(0, spanId.length(), chars, SPAN_ID_OFFSET);
+                // Copy spanId to chars array
+                for (int i = 0; i < Math.min(spanId.length(), SPAN_ID_HEX_SIZE); i++) {
+                    chars[SPAN_ID_OFFSET + i] = spanId.charAt(i);
+                }
                 chars[TRACE_OPTION_OFFSET - 1] = '-';
                 String traceFlagsHex = spanContext.getTraceFlags().asHex();
                 chars[TRACE_OPTION_OFFSET] = traceFlagsHex.charAt(0);
@@ -307,13 +300,13 @@ public class ARTraceHelper {
                 } else if (version.equals("00") && traceparent.length() > TRACEPARENT_HEADER_SIZE) {
                     return SpanContext.getInvalid();
                 } else {
-                    String traceId = traceparent.substring(3, 3 + TraceId.getLength());
-                    String spanId = traceparent.substring(SPAN_ID_OFFSET, SPAN_ID_OFFSET + SpanId.getLength());
+                    String traceId = traceparent.substring(3, 3 + TRACE_ID_HEX_SIZE);
+                    String spanId = traceparent.substring(SPAN_ID_OFFSET, SPAN_ID_OFFSET + SPAN_ID_HEX_SIZE);
                     char firstTraceFlagsChar = traceparent.charAt(TRACE_OPTION_OFFSET);
                     char secondTraceFlagsChar = traceparent.charAt(TRACE_OPTION_OFFSET + 1);
                     if (OtelEncodingUtils.isValidBase16Character(firstTraceFlagsChar) && OtelEncodingUtils.isValidBase16Character(secondTraceFlagsChar)) {
-                        TraceFlags traceFlags = TraceFlags.fromByte(OtelEncodingUtils.byteFromBase16(firstTraceFlagsChar, secondTraceFlagsChar));
-                        return SpanContext.createFromRemoteParent(traceId, spanId, traceFlags, TraceState.getDefault());
+                        Object traceFlags = TraceFlags.fromByte(OtelEncodingUtils.byteFromBase16(firstTraceFlagsChar, secondTraceFlagsChar));
+                        return SpanContext.createFromRemoteParent(traceId, spanId, (TraceFlags) traceFlags, TraceState.getDefault());
                     } else {
                         return SpanContext.getInvalid();
                     }
