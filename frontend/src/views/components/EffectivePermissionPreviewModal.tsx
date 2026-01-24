@@ -12,6 +12,8 @@ interface Role {
     id: string;
     name: string;
     permissions: PermissionItem[];
+    scope?: { type: string; ids: string[] };
+    dataFilters?: string[];
 }
 
 interface MockUser {
@@ -75,6 +77,12 @@ export const EffectivePermissionPreviewModal: React.FC<EffectivePermissionPrevie
         });
 
         return result;
+    }, [selectedUser, allRoles]);
+
+    const effectiveFilters = useMemo(() => {
+        if (!selectedUser) return [];
+        const userRoles = allRoles.filter(r => selectedUser.roleIds.includes(r.id));
+        return Array.from(new Set(userRoles.flatMap(role => role.dataFilters || [])));
     }, [selectedUser, allRoles]);
 
     // Helper to get roles that grant a specific module
@@ -150,6 +158,7 @@ export const EffectivePermissionPreviewModal: React.FC<EffectivePermissionPrevie
                                     <tr>
                                         <th className="px-4 py-3 w-1/4">治理模块</th>
                                         <th className="px-4 py-3">生效权限 (Effective Actions)</th>
+                                        <th className="px-4 py-3 w-1/4">数据过滤规则</th>
                                         <th className="px-4 py-3 w-1/4">来源角色</th>
                                     </tr>
                                 </thead>
@@ -185,6 +194,9 @@ export const EffectivePermissionPreviewModal: React.FC<EffectivePermissionPrevie
                                                         </div>
                                                     )}
                                                 </td>
+                                                <td className="px-4 py-3 text-slate-500 text-xs">
+                                                    {effectiveFilters.length > 0 ? effectiveFilters.join(' AND ') : '-'}
+                                                </td>
                                                 <td className="px-4 py-3 text-slate-500">
                                                     {sources.length > 0 ? (
                                                         <div className="flex flex-wrap gap-1">
@@ -203,7 +215,7 @@ export const EffectivePermissionPreviewModal: React.FC<EffectivePermissionPrevie
                                     })}
                                     {effectivePermissions.length === 0 && (
                                         <tr>
-                                            <td colSpan={3} className="px-4 py-12 text-center text-slate-400">
+                                            <td colSpan={4} className="px-4 py-12 text-center text-slate-400">
                                                 该用户暂无任何生效权限。
                                             </td>
                                         </tr>

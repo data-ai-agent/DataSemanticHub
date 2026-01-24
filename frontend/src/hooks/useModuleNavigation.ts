@@ -8,7 +8,7 @@ export type ModuleId =
     | 'bu_connect' | 'bu_scan' | 'bu_discovery' | 'bu_semantic' | 'bu_semantic_v2' | 'bu_candidates'
     | 'governance' | 'smart_data' | 'data_supermarket' | 'term_mgmt' | 'tag_mgmt' | 'ask_data' | 'advanced_ask_data' | 'data_standard'
     | 'field_semantic' | 'data_quality' | 'data_security' | 'semantic_version'
-    | 'user_permission' | 'workflow_mgmt' | 'approval_policy' | 'audit_log'
+    | 'user_permission' | 'permission_templates' | 'workflow_mgmt' | 'approval_policy' | 'audit_log'
     | 'ee_api' | 'ee_cache'
     | 'auth' | 'menu_mgmt' | 'org_mgmt' | 'user_mgmt';
 

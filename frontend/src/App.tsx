@@ -50,6 +50,7 @@ import { FieldSemanticWorkbenchView } from './views/FieldSemanticWorkbenchView';
 import { useModuleNavigation } from './hooks/useModuleNavigation';
 import AuthView from './views/AuthView';
 import UserPermissionView from './views/UserPermissionView';
+import PermissionTemplatesView from './views/PermissionTemplatesView';
 import WorkflowManagementView from './views/WorkflowManagementView';
 import ApprovalPolicyView from './views/ApprovalPolicyView';
 import AuditLogView from './views/AuditLogView';
@@ -190,6 +191,7 @@ export default function SemanticLayerApp() {
             case 'ee_api': return <ApiGatewayView businessObjects={businessObjects} />;
             case 'ee_cache': return <CacheStrategyView />;
             case 'user_permission': return <UserPermissionView />;
+            case 'permission_templates': return <PermissionTemplatesView />;
             case 'workflow_mgmt': return <WorkflowManagementView />;
             case 'approval_policy': return <ApprovalPolicyView />;
             case 'audit_log': return <AuditLogView />;

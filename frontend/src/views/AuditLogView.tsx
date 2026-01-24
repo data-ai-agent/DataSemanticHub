@@ -1,504 +1,538 @@
 import { useMemo, useState } from 'react';
 import {
-    Activity,
     AlertTriangle,
-    CheckCircle2,
     Clock,
     Download,
     Filter,
-    Hash,
     Search,
     ShieldCheck,
-    User,
     FileText,
-    XCircle
+    X,
+    ChevronRight
 } from 'lucide-react';
 
-type AuditStatus = '成功' | '失败' | '告警';
 type RiskLevel = '高' | '中' | '低';
+type TaskStatus = '待审批' | '已通过' | '已驳回';
+type LogResult = '成功' | '失败' | '告警';
+
+type AuditTask = {
+    id: string;
+    entityType: string;
+    entityName: string;
+    changeType: string;
+    risk: RiskLevel;
+    requester: string;
+    createdAt: string;
+    status: TaskStatus;
+    diff: {
+        scope: string;
+        policy: string;
+        members: string;
+    };
+};
 
 type AuditLog = {
     id: string;
-    action: string;
-    module: string;
-    resource: string;
-    actor: string;
-    role: string;
-    ip: string;
-    status: AuditStatus;
-    risk: RiskLevel;
     time: string;
-    durationMs: number;
-    traceId: string;
-    message: string;
+    actor: string;
+    action: string;
+    entity: string;
+    risk: RiskLevel;
+    result: LogResult;
+    detail: string;
 };
 
-const modules = ['语义资产', '语义版本', '数据安全', '数据质量', '数据服务', '问数', '找数', '业务场景'];
-const quickRanges = [
-    { id: 'all', label: '不限' },
-    { id: 'today', label: '今天', days: 0 },
-    { id: '7d', label: '近 7 天', days: 6 },
-    { id: '30d', label: '近 30 天', days: 29 }
-];
-
-const initialLogs: AuditLog[] = [
+const taskData: AuditTask[] = [
     {
-        id: 'log_001',
-        action: '语义版本发布审批',
-        module: '语义版本',
-        resource: '版本 v1.4',
-        actor: '王宁',
-        role: '语义治理负责人',
-        ip: '10.23.18.12',
-        status: '成功',
-        risk: '中',
-        time: '2024-06-28 10:24',
-        durationMs: 842,
-        traceId: 'TRC-20240628-001',
-        message: '审批通过并触发版本发布。'
-    },
-    {
-        id: 'log_002',
-        action: '高敏字段变更审批',
-        module: '数据安全',
-        resource: 'user_id 字段',
-        actor: '张倩',
-        role: '安全审计',
-        ip: '10.23.20.44',
-        status: '告警',
+        id: 'TASK-20240628-001',
+        entityType: '角色',
+        entityName: '语义治理负责人',
+        changeType: '权限提升',
         risk: '高',
-        time: '2024-06-28 09:40',
-        durationMs: 1250,
-        traceId: 'TRC-20240628-002',
-        message: '检测到高敏字段变更，已触发双人复核。'
+        requester: '韩梅',
+        createdAt: '2024-06-28 10:12',
+        status: '待审批',
+        diff: {
+            scope: '组织范围扩展至 3 个部门',
+            policy: '新增发布/管理权限（语义版本）',
+            members: '新增 2 位成员'
+        }
     },
     {
-        id: 'log_003',
-        action: '语义裁决结果同步',
-        module: '语义资产',
-        resource: '业务对象：客户',
-        actor: '李晨',
-        role: '语义治理专员',
-        ip: '10.23.19.88',
-        status: '成功',
-        risk: '低',
-        time: '2024-06-28 09:12',
-        durationMs: 416,
-        traceId: 'TRC-20240628-003',
-        message: '裁决结果已同步到资源知识网络。'
-    },
-    {
-        id: 'log_004',
-        action: '质量异常复核',
-        module: '数据质量',
-        resource: '订单金额一致性',
-        actor: '陈颖',
-        role: '数据质量管理员',
-        ip: '10.23.21.09',
-        status: '失败',
+        id: 'TASK-20240627-009',
+        entityType: '模板',
+        entityName: '数据服务运营模板',
+        changeType: '发布申请',
         risk: '中',
-        time: '2024-06-27 18:32',
-        durationMs: 1630,
-        traceId: 'TRC-20240627-009',
-        message: '质量规则未通过，已回滚变更。'
+        requester: '刘维',
+        createdAt: '2024-06-27 18:32',
+        status: '待审批',
+        diff: {
+            scope: '数据域扩展至 4 个',
+            policy: '新增问数管理权限',
+            members: '无成员变更'
+        }
     },
     {
-        id: 'log_005',
-        action: '数据服务发布',
-        module: '数据服务',
-        resource: '客户画像 API',
-        actor: '赵敏',
-        role: '数据服务运营',
-        ip: '10.23.17.21',
-        status: '成功',
+        id: 'TASK-20240627-003',
+        entityType: '角色',
+        entityName: '安全审计',
+        changeType: '成员变更',
         risk: '低',
-        time: '2024-06-27 16:05',
-        durationMs: 520,
-        traceId: 'TRC-20240627-011',
-        message: '服务发布完成，自动通知订阅方。'
-    },
-    {
-        id: 'log_006',
-        action: '问数权限申请',
-        module: '问数',
-        resource: '指标：活跃用户数',
-        actor: '周琪',
-        role: '业务分析师',
-        ip: '10.23.15.36',
-        status: '告警',
-        risk: '中',
-        time: '2024-06-27 14:50',
-        durationMs: 910,
-        traceId: 'TRC-20240627-013',
-        message: '权限申请涉及核心指标，已升级审批。'
+        requester: '系统',
+        createdAt: '2024-06-27 09:05',
+        status: '已通过',
+        diff: {
+            scope: '无范围变更',
+            policy: '无权限变更',
+            members: '移除 1 位临时成员'
+        }
     }
 ];
 
-const statusBadge: Record<AuditStatus, string> = {
-    成功: 'bg-emerald-50 text-emerald-600',
-    失败: 'bg-rose-50 text-rose-600',
-    告警: 'bg-amber-50 text-amber-600'
-};
+const logData: AuditLog[] = [
+    {
+        id: 'LOG-20240628-001',
+        time: '2024-06-28 10:24',
+        actor: '王宁',
+        action: '语义版本发布审批',
+        entity: '版本 v1.4',
+        risk: '中',
+        result: '成功',
+        detail: '审批通过并触发版本发布。'
+    },
+    {
+        id: 'LOG-20240628-002',
+        time: '2024-06-28 09:40',
+        actor: '张倩',
+        action: '高敏字段变更审批',
+        entity: 'user_id 字段',
+        risk: '高',
+        result: '告警',
+        detail: '检测到高敏字段变更，已触发双人复核。'
+    },
+    {
+        id: 'LOG-20240627-009',
+        time: '2024-06-27 18:32',
+        actor: '陈颖',
+        action: '质量异常复核',
+        entity: '订单金额一致性',
+        risk: '中',
+        result: '失败',
+        detail: '质量规则未通过，已回滚变更。'
+    }
+];
 
 const riskBadge: Record<RiskLevel, string> = {
-    高: 'bg-rose-50 text-rose-600',
-    中: 'bg-amber-50 text-amber-600',
-    低: 'bg-emerald-50 text-emerald-600'
+    高: 'bg-rose-100 text-rose-700',
+    中: 'bg-amber-100 text-amber-700',
+    低: 'bg-emerald-100 text-emerald-700'
+};
+
+const statusBadge: Record<TaskStatus, string> = {
+    待审批: 'bg-amber-100 text-amber-700',
+    已通过: 'bg-emerald-100 text-emerald-700',
+    已驳回: 'bg-rose-100 text-rose-700'
+};
+
+const resultBadge: Record<LogResult, string> = {
+    成功: 'bg-emerald-100 text-emerald-700',
+    失败: 'bg-rose-100 text-rose-700',
+    告警: 'bg-amber-100 text-amber-700'
 };
 
 const AuditLogView = () => {
-    const [logs] = useState<AuditLog[]>(initialLogs);
-    const [activeLogId, setActiveLogId] = useState(initialLogs[0]?.id ?? '');
-    const [searchTerm, setSearchTerm] = useState('');
-    const [statusFilter, setStatusFilter] = useState<'all' | AuditStatus>('all');
-    const [riskFilter, setRiskFilter] = useState<'all' | RiskLevel>('all');
-    const [moduleFilter, setModuleFilter] = useState('all');
-    const [startDate, setStartDate] = useState('');
-    const [endDate, setEndDate] = useState('');
-    const [activeRange, setActiveRange] = useState<'all' | 'today' | '7d' | '30d' | 'custom'>('all');
+    const [activeTab, setActiveTab] = useState<'tasks' | 'logs'>('tasks');
+    const [taskSearch, setTaskSearch] = useState('');
+    const [taskRiskFilter, setTaskRiskFilter] = useState<'all' | RiskLevel>('all');
+    const [taskStatusFilter, setTaskStatusFilter] = useState<'all' | TaskStatus>('all');
+    const [logSearch, setLogSearch] = useState('');
+    const [logRiskFilter, setLogRiskFilter] = useState<'all' | RiskLevel>('all');
+    const [logResultFilter, setLogResultFilter] = useState<'all' | LogResult>('all');
+    const [activeTask, setActiveTask] = useState<AuditTask | null>(null);
+    const [activeLog, setActiveLog] = useState<AuditLog | null>(null);
 
-    const parseLogTime = (value: string) => {
-        const normalized = value.includes('T') ? value : `${value.replace(' ', 'T')}:00`;
-        const date = new Date(normalized);
-        return Number.isNaN(date.getTime()) ? null : date;
-    };
+    const taskStats = useMemo(() => {
+        const pending = taskData.filter((task) => task.status === '待审批').length;
+        const highRisk = taskData.filter((task) => task.risk === '高').length;
+        const rejected = taskData.filter((task) => task.status === '已驳回').length;
+        return { pending, highRisk, rejected };
+    }, []);
 
-    const openTrace = (traceId: string) => {
-        const url = `/trace?traceId=${encodeURIComponent(traceId)}`;
-        window.open(url, '_blank', 'noopener');
-    };
-
-    const applyQuickRange = (rangeId: 'all' | 'today' | '7d' | '30d') => {
-        setActiveRange(rangeId);
-        if (rangeId === 'all') {
-            setStartDate('');
-            setEndDate('');
-            return;
-        }
-        const today = new Date();
-        const start = new Date(today);
-        const range = quickRanges.find((item) => item.id === rangeId);
-        if (range?.days !== undefined) {
-            start.setDate(today.getDate() - range.days);
-        }
-        const format = (date: Date) => date.toISOString().slice(0, 10);
-        setStartDate(format(start));
-        setEndDate(format(today));
-    };
+    const filteredTasks = useMemo(() => {
+        return taskData.filter((task) => {
+            const matchesSearch = `${task.entityName}${task.changeType}${task.requester}${task.id}`
+                .toLowerCase()
+                .includes(taskSearch.toLowerCase());
+            const matchesRisk = taskRiskFilter === 'all' || task.risk === taskRiskFilter;
+            const matchesStatus = taskStatusFilter === 'all' || task.status === taskStatusFilter;
+            return matchesSearch && matchesRisk && matchesStatus;
+        });
+    }, [taskSearch, taskRiskFilter, taskStatusFilter]);
 
     const filteredLogs = useMemo(() => {
-        const startTime = startDate ? new Date(`${startDate}T00:00:00`) : null;
-        const endTime = endDate ? new Date(`${endDate}T23:59:59`) : null;
-
-        return logs.filter((log) => {
-            const matchesSearch = `${log.action}${log.module}${log.resource}${log.actor}${log.traceId}`
+        return logData.filter((log) => {
+            const matchesSearch = `${log.action}${log.actor}${log.entity}${log.id}`
                 .toLowerCase()
-                .includes(searchTerm.toLowerCase());
-            const matchesStatus = statusFilter === 'all' || log.status === statusFilter;
-            const matchesRisk = riskFilter === 'all' || log.risk === riskFilter;
-            const matchesModule = moduleFilter === 'all' || log.module === moduleFilter;
-            const logTime = parseLogTime(log.time);
-            const matchesStart = !startTime || (logTime ? logTime >= startTime : true);
-            const matchesEnd = !endTime || (logTime ? logTime <= endTime : true);
-            return matchesSearch && matchesStatus && matchesRisk && matchesModule && matchesStart && matchesEnd;
+                .includes(logSearch.toLowerCase());
+            const matchesRisk = logRiskFilter === 'all' || log.risk === logRiskFilter;
+            const matchesResult = logResultFilter === 'all' || log.result === logResultFilter;
+            return matchesSearch && matchesRisk && matchesResult;
         });
-    }, [logs, searchTerm, statusFilter, riskFilter, moduleFilter, startDate, endDate]);
-
-    const activeLog = logs.find((log) => log.id === activeLogId) ?? logs[0];
-
-    const stats = useMemo(() => {
-        const total = logs.length;
-        const alertCount = logs.filter((log) => log.status === '告警').length;
-        const failCount = logs.filter((log) => log.status === '失败').length;
-        const avgDuration = logs.length
-            ? Math.round(logs.reduce((sum, log) => sum + log.durationMs, 0) / logs.length)
-            : 0;
-        return { total, alertCount, failCount, avgDuration };
-    }, [logs]);
-
-    const recentAlerts = logs.filter((log) => log.status !== '成功').slice(0, 4);
+    }, [logSearch, logRiskFilter, logResultFilter]);
 
     return (
         <div className="space-y-6 h-full flex flex-col pt-6 pb-2 px-1">
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between px-1">
                 <div>
-                    <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-                        <ShieldCheck size={22} className="text-indigo-600" />
-                        审计日志
-                    </h2>
-                    <p className="text-slate-500 mt-1">记录语义治理操作轨迹，支撑可追溯与合规审计。</p>
+                    <div className="text-xs text-slate-400">平台管理 / 审计与审批</div>
+                    <h2 className="text-2xl font-bold text-slate-800">审计与审批</h2>
+                    <p className="text-slate-500 mt-1">集中处理高风险变更审批与权限审计追溯。</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <button className="px-4 py-2 rounded-lg border border-slate-200 text-slate-600 hover:text-slate-800 hover:border-slate-300">
-                        <Filter size={14} className="inline mr-1" /> 策略筛选
-                    </button>
-                    <button className="px-4 py-2 bg-indigo-600 text-white rounded-lg flex items-center gap-2 hover:bg-indigo-700">
-                        <Download size={16} /> 导出日志
+                    <button className="px-4 py-2 rounded-lg border border-slate-200 text-slate-600 hover:text-slate-800 flex items-center gap-2">
+                        <Download size={16} /> 导出审计
                     </button>
                 </div>
             </div>
 
-            <div className="grid gap-4 px-1 md:grid-cols-4">
-                {[
-                    { label: '日志总量', value: `${stats.total}`, icon: Activity, note: '近 24 小时' },
-                    { label: '告警事件', value: `${stats.alertCount}`, icon: AlertTriangle, note: '需优先复核' },
-                    { label: '失败操作', value: `${stats.failCount}`, icon: XCircle, note: '可能存在风险' },
-                    { label: '平均耗时', value: `${stats.avgDuration} ms`, icon: Clock, note: '近 24 小时' }
-                ].map((item) => (
+            <div className="grid gap-4 px-1 md:grid-cols-3">
+                {[{
+                    label: '待处理任务',
+                    value: taskStats.pending,
+                    icon: Clock
+                }, {
+                    label: '本周高危变更',
+                    value: taskStats.highRisk,
+                    icon: AlertTriangle
+                }, {
+                    label: '失败/驳回',
+                    value: taskStats.rejected,
+                    icon: ShieldCheck
+                }].map((item) => (
                     <div key={item.label} className="bg-white rounded-lg border border-slate-200 p-4 shadow-sm">
                         <div className="flex items-center justify-between">
                             <p className="text-sm text-slate-500">{item.label}</p>
                             <item.icon size={18} className="text-indigo-500" />
                         </div>
                         <div className="mt-2 text-2xl font-semibold text-slate-800">{item.value}</div>
-                        <div className="mt-1 text-xs text-slate-400">{item.note}</div>
                     </div>
                 ))}
             </div>
 
-            <div className="grid gap-6 px-1 lg:grid-cols-[1.05fr_1.4fr]">
-                <section className="bg-white rounded-lg border border-slate-200 shadow-sm p-4">
-                    <div className="flex flex-wrap items-center gap-3">
-                        <div className="flex items-center gap-2 flex-1">
-                            <Search size={16} className="text-slate-400" />
-                            <input
-                                value={searchTerm}
-                                onChange={(event) => setSearchTerm(event.target.value)}
-                                placeholder="搜索动作、对象、人员或 Trace ID"
-                                className="w-full text-sm text-slate-700 placeholder-slate-400 border-none outline-none"
-                            />
-                        </div>
-                        <div className="flex items-center gap-2 text-xs text-slate-500">
-                            <Filter size={14} />
-                            <select
-                                value={statusFilter}
-                                onChange={(event) => setStatusFilter(event.target.value as 'all' | AuditStatus)}
-                                className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-600"
+            <div className="bg-white rounded-lg border border-slate-200 shadow-sm">
+                <div className="border-b border-slate-100 px-4">
+                    <div className="flex items-center gap-6">
+                        {[{ id: 'tasks', label: '待处理任务' }, { id: 'logs', label: '审计日志' }].map((tab) => (
+                            <button
+                                key={tab.id}
+                                onClick={() => setActiveTab(tab.id as typeof activeTab)}
+                                className={`border-b-2 py-3 text-sm font-semibold ${activeTab === tab.id
+                                    ? 'border-indigo-600 text-indigo-600'
+                                    : 'border-transparent text-slate-500 hover:text-slate-700'
+                                    }`}
                             >
-                                <option value="all">全部状态</option>
-                                <option value="成功">成功</option>
-                                <option value="告警">告警</option>
-                                <option value="失败">失败</option>
-                            </select>
+                                {tab.label}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                {activeTab === 'tasks' && (
+                    <div className="grid gap-4 p-4 lg:grid-cols-[260px_1fr]">
+                        <aside className="rounded-lg border border-slate-100 bg-slate-50/60 p-4 space-y-3 text-xs">
+                            <div className="text-xs font-semibold text-slate-500">筛选条件</div>
+                            <input
+                                value={taskSearch}
+                                onChange={(event) => setTaskSearch(event.target.value)}
+                                placeholder="搜索任务/角色"
+                                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs"
+                            />
                             <select
-                                value={riskFilter}
-                                onChange={(event) => setRiskFilter(event.target.value as 'all' | RiskLevel)}
-                                className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-600"
+                                value={taskRiskFilter}
+                                onChange={(event) => setTaskRiskFilter(event.target.value as typeof taskRiskFilter)}
+                                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs"
                             >
                                 <option value="all">全部风险</option>
-                                <option value="高">高</option>
-                                <option value="中">中</option>
-                                <option value="低">低</option>
+                                <option value="高">高风险</option>
+                                <option value="中">中风险</option>
+                                <option value="低">低风险</option>
                             </select>
                             <select
-                                value={moduleFilter}
-                                onChange={(event) => setModuleFilter(event.target.value)}
-                                className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-600"
+                                value={taskStatusFilter}
+                                onChange={(event) => setTaskStatusFilter(event.target.value as typeof taskStatusFilter)}
+                                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-xs"
                             >
-                                <option value="all">全部模块</option>
-                                {modules.map((item) => (
-                                    <option key={item} value={item}>
-                                        {item}
-                                    </option>
-                                ))}
+                                <option value="all">全部状态</option>
+                                <option value="待审批">待审批</option>
+                                <option value="已通过">已通过</option>
+                                <option value="已驳回">已驳回</option>
                             </select>
-                        </div>
+                            <div className="text-[11px] text-slate-400">支持按风险与状态组合过滤。</div>
+                        </aside>
+                        <section className="space-y-3">
+                            <div className="overflow-hidden rounded-lg border border-slate-100">
+                                <table className="w-full text-xs text-slate-600">
+                                    <thead className="bg-slate-50 text-slate-400">
+                                        <tr>
+                                            <th className="px-3 py-2 text-left">任务ID</th>
+                                            <th className="px-3 py-2 text-left">变更对象</th>
+                                            <th className="px-3 py-2 text-left">类型</th>
+                                            <th className="px-3 py-2 text-left">风险</th>
+                                            <th className="px-3 py-2 text-left">发起人</th>
+                                            <th className="px-3 py-2 text-left">发起时间</th>
+                                            <th className="px-3 py-2 text-left">状态</th>
+                                            <th className="px-3 py-2 text-left">操作</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100">
+                                        {filteredTasks.map((task) => (
+                                            <tr key={task.id} className="hover:bg-slate-50">
+                                                <td className="px-3 py-2 font-medium text-slate-700">{task.id}</td>
+                                                <td className="px-3 py-2">{task.entityName}</td>
+                                                <td className="px-3 py-2">{task.changeType}</td>
+                                                <td className="px-3 py-2">
+                                                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${riskBadge[task.risk]}`}>
+                                                        {task.risk}
+                                                    </span>
+                                                </td>
+                                                <td className="px-3 py-2">{task.requester}</td>
+                                                <td className="px-3 py-2">{task.createdAt}</td>
+                                                <td className="px-3 py-2">
+                                                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${statusBadge[task.status]}`}>
+                                                        {task.status}
+                                                    </span>
+                                                </td>
+                                                <td className="px-3 py-2">
+                                                    <button
+                                                        onClick={() => setActiveTask(task)}
+                                                        className="text-indigo-600 hover:text-indigo-700"
+                                                    >
+                                                        查看
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                        {filteredTasks.length === 0 && (
+                                            <tr>
+                                                <td colSpan={8} className="px-4 py-8 text-center text-slate-400">
+                                                    暂无符合条件的任务
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </section>
                     </div>
+                )}
 
-                    <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-slate-500">
-                        <span className="flex items-center gap-1">
-                            <Clock size={14} /> 时间范围
-                        </span>
-                        <div className="flex flex-wrap items-center gap-2">
-                            {quickRanges.map((range) => (
-                                <button
-                                    key={range.id}
-                                    type="button"
-                                    onClick={() => applyQuickRange(range.id as 'all' | 'today' | '7d' | '30d')}
-                                    className={`rounded-full border px-3 py-1 transition ${
-                                        activeRange === range.id
-                                            ? 'border-indigo-200 bg-indigo-50 text-indigo-600'
-                                            : 'border-slate-200 text-slate-500 hover:border-indigo-200 hover:text-slate-700'
-                                    }`}
-                                >
-                                    {range.label}
-                                </button>
-                            ))}
+                {activeTab === 'logs' && (
+                    <div className="p-4 space-y-3">
+                        <div className="flex flex-wrap items-center gap-3">
+                            <div className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs">
+                                <Search size={12} className="text-slate-400" />
+                                <input
+                                    value={logSearch}
+                                    onChange={(event) => setLogSearch(event.target.value)}
+                                    placeholder="搜索操作/对象/操作者"
+                                    className="border-none outline-none text-xs"
+                                />
+                            </div>
+                            <select
+                                value={logRiskFilter}
+                                onChange={(event) => setLogRiskFilter(event.target.value as typeof logRiskFilter)}
+                                className="rounded-lg border border-slate-200 px-3 py-2 text-xs"
+                            >
+                                <option value="all">全部风险</option>
+                                <option value="高">高风险</option>
+                                <option value="中">中风险</option>
+                                <option value="低">低风险</option>
+                            </select>
+                            <select
+                                value={logResultFilter}
+                                onChange={(event) => setLogResultFilter(event.target.value as typeof logResultFilter)}
+                                className="rounded-lg border border-slate-200 px-3 py-2 text-xs"
+                            >
+                                <option value="all">全部结果</option>
+                                <option value="成功">成功</option>
+                                <option value="失败">失败</option>
+                                <option value="告警">告警</option>
+                            </select>
+                            <button className="flex items-center gap-1 text-xs text-slate-500">
+                                <Filter size={12} /> 高级过滤
+                            </button>
                         </div>
-                        <div className="flex flex-wrap items-center gap-2">
-                            <input
-                                type="date"
-                                value={startDate}
-                                onChange={(event) => {
-                                    setStartDate(event.target.value);
-                                    setActiveRange('custom');
-                                }}
-                                className="rounded-lg border border-slate-200 px-3 py-1 text-xs text-slate-600"
-                            />
-                            <span className="text-slate-400">至</span>
-                            <input
-                                type="date"
-                                value={endDate}
-                                onChange={(event) => {
-                                    setEndDate(event.target.value);
-                                    setActiveRange('custom');
-                                }}
-                                className="rounded-lg border border-slate-200 px-3 py-1 text-xs text-slate-600"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="mt-4 space-y-3">
-                        {filteredLogs.map((log) => {
-                            const isActive = log.id === activeLogId;
-                            return (
-                                <button
-                                    key={log.id}
-                                    onClick={() => setActiveLogId(log.id)}
-                                    className={`w-full text-left rounded-xl border p-4 transition ${
-                                        isActive
-                                            ? 'border-indigo-200 bg-indigo-50 shadow-sm'
-                                            : 'border-slate-200 hover:border-indigo-200 hover:bg-slate-50'
-                                    }`}
-                                >
-                                    <div className="flex items-start justify-between gap-4">
-                                        <div>
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-sm font-semibold text-slate-800">{log.action}</span>
-                                                <span className={`text-xs px-2 py-0.5 rounded-full ${statusBadge[log.status]}`}>
-                                                    {log.status}
+                        <div className="overflow-hidden rounded-lg border border-slate-100">
+                            <table className="w-full text-xs text-slate-600">
+                                <thead className="bg-slate-50 text-slate-400">
+                                    <tr>
+                                        <th className="px-3 py-2 text-left">时间</th>
+                                        <th className="px-3 py-2 text-left">操作者</th>
+                                        <th className="px-3 py-2 text-left">对象</th>
+                                        <th className="px-3 py-2 text-left">动作</th>
+                                        <th className="px-3 py-2 text-left">风险</th>
+                                        <th className="px-3 py-2 text-left">结果</th>
+                                        <th className="px-3 py-2 text-left">详情</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {filteredLogs.map((log) => (
+                                        <tr key={log.id} className="hover:bg-slate-50">
+                                            <td className="px-3 py-2">{log.time}</td>
+                                            <td className="px-3 py-2">{log.actor}</td>
+                                            <td className="px-3 py-2">{log.entity}</td>
+                                            <td className="px-3 py-2">{log.action}</td>
+                                            <td className="px-3 py-2">
+                                                <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${riskBadge[log.risk]}`}>
+                                                    {log.risk}
                                                 </span>
-                                            </div>
-                                            <p className="mt-1 text-xs text-slate-500">
-                                                {log.module} · {log.resource}
-                                            </p>
-                                        </div>
-                                        <span className={`text-xs px-2 py-0.5 rounded-full ${riskBadge[log.risk]}`}>
-                                            风险 {log.risk}
-                                        </span>
-                                    </div>
-                                    <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-slate-500">
-                                        <span className="flex items-center gap-1">
-                                            <User size={14} /> {log.actor}
-                                        </span>
-                                        <span className="flex items-center gap-1">
-                                            <Clock size={14} /> {log.time}
-                                        </span>
-                                        <button
-                                            type="button"
-                                            onClick={(event) => {
-                                                event.stopPropagation();
-                                                openTrace(log.traceId);
-                                            }}
-                                            className="flex items-center gap-1 text-indigo-600 hover:text-indigo-700"
-                                        >
-                                            <Hash size={14} /> {log.traceId}
-                                        </button>
-                                    </div>
-                                </button>
-                            );
-                        })}
-                    </div>
-                </section>
-
-                <section className="bg-white rounded-lg border border-slate-200 shadow-sm p-5 flex flex-col gap-5">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                        <div>
-                            <h3 className="text-xl font-semibold text-slate-800">{activeLog?.action ?? '—'}</h3>
-                            <p className="mt-1 text-sm text-slate-500">{activeLog?.message ?? '暂无详情'}</p>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2">
-                            <span className={`text-xs px-2 py-0.5 rounded-full ${statusBadge[activeLog?.status ?? '成功']}`}>
-                                {activeLog?.status ?? '成功'}
-                            </span>
-                            <span className={`text-xs px-2 py-0.5 rounded-full ${riskBadge[activeLog?.risk ?? '低']}`}>
-                                风险 {activeLog?.risk ?? '低'}
-                            </span>
+                                            </td>
+                                            <td className="px-3 py-2">
+                                                <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${resultBadge[log.result]}`}>
+                                                    {log.result}
+                                                </span>
+                                            </td>
+                                            <td className="px-3 py-2">
+                                                <button
+                                                    onClick={() => setActiveLog(log)}
+                                                    className="text-indigo-600 hover:text-indigo-700"
+                                                >
+                                                    查看
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {filteredLogs.length === 0 && (
+                                        <tr>
+                                            <td colSpan={7} className="px-4 py-8 text-center text-slate-400">
+                                                暂无符合条件的日志
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
                         </div>
                     </div>
-
-                    <div className="grid gap-3 sm:grid-cols-3">
-                        {[
-                            { label: '模块', value: activeLog?.module ?? '-', icon: FileText },
-                            { label: '耗时', value: `${activeLog?.durationMs ?? 0} ms`, icon: Clock },
-                            { label: '负责人', value: activeLog?.actor ?? '-', icon: User }
-                        ].map((item) => (
-                            <div key={item.label} className="rounded-xl border border-slate-200 p-3">
-                                <div className="flex items-center justify-between text-xs text-slate-500">
-                                    <span>{item.label}</span>
-                                    <item.icon size={14} className="text-indigo-500" />
-                                </div>
-                                <div className="mt-2 text-sm font-semibold text-slate-800">{item.value}</div>
-                            </div>
-                        ))}
-                    </div>
-
-                    <div className="grid gap-3 md:grid-cols-2">
-                        {[
-                            { label: '资源对象', value: activeLog?.resource ?? '-' },
-                            { label: '操作者角色', value: activeLog?.role ?? '-' },
-                            { label: '来源 IP', value: activeLog?.ip ?? '-' },
-                            { label: 'Trace ID', value: activeLog?.traceId ?? '-' }
-                        ].map((item) => (
-                            <div key={item.label} className="rounded-xl border border-slate-200 p-3">
-                                <p className="text-xs text-slate-500">{item.label}</p>
-                                {item.label === 'Trace ID' && item.value !== '-' ? (
-                                    <button
-                                        type="button"
-                                        onClick={() => openTrace(item.value)}
-                                        className="mt-2 text-sm font-semibold text-indigo-600 hover:text-indigo-700"
-                                    >
-                                        {item.value}
-                                    </button>
-                                ) : (
-                                    <p className="mt-2 text-sm font-semibold text-slate-800">{item.value}</p>
-                                )}
-                            </div>
-                        ))}
-                    </div>
-
-                    <div>
-                        <p className="text-sm font-semibold text-slate-700">事件上下文</p>
-                        <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50/50 p-4 text-xs text-slate-600">
-                            {activeLog?.message ?? '暂无上下文信息'}
-                        </div>
-                    </div>
-
-                    <div className="grid gap-3 md:grid-cols-2">
-                        <div className="rounded-xl border border-slate-200 p-4">
-                            <p className="text-sm font-semibold text-slate-700">最新告警</p>
-                            <div className="mt-3 space-y-2 text-xs text-slate-600">
-                                {recentAlerts.map((log) => (
-                                    <div key={log.id} className="flex items-center justify-between">
-                                        <div>
-                                            <p className="text-slate-700">{log.action}</p>
-                                            <p className="text-slate-400">{log.module}</p>
-                                        </div>
-                                        <span className={`text-xs px-2 py-0.5 rounded-full ${statusBadge[log.status]}`}>
-                                            {log.status}
-                                        </span>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                        <div className="rounded-xl border border-slate-200 p-4">
-                            <p className="text-sm font-semibold text-slate-700">合规提醒</p>
-                            <div className="mt-3 space-y-2 text-xs text-slate-600">
-                                {[
-                                    '高敏字段变更需双人复核',
-                                    '版本发布需保留审批证据',
-                                    '权限申请记录需归档 180 天'
-                                ].map((item) => (
-                                    <div key={item} className="flex items-center gap-2">
-                                        <span className="h-2 w-2 rounded-full bg-indigo-400" />
-                                        <span>{item}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                </section>
+                )}
             </div>
+
+            {activeTask && (
+                <div className="fixed inset-0 z-50">
+                    <div
+                        className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+                        onClick={() => setActiveTask(null)}
+                    />
+                    <div className="absolute right-0 top-0 h-full w-[520px] max-w-[92vw] bg-white shadow-2xl flex flex-col">
+                        <div className="border-b border-slate-200 px-5 py-4">
+                            <div className="flex items-start justify-between">
+                                <div>
+                                    <div className="text-xs text-slate-400">任务详情</div>
+                                    <h3 className="text-lg font-semibold text-slate-800">{activeTask.entityName}</h3>
+                                    <div className="mt-1 text-xs text-slate-500">{activeTask.id} · {activeTask.changeType}</div>
+                                </div>
+                                <button
+                                    onClick={() => setActiveTask(null)}
+                                    className="rounded-full border border-slate-200 p-2 text-slate-500 hover:text-slate-700"
+                                >
+                                    <X size={16} />
+                                </button>
+                            </div>
+                            <div className="mt-3 flex items-center gap-2 text-xs">
+                                <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${riskBadge[activeTask.risk]}`}>
+                                    {activeTask.risk}风险
+                                </span>
+                                <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${statusBadge[activeTask.status]}`}>
+                                    {activeTask.status}
+                                </span>
+                            </div>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-5 space-y-4">
+                            <div className="rounded-xl border border-slate-200 p-4 text-sm text-slate-600">
+                                <div>发起人：{activeTask.requester}</div>
+                                <div className="mt-2">发起时间：{activeTask.createdAt}</div>
+                            </div>
+                            <div className="rounded-xl border border-slate-200 p-4">
+                                <div className="text-xs text-slate-400">范围变更</div>
+                                <div className="mt-2 text-sm text-slate-600">{activeTask.diff.scope}</div>
+                            </div>
+                            <div className="rounded-xl border border-slate-200 p-4">
+                                <div className="text-xs text-slate-400">权限策略变更</div>
+                                <div className="mt-2 text-sm text-slate-600">{activeTask.diff.policy}</div>
+                            </div>
+                            <div className="rounded-xl border border-slate-200 p-4">
+                                <div className="text-xs text-slate-400">成员变更</div>
+                                <div className="mt-2 text-sm text-slate-600">{activeTask.diff.members}</div>
+                            </div>
+                        </div>
+                        <div className="border-t border-slate-200 px-5 py-4 flex justify-end gap-3">
+                            <button className="rounded-lg border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:text-slate-800">
+                                驳回
+                            </button>
+                            <button className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">
+                                通过
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {activeLog && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm">
+                    <div className="w-full max-w-xl rounded-2xl bg-white shadow-2xl">
+                        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+                            <div className="flex items-center gap-2">
+                                <FileText className="text-indigo-500" size={18} />
+                                <div>
+                                    <h3 className="text-lg font-semibold text-slate-800">审计详情</h3>
+                                    <p className="text-xs text-slate-500">{activeLog.id}</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setActiveLog(null)}
+                                className="rounded-full border border-slate-200 p-2 text-slate-500 hover:text-slate-700"
+                            >
+                                <X size={16} />
+                            </button>
+                        </div>
+                        <div className="px-6 py-5 space-y-4 text-sm text-slate-600">
+                            <div className="flex items-center justify-between">
+                                <span>操作人：{activeLog.actor}</span>
+                                <span>{activeLog.time}</span>
+                            </div>
+                            <div className="rounded-lg border border-slate-200 p-3">
+                                <div className="text-xs text-slate-400">动作</div>
+                                <div className="mt-1 font-semibold text-slate-700">{activeLog.action}</div>
+                            </div>
+                            <div className="rounded-lg border border-slate-200 p-3">
+                                <div className="text-xs text-slate-400">对象</div>
+                                <div className="mt-1 font-semibold text-slate-700">{activeLog.entity}</div>
+                            </div>
+                            <div className="rounded-lg border border-slate-200 p-3">
+                                <div className="text-xs text-slate-400">详情</div>
+                                <div className="mt-1 text-slate-600">{activeLog.detail}</div>
+                            </div>
+                            <div className="flex items-center gap-2 text-xs text-slate-500">
+                                <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${riskBadge[activeLog.risk]}`}>
+                                    {activeLog.risk}风险
+                                </span>
+                                <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${resultBadge[activeLog.result]}`}>
+                                    {activeLog.result}
+                                </span>
+                            </div>
+                        </div>
+                        <div className="flex items-center justify-end gap-2 border-t border-slate-200 px-6 py-4">
+                            <button className="rounded-lg border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:text-slate-800">
+                                关闭
+                            </button>
+                            <button className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 flex items-center gap-2">
+                                查看差异
+                                <ChevronRight size={14} />
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

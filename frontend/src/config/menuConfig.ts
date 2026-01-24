@@ -86,9 +86,10 @@ export const APP_MENUS: MenuGroup[] = [
             { id: 'user_mgmt', label: '用户管理', icon: UserCog },
             { id: 'menu_mgmt', label: '菜单管理', icon: LayoutGrid },
             { id: 'user_permission', label: '角色与权限', icon: PanelLeftClose },
+            { id: 'permission_templates', label: '权限模板', icon: FileText },
             { id: 'workflow_mgmt', label: '工作流管理', icon: GitBranch },
             { id: 'approval_policy', label: '审批策略', icon: FileCheck },
-            { id: 'audit_log', label: '审计日志', icon: FileText }
+            { id: 'audit_log', label: '审计与审批', icon: FileText }
         ]
     }
 ];
