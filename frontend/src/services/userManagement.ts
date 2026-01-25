@@ -149,7 +149,18 @@ const request = async <T,>(path: string, options: RequestInit = {}): Promise<T> 
     if (response.status === 204) {
         return undefined as T;
     }
-    return response.json();
+    const data = await response.json();
+
+    // 业务状态码检查：如果 code > 0 则视为错误
+    if (data && typeof data === 'object' && 'code' in data) {
+        const code = Number(data.code);
+        if (code > 0) {
+            const msg = data.msg || data.message || data.description || data.error || `操作失败 (Code: ${code})`;
+            throw new Error(msg);
+        }
+    }
+
+    return data as T;
 };
 
 export const userManagementService = {

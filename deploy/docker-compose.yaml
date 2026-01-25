@@ -21,6 +21,8 @@ volumes:
     name: datasemantichub-prometheus-data
   grafana-data:
     name: datasemantichub-grafana-data
+  vanna-chroma-data:
+    name: datasemantichub-vanna-chroma-data
 
 services:
   # ==================== 数据存储层 ====================
@@ -255,6 +257,7 @@ services:
       - DB_NAME=${DB_NAME}
       - DB_USER=${DB_USER}
       - DB_PASSWORD=${DB_PASSWORD}
+      - DB_LOG_LEVEL=info
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - JWT_SECRET=${JWT_SECRET}
@@ -288,21 +291,37 @@ services:
     build:
       context: ..
       dockerfile: deploy/backend/python/Dockerfile
-    container_name: datasemantichub-agen-service
+    container_name: datasemantichub-agent-service
     restart: unless-stopped
     environment:
       - TZ=Asia/Shanghai
       - ENVIRONMENT=${ENVIRONMENT:-dev}
       - DB_HOST=mariadb
       - DB_PORT=3306
-      - DB_NAME=${DB_NAME}
+      - DB_NAME=ai-test-data
       - DB_USER=${DB_USER}
       - DB_PASSWORD=${DB_PASSWORD}
+      # Vanna 配置 - 模式选择 (三选一)
+      # 模式 1: 使用 Vanna Remote API
       - VANNA_API_KEY=${VANNA_API_KEY}
       - VANNA_MODEL=${VANNA_MODEL}
+      # 模式 2: 使用 OpenAI/DeepSeek (推荐，效果好)
+      - USE_OLLAMA=${USE_OLLAMA:-false}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - LLM_MODEL=${LLM_MODEL:-gpt-3.5-turbo}
+      - LLM_BASE_URL=${LLM_BASE_URL}
+      # 模式 3: 使用本地 Ollama (完全离线，需本机已装 Ollama)
+      # - USE_OLLAMA=true
+      # - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen2.5-coder:7b}
+      # - OLLAMA_HOST=${OLLAMA_HOST:-http://host.docker.internal:11434}
+      # 向量库配置
+      - CHROMA_DB_PATH=/app/chroma_db
+      - ANONYMIZED_TELEMETRY=false
     ports:
       - "${PYTHON_SERVICE_PORT:-8891}:8891"
+    volumes:
+      - vanna-chroma-data:/app/chroma_db  # 持久化向量数据
+      - ./config/vanna:/app/config:ro  # 挂载配置文件（可选）
     networks:
       - datasemantichub-network
     depends_on:
@@ -313,7 +332,76 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
-      start_period: 10s
+      start_period: 30s
+
+  # Vanna Debug UI (Streamlit, dev only)
+  agent-ui:
+    build:
+      context: ..
+      dockerfile: deploy/backend/python/Dockerfile
+    container_name: datasemantichub-agent-ui
+    restart: unless-stopped
+    environment:
+      - TZ=Asia/Shanghai
+      - ENVIRONMENT=${ENVIRONMENT:-dev}
+      - DB_HOST=mariadb
+      - DB_PORT=3306
+      - DB_NAME=ai-test-data
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - VANNA_API_KEY=${VANNA_API_KEY}
+      - VANNA_MODEL=${VANNA_MODEL}
+      - USE_OLLAMA=${USE_OLLAMA:-false}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - LLM_MODEL=${LLM_MODEL:-gpt-3.5-turbo}
+      - LLM_BASE_URL=${LLM_BASE_URL}
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen2.5-coder:7b}
+      - OLLAMA_HOST=${OLLAMA_HOST:-http://host.docker.internal:11434}
+      - CHROMA_DB_PATH=/app/chroma_db
+      - ANONYMIZED_TELEMETRY=false
+    ports:
+      - "${AGENT_UI_PORT:-8501}:8501"
+    volumes:
+      - vanna-chroma-data:/app/chroma_db
+      - ./config/vanna:/app/config:ro
+    networks:
+      - datasemantichub-network
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    command: [
+      "streamlit",
+      "run",
+      "ui/app.py",
+      "--server.address=0.0.0.0",
+      "--server.port=8501",
+      "--server.headless=true"
+    ]
+
+  # Faker Data Service (测试数据生成)
+  faker-data-service:
+    build:
+      context: ..
+      dockerfile: deploy/backend/python/Dockerfile
+    container_name: datasemantichub-faker-data
+    environment:
+      - TZ=Asia/Shanghai
+      - DB_HOST=mariadb
+      - DB_PORT=3306
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=ai-test-data
+      - FAKER_LOCALE=zh_CN
+      - FAKER_SEED=12345
+    volumes:
+      - ./app/faker-data-service:/app/faker-data-service
+    networks:
+      - datasemantichub-network
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    profiles:
+      - tools  # 使用 profile，默认不启动
 
   # Frontend (React + Vite)
   frontend:

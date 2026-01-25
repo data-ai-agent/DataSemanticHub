@@ -1,0 +1,18 @@
+# Faker - 生成假数据
+faker>=20.0.0
+
+# MySQL 客户端
+pymysql>=1.1.0
+
+# 配置管理
+pyyaml>=6.0
+
+# 日志
+colorlog>=6.7.0
+
+# 进度条
+tqdm>=4.65.0
+
+# Excel 处理
+pandas>=2.0.0
+openpyxl>=3.1.0

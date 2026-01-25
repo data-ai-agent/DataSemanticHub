@@ -5,21 +5,10 @@ import {
     RefreshCw, ChevronRight, Shield, CheckSquare,
     Plus, Upload, FileCheck, TrendingUp, MoreHorizontal, X, AlertTriangle, Users, Clock, MessageCircle, Send,
     Book, Tag, CheckCircle, ArrowRight, Sparkles, Box, Edit, XCircle, ZoomIn, ZoomOut, Eye, Share2, Network, GitBranch, Table, Globe, ChevronDown, Check,
-    ScanText, Verified, Lock, History, Bookmark, LayoutGrid, Building2, UserCog
+    ScanText, Verified, Lock, History, Bookmark, LayoutGrid, Building2, UserCog, PanelLeftClose, Grip
 } from 'lucide-react';
 
-interface MenuItem {
-    id: string;
-    label: string;
-    icon: any;
-    children?: MenuItem[];
-}
-
-interface MenuGroup {
-    title: string;
-    color: string;
-    items: MenuItem[];
-}
+import { APP_MENUS } from '../../config/menuConfig';
 
 interface SidebarProps {
     activeModule: string;
@@ -30,6 +19,7 @@ const Sidebar = ({ activeModule, setActiveModule }: SidebarProps) => {
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [expandedItems, setExpandedItems] = useState<string[]>(['semantic_modeling']);
     const [collapsedGroups, setCollapsedGroups] = useState<string[]>([]);
+    const [showAppMenu, setShowAppMenu] = useState(false);
 
     const toggleExpand = (id: string) => {
         setExpandedItems(prev =>
@@ -43,153 +33,102 @@ const Sidebar = ({ activeModule, setActiveModule }: SidebarProps) => {
         );
     };
 
-    const menus: MenuGroup[] = [
-        {
-            title: '数据服务',
-            color: 'text-indigo-400',
-            items: [
-                { id: 'ask_data', label: '问数', icon: MessageCircle },
-                { id: 'data_supermarket', label: '找数', icon: Search }
-            ]
-        },
-        {
-            title: '数据应用',
-            color: 'text-teal-400',
-            items: [
-                { id: 'scenario_orchestration', label: '场景编排', icon: Layers }
-            ]
-        },
-        {
-            title: '语义治理',
-            color: 'text-blue-400',
-            items: [
-                { id: 'dashboard', label: '语义治理总览', icon: Activity },
-                {
-                    id: 'semantic_modeling',
-                    label: '语义建模',
-                    icon: Layout,
-                    children: [
-                        { id: 'modeling_overview', label: '语义建模概览', icon: Activity },
-                        { id: 'td_goals', label: '业务梳理', icon: FileText },
-                        { id: 'bu_semantic', label: '逻辑视图', icon: FileText },
-                        { id: 'bu_semantic_v2', label: '逻辑视图2', icon: FileText },
-                        { id: 'field_semantic', label: '字段语义理解', icon: ScanText },
-
-                        { id: 'td_modeling', label: '业务对象建模', icon: Layout }
-                    ]
-                },
-                { id: 'data_quality', label: '数据质量', icon: Verified },
-                { id: 'data_security', label: '数据安全', icon: Lock },
-                { id: 'semantic_version', label: '语义版本', icon: History }
-            ]
-        },
-        {
-            title: '语义资产管理',
-            color: 'text-purple-400',
-            items: [
-                { id: 'term_mgmt', label: '术语管理', icon: Book },
-                { id: 'tag_mgmt', label: '标签管理', icon: Tag },
-                { id: 'data_standard', label: '数据标准', icon: Bookmark },
-                { id: 'resource_knowledge_network', label: '资源知识网络', icon: Network }
-            ]
-        },
-        {
-            title: '数据连接',
-            color: 'text-emerald-400',
-            items: [
-                { id: 'bu_connect', label: '数据源管理', icon: Database },
-                { id: 'bu_scan', label: '资产扫描', icon: Search },
-                // { id: 'bu_semantic', label: '逻辑视图', icon: FileText },
-                // { id: 'bu_candidates', label: '候选生成', icon: Cpu },
-            ]
-        },
-        /*
-        {
-            title: '语义治理中心',
-            color: 'text-purple-400',
-            items: [
-                // { id: 'mapping', label: '映射工作台', icon: GitMerge },
-                // { id: 'governance', label: '冲突检测', icon: Shield },
-                // { id: 'sg_candidate_confirm', label: '候选业务对象确认', icon: CheckCircle },
-                // { id: 'smart_data', label: '智能数据中心', icon: Cpu },
-            ]
-        },
-        */
-        /*
-        {
-            title: 'EE 服务执行',
-            color: 'text-orange-400',
-            items: [
-                { id: 'ee_api', label: 'API 网关', icon: Server },
-                { id: 'ee_cache', label: '缓存策略', icon: RefreshCw },
-            ]
-        },
-        */
-        {
-            title: '平台管理',
-            color: 'text-slate-400',
-            items: [
-                { id: 'org_mgmt', label: '组织架构管理', icon: Building2 },
-                { id: 'user_mgmt', label: '用户管理', icon: UserCog },
-                { id: 'menu_mgmt', label: '菜单管理', icon: LayoutGrid },
-                { id: 'user_permission', label: '角色与权限', icon: Users },
-                { id: 'workflow_mgmt', label: '工作流管理', icon: GitBranch },
-                { id: 'approval_policy', label: '审批策略', icon: FileCheck },
-                { id: 'audit_log', label: '审计日志', icon: FileText }
-            ]
-        },
-    ];
+    const menus = APP_MENUS;
 
     return (
-        <aside className={`${isCollapsed ? 'w-16' : 'w-64'} bg-slate-900 text-slate-300 flex flex-col border-r border-slate-800 shadow-xl z-20 transition-all duration-300`}>
+        <aside className={`${isCollapsed ? 'w-16' : 'w-64'} bg-[#F7F8FA] flex flex-col border-r border-[#DEE0E3] z-20 transition-all duration-300 font-sans`}>
             {/* Logo Header */}
-            <div className={`h-16 flex items-center border-b border-slate-800 ${isCollapsed ? 'justify-center' : 'justify-between px-4'}`}>
-                {!isCollapsed && (
-                    <div className="flex items-center overflow-hidden">
-                        <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-blue-500 rounded-lg flex items-center justify-center shrink-0">
-                            <Link className="text-white" size={18} />
-                        </div>
-                        <div className="ml-3 overflow-hidden">
-                            <h1 className="font-bold text-white tracking-tight whitespace-nowrap">数据语义治理</h1>
-                            <p className="text-[10px] text-slate-500 tracking-wider whitespace-nowrap">企业版</p>
-                        </div>
+            <div className="h-14 flex items-center px-4 shrink-0 border-b border-[#DEE0E3] relative">
+                <div className={`flex items-center w-full ${isCollapsed ? 'justify-center' : ''}`}>
+                    {/* Brand Logo */}
+                    <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shrink-0 text-white cursor-pointer hover:bg-blue-700 transition-colors">
+                        <Link size={18} />
                     </div>
-                )}
 
-                <button
-                    onClick={() => setIsCollapsed(!isCollapsed)}
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-                    title={isCollapsed ? '展开菜单' : '收起菜单'}
-                >
-                    <ChevronRight size={20} className={`transition-transform duration-300 ${isCollapsed ? '' : 'rotate-180'}`} />
-                </button>
+                    {!isCollapsed && (
+                        <>
+                            {/* App Title */}
+                            <div className="ml-2 overflow-hidden transition-opacity duration-300">
+                                <h1 className="font-bold text-[#1F2329] tracking-tight whitespace-nowrap text-sm">数据语义治理</h1>
+                                <p className="text-[10px] text-[#8F959E] tracking-wider whitespace-nowrap">企业版</p>
+                            </div>
+
+                            {/* App Launcher Trigger - Moved to right of title */}
+                            <button
+                                className="ml-auto p-1.5 text-[#646A73] hover:bg-[#EBEDF0] hover:text-[#1F2329] rounded-md transition-colors relative"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setShowAppMenu(!showAppMenu);
+                                }}
+                            >
+                                <Grip size={18} />
+                            </button>
+                        </>
+                    )}
+                </div>
+
+                {/* App Launcher Menu */}
+                {!isCollapsed && showAppMenu && (
+                    <>
+                        <div className="fixed inset-0 z-30" onClick={() => setShowAppMenu(false)} />
+                        <div className="absolute top-12 left-4 right-4 bg-white rounded-lg shadow-xl border border-[#DEE0E3] p-4 z-40 animate-in fade-in zoom-in-95 duration-200">
+                            <h3 className="text-xs font-medium text-[#8F959E] mb-3 px-1">产品导航</h3>
+                            <div className="grid grid-cols-3 gap-y-4 gap-x-1">
+                                {[
+                                    { id: 'ask_data', name: '智能问数', icon: MessageCircle, color: 'text-indigo-600 bg-indigo-50' },
+                                    { id: 'data_supermarket', name: '数据超市', icon: Search, color: 'text-teal-600 bg-teal-50' },
+                                    { id: 'scenario_orchestration', name: '场景编排', icon: Layers, color: 'text-orange-600 bg-orange-50' },
+
+                                    { id: 'modeling_overview', name: '语义建模', icon: Layout, color: 'text-blue-600 bg-blue-50' },
+                                    { id: 'data_quality', name: '数据质量', icon: Verified, color: 'text-green-600 bg-green-50' },
+                                    { id: 'resource_knowledge_network', name: '知识网络', icon: Network, color: 'text-purple-600 bg-purple-50' },
+
+                                    { id: 'term_mgmt', name: '资产管理', icon: Book, color: 'text-pink-600 bg-pink-50' },
+                                    { id: 'bu_connect', name: '数据源', icon: Database, color: 'text-emerald-600 bg-emerald-50' },
+                                    { id: 'org_mgmt', name: '平台管理', icon: Building2, color: 'text-slate-600 bg-slate-100' },
+                                ].map((app, i) => (
+                                    <div
+                                        key={i}
+                                        className="flex flex-col items-center gap-2 p-2 rounded-lg hover:bg-[#F2F3F5] cursor-pointer transition-colors group"
+                                        onClick={() => {
+                                            setActiveModule(app.id);
+                                            setShowAppMenu(false);
+                                        }}
+                                    >
+                                        <div className={`w-10 h-10 rounded-xl ${app.color} flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform`}>
+                                            <app.icon size={20} strokeWidth={1.5} />
+                                        </div>
+                                        <span className="text-[10px] text-[#1F2329] font-medium text-center leading-tight">{app.name}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </>
+                )}
             </div>
 
             {/* Menu Items */}
-            <div className="flex-1 overflow-y-auto py-4 custom-scrollbar">
+            <div className="flex-1 overflow-y-auto py-2 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
                 {menus.map((group, idx) => {
-                    const isGroupCollapsed = collapsedGroups.includes(group.title);
-
                     return (
-                        <div key={idx} className={`mb-6 ${isCollapsed ? 'px-2' : 'px-4'}`}>
+                        <div key={idx} className={`mb-3 ${isCollapsed ? 'px-2' : 'px-3'}`}>
                             {!isCollapsed && (
                                 <div
-                                    className={`flex items-center justify-between cursor-pointer mb-2 py-1 group ${group.color || 'text-slate-500'}`}
+                                    className="flex items-center justify-between cursor-pointer mb-1 px-3 py-1 group"
                                     onClick={() => toggleGroup(group.title)}
                                 >
-                                    <h3 className="text-xs font-bold uppercase tracking-wider">
+                                    <h3 className="text-xs font-medium text-[#8F959E] group-hover:text-[#1F2329] transition-colors">
                                         {group.title}
                                     </h3>
                                     <ChevronRight
-                                        size={14}
-                                        className={`transition-transform duration-200 ${isGroupCollapsed ? '' : 'rotate-90'} opacity-0 group-hover:opacity-100`}
+                                        size={12}
+                                        className={`text-[#8F959E] transition-transform duration-200 ${collapsedGroups.includes(group.title) ? '' : 'rotate-90'} opacity-0 group-hover:opacity-100`}
                                     />
                                 </div>
                             )}
-                            {isCollapsed && idx > 0 && (
-                                <div className="border-t border-slate-700 my-2" />
-                            )}
-                            <div className={`space-y-1 transition-all duration-300 ${!isCollapsed && isGroupCollapsed ? 'hidden' : ''}`}>
+                            {isCollapsed && idx > 0 && <div className="border-t border-[#DEE0E3] mx-2 my-2" />}
+
+                            <div className={`space-y-1 transition-all duration-300 ${!isCollapsed && collapsedGroups.includes(group.title) ? 'hidden' : ''}`}>
                                 {group.items.map(item => {
                                     const hasChildren = item.children && item.children.length > 0;
                                     const isExpanded = expandedItems.includes(item.id);
@@ -206,30 +145,31 @@ const Sidebar = ({ activeModule, setActiveModule }: SidebarProps) => {
                                                     }
                                                 }}
                                                 title={isCollapsed ? item.label : undefined}
-                                                className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'} ${isCollapsed ? 'px-2' : 'px-3'} py-2 rounded-md text-sm transition-all duration-200 ${activeModule === item.id
-                                                    ? 'bg-slate-800 text-white shadow-sm ring-1 ring-slate-700'
-                                                    : isExpanded ? 'text-slate-200' : 'text-slate-400 hover:bg-slate-800/50 hover:text-white'
+                                                className={`w-full flex items-center relative group/item ${isCollapsed ? 'justify-center px-0' : 'gap-3 px-3'} py-2.5 rounded-md text-sm transition-all duration-200 ${isActive
+                                                    ? 'bg-[#EAEBEF] text-[#1F2329] font-medium'
+                                                    : 'text-[#646A73] hover:bg-[#EBEDF0] hover:text-[#1F2329]'
                                                     }`}
                                             >
-                                                <item.icon size={16} strokeWidth={1.5} className={activeModule === item.id ? 'text-blue-400' : ''} />
+                                                <item.icon size={18} strokeWidth={1.5} className={`shrink-0 ${isActive ? 'text-[#1F2329]' : 'text-[#646A73] group-hover/item:text-[#1F2329]'}`} />
                                                 {!isCollapsed && <span className="truncate flex-1 text-left">{item.label}</span>}
                                                 {!isCollapsed && hasChildren && (
                                                     <ChevronRight
                                                         size={14}
-                                                        className={`transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`}
+                                                        className={`text-[#8F959E] transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`}
                                                     />
                                                 )}
                                             </button>
+
                                             {/* Submenu */}
                                             {!isCollapsed && hasChildren && isExpanded && (
-                                                <div className="mt-1 ml-4 space-y-1 border-l border-slate-700 pl-2">
+                                                <div className="mt-1 space-y-1">
                                                     {item.children?.map(child => (
                                                         <button
                                                             key={child.id}
                                                             onClick={() => setActiveModule(child.id)}
-                                                            className={`w-full flex items-center gap-3 px-3 py-1.5 rounded-md text-sm transition-all duration-200 ${activeModule === child.id
-                                                                ? 'text-blue-400 bg-slate-800/50'
-                                                                : 'text-slate-500 hover:text-slate-300'
+                                                            className={`w-full flex items-center gap-3 pl-10 pr-3 py-2 rounded-md text-sm transition-all duration-200 ${activeModule === child.id
+                                                                ? 'text-[#1F2329] bg-[#EAEBEF] font-medium'
+                                                                : 'text-[#646A73] hover:text-[#1F2329] hover:bg-[#EBEDF0]'
                                                                 }`}
                                                         >
                                                             <span className="truncate">{child.label}</span>
@@ -246,23 +186,34 @@ const Sidebar = ({ activeModule, setActiveModule }: SidebarProps) => {
                 })}
             </div>
 
-            {/* User Profile */}
-            <div className={`p-4 border-t border-slate-800 bg-slate-900/50 ${isCollapsed ? 'flex justify-center' : ''}`}>
-                {isCollapsed ? (
-                    <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-xs text-white" title="John Doe">
-                        JD
-                    </div>
-                ) : (
-                    <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-xs text-white shrink-0">
-                            JD
+            {/* Footer / Toggle Button */}
+            {/* Footer / Toggle Button */}
+            <div className="px-3 py-3 border-t border-[#DEE0E3] shrink-0 bg-[#F7F8FA]">
+                <div className="relative group/toggle">
+                    <button
+                        onClick={() => setIsCollapsed(!isCollapsed)}
+                        className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'gap-3 px-3'} py-2 rounded-lg text-[#646A73] hover:bg-[#EBEDF0] hover:text-[#1F2329] transition-colors`}
+                    >
+                        {/* Custom Icon: Left Arrow + Lines */}
+                        <div className={`transition-transform duration-300 ${isCollapsed ? 'rotate-180' : ''}`}>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M5 12L9 8V16L5 12Z" fill="currentColor" />
+                                <path d="M11 7H19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                                <path d="M11 12H19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                                <path d="M11 17H19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                            </svg>
                         </div>
-                        <div className="overflow-hidden">
-                            <p className="text-sm font-medium text-white truncate">Admin User</p>
-                            <p className="text-xs text-slate-500 truncate">admin@company.com</p>
-                        </div>
+
+                        {!isCollapsed && <span className="text-sm font-medium">收起导航</span>}
+                    </button>
+
+                    {/* Tooltip */}
+                    <div className="absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2 py-1 bg-[#1F2329] text-white text-xs rounded opacity-0 invisible group-hover/toggle:opacity-100 group-hover/toggle:visible transition-all whitespace-nowrap z-50">
+                        {isCollapsed ? '展开' : '收起'}
+                        {/* Tooltip Arrow */}
+                        <div className="absolute left-0 top-1/2 -translate-x-1 -translate-y-1/2 w-0 h-0 border-t-[4px] border-t-transparent border-b-[4px] border-b-transparent border-r-[4px] border-r-[#1F2329]"></div>
                     </div>
-                )}
+                </div>
             </div>
         </aside>
     );

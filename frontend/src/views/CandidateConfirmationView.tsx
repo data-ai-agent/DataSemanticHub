@@ -4,6 +4,7 @@ import {
     Search, FileText, Activity, Cpu, Link,
     RefreshCw, ChevronRight, Shield, CheckCircle, FileCheck, CheckSquare, AlertTriangle, MessageCircle, ArrowRight, Sparkles, Box, Edit, XCircle, ZoomIn, ZoomOut, Eye, Share2, Network, GitBranch, Table, Globe, ChevronDown, Check, Users, Clock
 } from 'lucide-react';
+import { useToast } from '../components/ui/Toast';
 
 const convertToCamelCase = (fieldName: string) => {
     const parts = fieldName.split('_');
@@ -39,6 +40,7 @@ const GenerateBusinessObjectWizard = ({
     setBusinessObjects,
     setActiveModule
 }: any) => {
+    const toast = useToast();
     const [step, setStep] = useState(1);
     const [isGenerating, setIsGenerating] = useState(false);
     const [generationProgress, setGenerationProgress] = useState<{ step: string; status: 'pending' | 'processing' | 'done' }[]>([]);
@@ -134,7 +136,7 @@ const GenerateBusinessObjectWizard = ({
             setStep(2);
         } else if (step === 2) {
             if (fieldMappings.filter((f: any) => f.selected).length === 0) {
-                alert('至少需要选择一个字段');
+                toast.error('至少需要选择一个字段');
                 return;
             }
             setStep(3);
@@ -1554,6 +1556,7 @@ const CandidateConfirmationView = ({
     setBusinessObjects,
     setActiveModule
 }: any) => {
+    const toast = useToast();
     const [activeTab, setActiveTab] = useState<'overview' | 'comparison' | 'batch' | 'conflict'>('overview');
     const [conflictFilterId, setConflictFilterId] = useState<string | null>(null);
     const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
@@ -1711,7 +1714,7 @@ const CandidateConfirmationView = ({
             return r;
         }));
 
-        // alert(`已成功批量生成 ${newBOs.length} 个业务对象`);
+        toast.success(`已成功批量生成 ${newBOs.length} 个业务对象`);
         // if (setActiveModule) setActiveModule('td_modeling');
         setBatchSuccessInfo({ count: newBOs.length });
     };

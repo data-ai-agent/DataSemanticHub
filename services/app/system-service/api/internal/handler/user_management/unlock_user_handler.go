@@ -16,22 +16,17 @@ import (
 func UnlockUserHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// 从路径参数获取用户ID
-		var pathReq struct {
+		var req struct {
 			Id string `path:"id"`
+			types.UnlockUserReq
 		}
-		if err := httpx.Parse(r, &pathReq); err != nil {
-			httpx.ErrorCtx(r.Context(), w, err)
-			return
-		}
-
-		var req types.UnlockUserReq
 		if err := httpx.Parse(r, &req); err != nil {
 			httpx.ErrorCtx(r.Context(), w, err)
 			return
 		}
 
 		l := user_management.NewUnlockUserLogic(r.Context(), svcCtx)
-		resp, err := l.UnlockUser(pathReq.Id, &req)
+		resp, err := l.UnlockUser(req.Id, &req.UnlockUserReq)
 		if err != nil {
 			httpx.ErrorCtx(r.Context(), w, err)
 		} else {

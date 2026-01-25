@@ -12,6 +12,7 @@ import {
     AlertTriangle,
     CheckCircle2
 } from 'lucide-react';
+import { useToast } from '../components/ui/Toast';
 
 type PolicyStatus = '启用' | '停用';
 
@@ -192,6 +193,7 @@ const initialPolicies: ApprovalPolicy[] = [
 const formatDate = () => new Date().toISOString().split('T')[0];
 
 const ApprovalPolicyView = () => {
+    const toast = useToast();
     const [policies, setPolicies] = useState<ApprovalPolicy[]>(initialPolicies);
     const [activePolicyId, setActivePolicyId] = useState(initialPolicies[0]?.id ?? '');
     const [searchTerm, setSearchTerm] = useState('');
@@ -271,7 +273,7 @@ const ApprovalPolicyView = () => {
             return;
         }
         if (!draftPolicy.name.trim() || !draftPolicy.code.trim()) {
-            alert('请填写审批策略名称与编码。');
+            toast.error('请填写审批策略名称与编码。');
             return;
         }
         const nextPolicy: ApprovalPolicy = {
@@ -432,11 +434,10 @@ const ApprovalPolicyView = () => {
                                 <button
                                     key={policy.id}
                                     onClick={() => setActivePolicyId(policy.id)}
-                                    className={`w-full text-left rounded-xl border p-4 transition ${
-                                        isActive
+                                    className={`w-full text-left rounded-xl border p-4 transition ${isActive
                                             ? 'border-indigo-200 bg-indigo-50 shadow-sm'
                                             : 'border-slate-200 hover:border-indigo-200 hover:bg-slate-50'
-                                    }`}
+                                        }`}
                                 >
                                     <div className="flex items-start justify-between">
                                         <div>
@@ -451,11 +452,10 @@ const ApprovalPolicyView = () => {
                                             <p className="mt-1 text-xs text-slate-500">{policy.description}</p>
                                         </div>
                                         <span
-                                            className={`text-xs px-2 py-0.5 rounded-full ${
-                                                policy.status === '启用'
+                                            className={`text-xs px-2 py-0.5 rounded-full ${policy.status === '启用'
                                                     ? 'bg-emerald-50 text-emerald-600'
                                                     : 'bg-slate-100 text-slate-500'
-                                            }`}
+                                                }`}
                                         >
                                             {policy.status}
                                         </span>
@@ -493,11 +493,10 @@ const ApprovalPolicyView = () => {
                             <button
                                 onClick={() => activePolicy && handleDeletePolicy(activePolicy)}
                                 disabled={activePolicy?.builtIn}
-                                className={`px-3 py-1.5 rounded-lg border text-xs flex items-center gap-1 ${
-                                    activePolicy?.builtIn
+                                className={`px-3 py-1.5 rounded-lg border text-xs flex items-center gap-1 ${activePolicy?.builtIn
                                         ? 'border-slate-100 text-slate-300 cursor-not-allowed'
                                         : 'border-rose-200 text-rose-600 hover:text-rose-700 hover:border-rose-300'
-                                }`}
+                                    }`}
                             >
                                 <Trash2 size={14} /> 删除
                             </button>
@@ -594,9 +593,8 @@ const ApprovalPolicyView = () => {
                                 activePolicy.rules.map((rule, index) => (
                                     <div
                                         key={rule.id}
-                                        className={`grid grid-cols-[1.1fr_1.2fr_1.3fr] text-xs text-slate-600 ${
-                                            index % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'
-                                        }`}
+                                        className={`grid grid-cols-[1.1fr_1.2fr_1.3fr] text-xs text-slate-600 ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'
+                                            }`}
                                     >
                                         <div className="px-4 py-3 font-semibold text-slate-700">{rule.name}</div>
                                         <div className="px-4 py-3 text-slate-500">{rule.condition}</div>
@@ -769,11 +767,10 @@ const ApprovalPolicyView = () => {
                                                     key={scope}
                                                     type="button"
                                                     onClick={() => toggleDraftScope(scope)}
-                                                    className={`rounded-full border px-3 py-1 text-xs transition ${
-                                                        active
+                                                    className={`rounded-full border px-3 py-1 text-xs transition ${active
                                                             ? 'border-indigo-200 bg-indigo-50 text-indigo-600'
                                                             : 'border-slate-200 text-slate-500 hover:border-indigo-200 hover:text-slate-700'
-                                                    }`}
+                                                        }`}
                                                 >
                                                     {scope}
                                                 </button>
@@ -792,11 +789,10 @@ const ApprovalPolicyView = () => {
                                                     key={trigger}
                                                     type="button"
                                                     onClick={() => toggleDraftTrigger(trigger)}
-                                                    className={`rounded-full border px-3 py-1 text-xs transition ${
-                                                        active
+                                                    className={`rounded-full border px-3 py-1 text-xs transition ${active
                                                             ? 'border-emerald-200 bg-emerald-50 text-emerald-600'
                                                             : 'border-slate-200 text-slate-500 hover:border-emerald-200 hover:text-slate-700'
-                                                    }`}
+                                                        }`}
                                                 >
                                                     {trigger}
                                                 </button>
@@ -813,9 +809,8 @@ const ApprovalPolicyView = () => {
                                             return (
                                                 <div
                                                     key={template.id}
-                                                    className={`rounded-xl border p-3 ${
-                                                        active ? 'border-indigo-200 bg-indigo-50/50' : 'border-slate-200'
-                                                    }`}
+                                                    className={`rounded-xl border p-3 ${active ? 'border-indigo-200 bg-indigo-50/50' : 'border-slate-200'
+                                                        }`}
                                                 >
                                                     <label className="flex items-center justify-between">
                                                         <span className="text-sm font-semibold text-slate-700">
@@ -873,11 +868,10 @@ const ApprovalPolicyView = () => {
                                                     key={rule.id}
                                                     type="button"
                                                     onClick={() => toggleDraftRule(rule.id)}
-                                                    className={`w-full rounded-xl border p-4 text-left transition ${
-                                                        active
+                                                    className={`w-full rounded-xl border p-4 text-left transition ${active
                                                             ? 'border-emerald-200 bg-emerald-50'
                                                             : 'border-slate-200 hover:border-emerald-200'
-                                                    }`}
+                                                        }`}
                                                 >
                                                     <div className="flex items-start justify-between">
                                                         <div>
@@ -885,11 +879,10 @@ const ApprovalPolicyView = () => {
                                                             <p className="mt-1 text-xs text-slate-500">{rule.condition}</p>
                                                         </div>
                                                         <span
-                                                            className={`text-xs px-2 py-0.5 rounded-full ${
-                                                                active
+                                                            className={`text-xs px-2 py-0.5 rounded-full ${active
                                                                     ? 'bg-emerald-100 text-emerald-600'
                                                                     : 'bg-slate-100 text-slate-500'
-                                                            }`}
+                                                                }`}
                                                         >
                                                             {active ? '已启用' : '未启用'}
                                                         </span>

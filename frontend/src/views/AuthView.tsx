@@ -1,8 +1,9 @@
-import { useState, type CSSProperties } from 'react';
-import { ArrowRight, CheckCircle2, ShieldCheck, Sparkles, Loader2, AlertCircle } from 'lucide-react';
-import { authService, LoginReq, RegisterReq } from '../services/auth'; // Import service
+import { useState } from 'react';
+import { ArrowRight, CheckCircle2, ShieldCheck, Loader2, AlertCircle, X, Mail, Lock, Building } from 'lucide-react';
+import { authService, LoginReq, RegisterReq, type ErrorResponse } from '../services/auth';
+import { setAuthInfo } from '../utils/authUtils';
 
-type AuthMode = 'login' | 'register';
+type AuthMode = 'login' | 'register' | 'forgot-password' | 'sso';
 
 interface AuthViewProps {
     onContinue?: () => void;
@@ -11,7 +12,9 @@ interface AuthViewProps {
 const AuthView = ({ onContinue }: AuthViewProps) => {
     const [mode, setMode] = useState<AuthMode>('login');
     const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const [error, setError] = useState<(ErrorResponse & { title?: string }) | null>(null);
+    const [isTransitioning, setIsTransitioning] = useState(false);
+    const [success, setSuccess] = useState(false);
 
     // Form State
     const [formData, setFormData] = useState({
@@ -25,20 +28,126 @@ const AuthView = ({ onContinue }: AuthViewProps) => {
         agreeTerms: false
     });
 
+    // 验证状态
+    const [touched, setTouched] = useState<Record<string, boolean>>({});
+    const [showValidation, setShowValidation] = useState(false);
+    const [emailError, setEmailError] = useState<string>('');
+
+    // 邮箱格式验证
+    const validateEmail = (email: string): boolean => {
+        if (!email) return false;
+        const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+        return emailRegex.test(email);
+    };
+
     const handleInputChange = (field: string, value: any) => {
         setFormData(prev => ({ ...prev, [field]: value }));
         setError(null); // Clear error on change
+
+        // 实时验证邮箱格式
+        if (field === 'email') {
+            if (!value) {
+                setEmailError('');
+            } else if (!validateEmail(value)) {
+                setEmailError('请输入有效的邮箱地址，例如：user@company.com');
+            } else {
+                setEmailError('');
+            }
+        }
+    };
+
+    const handleInputBlur = (field: string) => {
+        setTouched(prev => ({ ...prev, [field]: true }));
+    };
+
+    const handleModeChange = (newMode: AuthMode) => {
+        if (newMode === mode || isTransitioning) return;
+        setIsTransitioning(true);
+        setError(null);
+        setSuccess(false);
+        setTouched({});
+        setShowValidation(false);
+        setEmailError('');
+        setTimeout(() => {
+            setMode(newMode);
+            setIsTransitioning(false);
+        }, 150);
+    };
+
+    const handleError = (err: unknown) => {
+        if (err && typeof err === 'object') {
+            setError(err as (ErrorResponse & { title?: string }));
+        } else if (err instanceof Error) {
+            setError({
+                title: mode === 'login' ? '登录失败' : '注册失败',
+                message: err.message,
+            });
+        } else {
+            setError({
+                title: mode === 'login' ? '登录失败' : '注册失败',
+                message: '未知错误，请稍后重试',
+            });
+        }
+    };
+
+    const validateForm = (): boolean => {
+        const newTouched: Record<string, boolean> = {};
+        let isValid = true;
+
+        // 必填字段验证
+        if (!formData.email.trim()) {
+            newTouched.email = true;
+            isValid = false;
+        } else if (!validateEmail(formData.email)) {
+            setEmailError('请输入有效的邮箱地址，例如：user@company.com');
+            isValid = false;
+        }
+
+        if (!formData.password && mode !== 'forgot-password') {
+            newTouched.password = true;
+            isValid = false;
+        }
+
+        if (mode === 'register') {
+            if (!formData.firstName.trim()) {
+                newTouched.firstName = true;
+                isValid = false;
+            }
+            if (!formData.lastName.trim()) {
+                newTouched.lastName = true;
+                isValid = false;
+            }
+            if (!formData.confirmPassword) {
+                newTouched.confirmPassword = true;
+                isValid = false;
+            }
+        }
+
+        setTouched(newTouched);
+
+        if (!isValid && !emailError) {
+            setError({
+                title: mode === 'login' ? '登录失败' : '注册失败',
+                message: '请填写所有必填项',
+            });
+        }
+
+        return isValid;
     };
 
     const handleAuthSuccess = (token: string, userInfo: any) => {
-        localStorage.setItem('token', token);
-        localStorage.setItem('user', JSON.stringify(userInfo));
+        setAuthInfo(token, userInfo);
         if (onContinue) {
             onContinue();
         }
     };
 
     const handleSubmit = async () => {
+        setShowValidation(true);
+        if (!validateForm()) {
+            return;
+        }
+
         setError(null);
         setIsLoading(true);
 
@@ -54,10 +163,22 @@ const AuthView = ({ onContinue }: AuthViewProps) => {
             } else {
                 // Register validation
                 if (formData.password !== formData.confirmPassword) {
-                    throw new Error("Passwords do not match");
+                    setError({
+                        title: '注册失败',
+                        message: '两次输入的密码不一致',
+                        solution: '请确保两次输入的密码完全相同',
+                    });
+                    setIsLoading(false);
+                    return;
                 }
                 if (!formData.agreeTerms) {
-                    throw new Error("Please agree to the terms");
+                    setError({
+                        title: '注册失败',
+                        message: '请同意服务条款',
+                        solution: '您需要同意服务条款和隐私政策才能继续',
+                    });
+                    setIsLoading(false);
+                    return;
                 }
 
                 const req: RegisterReq = {
@@ -70,7 +191,6 @@ const AuthView = ({ onContinue }: AuthViewProps) => {
                     agree_terms: formData.agreeTerms
                 };
                 const resp = await authService.register(req);
-                // Register returns token too, so we can auto-login
                 handleAuthSuccess(resp.token, {
                     id: resp.id,
                     first_name: resp.first_name,
@@ -78,253 +198,412 @@ const AuthView = ({ onContinue }: AuthViewProps) => {
                     email: resp.email
                 });
             }
-        } catch (err: any) {
-            setError(err.message || 'Authentication failed');
+        } catch (err) {
+            handleError(err);
         } finally {
             setIsLoading(false);
         }
     };
 
-    const inputClass =
-        'w-full rounded-2xl border border-slate-200/80 bg-white/70 px-4 py-3 text-sm text-slate-900 placeholder-slate-400 shadow-sm focus:border-[var(--auth-accent)] focus:outline-none focus:ring-2 focus:ring-[var(--auth-accent)] disabled:opacity-50';
+    const handleForgotPassword = async () => {
+        setShowValidation(true);
 
-    const themeStyle = {
-        '--auth-ink': '#1f2a2e',
-        '--auth-cream': '#f7f2e9',
-        '--auth-accent': '#e08a52',
-        '--auth-accent-2': '#2b8f83',
-        '--auth-card': 'rgba(255, 255, 255, 0.82)',
-        background:
-            'radial-gradient(1200px circle at 8% -10%, rgba(224, 138, 82, 0.24) 0%, transparent 55%),' +
-            'radial-gradient(900px circle at 88% 8%, rgba(43, 143, 131, 0.2) 0%, transparent 45%),' +
-            'linear-gradient(120deg, #f7f2e9 0%, #f1f6f4 45%, #f6efe6 100%)',
-        fontFamily: '"Archivo", "Space Grotesk", "Trebuchet MS", sans-serif',
-    } as CSSProperties;
+        if (!formData.email.trim()) {
+            setError({
+                message: '请输入您的邮箱地址',
+            });
+            return;
+        }
+
+        if (!validateEmail(formData.email)) {
+            setEmailError('请输入有效的邮箱地址，例如：user@company.com');
+            return;
+        }
+
+        setError(null);
+        setIsLoading(true);
+
+        try {
+            // TODO: 调用忘记密码API
+            await new Promise(resolve => setTimeout(resolve, 1500));
+
+            setSuccess(true);
+            setError({
+                message: `密码重置链接已发送至 ${formData.email}，请查收邮件。`,
+            });
+        } catch (err) {
+            handleError(err);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleSSO = async () => {
+        setError(null);
+        setIsLoading(true);
+
+        try {
+            // TODO: 调用SSO登录API
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            window.location.href = `/sso/login?domain=${formData.organization}`;
+        } catch (err) {
+            handleError(err);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const getInputState = (field: string) => {
+        const value = formData[field as keyof typeof formData];
+        const isEmpty = !value || (typeof value === 'string' && !value.trim());
+        const isRequired = ['email', 'password', 'firstName', 'lastName', 'confirmPassword'].includes(field);
+
+        return {
+            showRequired: showValidation && isRequired && isEmpty
+        };
+    };
+
+    const getTitleAndSubtitle = () => {
+        switch (mode) {
+            case 'login':
+                return { title: '欢迎回来', subtitle: '登录访问您的工作台' };
+            case 'register':
+                return { title: '创建账户', subtitle: '开启数据治理之旅' };
+            case 'forgot-password':
+                return { title: '重置密码', subtitle: '输入您的邮箱以接收重置链接' };
+            case 'sso':
+                return { title: '企业SSO登录', subtitle: '使用您企业的单点登录系统' };
+            default:
+                return { title: '', subtitle: '' };
+        }
+    };
+
+    const getSubmitButtonText = () => {
+        if (mode === 'forgot-password') return '发送重置链接';
+        if (mode === 'sso') return '继续使用SSO登录';
+        if (mode === 'register') return '创建账户';
+        return '登录';
+    };
+
+    const { title, subtitle } = getTitleAndSubtitle();
 
     return (
-        <div className="relative min-h-screen overflow-hidden text-[var(--auth-ink)]" style={themeStyle}>
-            <div className="absolute -top-32 -left-24 h-80 w-80 rounded-full bg-[#e7b48f]/50 blur-3xl" />
-            <div className="absolute -bottom-28 right-10 h-72 w-72 rounded-full bg-[#a6d7cf]/60 blur-3xl" />
-            <div className="absolute left-1/2 top-24 h-36 w-36 -translate-x-1/2 rounded-[48%] bg-white/40 blur-2xl" />
+        <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-100 animate-gradient" style={{ '--auth-ink': '#0f172a', '--auth-accent': '#3b82f6', '--auth-accent-2': '#0ea5e9' } as React.CSSProperties}>
+            {/* Subtle background pattern */}
+            <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, rgb(15, 23, 42) 1px, transparent 0)', backgroundSize: '40px 40px' }} />
 
-            <div className="relative mx-auto flex min-h-screen w-full max-w-6xl items-center px-6 py-12">
-                <div className="grid w-full gap-10 lg:grid-cols-[1.1fr_0.9fr]">
-                    <section className="flex flex-col justify-center gap-8 animate-fade-in">
-                        <div className="inline-flex w-fit items-center gap-2 rounded-full border border-white/70 bg-white/60 px-4 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-600">
-                            <Sparkles size={14} className="text-[var(--auth-accent)]" />
-                            DataSemanticHub
+            {/* Accent gradient overlay */}
+            <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-gradient-to-br from-blue-500/5 to-transparent rounded-full blur-3xl" />
+            <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-gradient-to-tr from-cyan-500/5 to-transparent rounded-full blur-3xl" />
+
+            <div className="relative mx-auto flex min-h-screen w-full max-w-7xl items-center px-6 py-12 lg:px-8">
+                <div className="grid w-full gap-12 lg:grid-cols-2 lg:gap-16 items-center">
+                    {/* Left Section - Branding & Value Props */}
+                    <section className="flex flex-col gap-10 animate-slide-in-left">
+                        {/* Logo/Brand */}
+                        <div className="space-y-2">
+                            <div className="inline-flex items-center gap-2 text-blue-600">
+                                <svg className="w-10 h-10" viewBox="0 0 40 40" fill="none">
+                                    <rect width="40" height="40" rx="8" fill="currentColor" fillOpacity="0.1" />
+                                    <path d="M12 20L18 26L28 14" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                                <span className="text-2xl font-bold text-slate-900">DataSemanticHub</span>
+                            </div>
                         </div>
 
-                        <div className="space-y-4">
-                            <h1 className="text-4xl font-semibold leading-tight text-slate-900 md:text-5xl">
-                                以语义为核心的数据语义治理平台。
+                        {/* Main Heading */}
+                        <div className="space-y-6">
+                            <h1 className="text-4xl lg:text-5xl font-bold leading-tight text-slate-900 tracking-tight">
+                                企业级数据语义
+                                <br />
+                                <span className="text-blue-600">治理平台</span>
                             </h1>
-                            <p className="max-w-xl text-base text-slate-600">
-                                让任何找数、问数、用数，都有唯一、可信、可追溯的语义基础。
+                            <p className="text-lg text-slate-600 leading-relaxed max-w-lg">
+                                构建统一的数据语义标准，让数据资产更可信、可追溯、可治理
                             </p>
                         </div>
 
-                        <div className="grid gap-4 sm:grid-cols-2">
+                        {/* Feature List */}
+                        <div className="space-y-4">
                             {[
-                                '字段级语义裁决：口径统一',
-                                '语义版本化管理：可追溯',
-                                '质量与安全协同治理：可审计',
-                                '支撑数据服务与业务应用：可靠使用',
+                                { icon: '🎯', title: '统一语义标准', desc: '字段级语义裁决，消除口径歧义' },
+                                { icon: '📊', title: '版本化管理', desc: '全链路可追溯的语义演进历史' },
+                                { icon: '🔒', title: '合规与安全', desc: '自动审计，满足企业治理要求' },
+                                { icon: '⚡', title: '智能服务', desc: '支撑高质量的数据服务与应用' },
                             ].map((item, index) => (
                                 <div
-                                    key={item}
-                                    className="flex items-start gap-3 rounded-2xl border border-white/60 bg-white/50 p-4 shadow-sm backdrop-blur animate-fade-in-up"
-                                    style={{ animationDelay: `${index * 70 + 120}ms`, animationFillMode: 'both' }}
+                                    key={index}
+                                    className="flex items-start gap-4 p-4 rounded-xl bg-white/60 border border-slate-200/60 shadow-sm hover:shadow-md hover:bg-white transition-all duration-300 animate-fade-in-up"
+                                    style={{ animationDelay: `${index * 100}ms`, animationFillMode: 'both' }}
                                 >
-                                    <CheckCircle2 size={18} className="mt-0.5 text-[var(--auth-accent-2)]" />
-                                    <p className="text-sm text-slate-600">{item}</p>
+                                    <span className="text-2xl flex-shrink-0">{item.icon}</span>
+                                    <div>
+                                        <h3 className="font-semibold text-slate-900 mb-1">{item.title}</h3>
+                                        <p className="text-sm text-slate-600">{item.desc}</p>
+                                    </div>
                                 </div>
                             ))}
                         </div>
 
-                        <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500">
-                            <div className="flex items-center gap-2 rounded-full border border-white/60 bg-white/60 px-3 py-1">
-                                <ShieldCheck size={14} className="text-[var(--auth-accent-2)]" />
-                                面向合规的审计流程
+                        {/* Trust Badges */}
+                        <div className="flex flex-wrap gap-6 items-center pt-4 border-t border-slate-200">
+                            <div className="flex items-center gap-2 text-sm text-slate-600">
+                                <ShieldCheck className="w-5 h-5 text-blue-600" />
+                                <span>ISO 27001 认证</span>
                             </div>
-                            <div className="rounded-full border border-white/60 bg-white/60 px-3 py-1">
-                                120+ 团队已接入
+                            <div className="flex items-center gap-2 text-sm text-slate-600">
+                                <CheckCircle2 className="w-5 h-5 text-green-600" />
+                                <span>120+ 企业信赖</span>
                             </div>
                         </div>
                     </section>
 
-                    <section
-                        className="animate-fade-in-up lg:justify-self-end"
-                        style={{ animationDelay: '120ms', animationFillMode: 'both' }}
-                    >
-                        <div className="w-full max-w-md rounded-[32px] border border-white/70 bg-[var(--auth-card)] p-8 shadow-2xl backdrop-blur">
-                            <div className="flex items-center justify-between rounded-full bg-white/70 p-1 text-sm">
-                                <button
-                                    type="button"
-                                    onClick={() => { setMode('login'); setError(null); }}
-                                    className={`flex-1 rounded-full px-4 py-2 font-semibold transition ${mode === 'login'
-                                            ? 'bg-[var(--auth-ink)] text-white shadow'
-                                            : 'text-slate-500 hover:text-slate-700'
-                                        }`}
-                                >
-                                    登录
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => { setMode('register'); setError(null); }}
-                                    className={`flex-1 rounded-full px-4 py-2 font-semibold transition ${mode === 'register'
-                                            ? 'bg-[var(--auth-ink)] text-white shadow'
-                                            : 'text-slate-500 hover:text-slate-700'
-                                        }`}
-                                >
-                                    注册
-                                </button>
-                            </div>
-
-                            <div className="mt-6 space-y-4">
-                                <div>
-                                    <h2 className="text-2xl font-semibold text-slate-900">
-                                        {mode === 'login' ? '欢迎回来。' : '开始创建你的工作台。'}
-                                    </h2>
-                                    <p className="text-sm text-slate-500">
-                                        {mode === 'login'
-                                            ? '登录以继续构建你的语义层。'
-                                            : '注册账号，让协作与发布更高效。'}
-                                    </p>
-                                </div>
-
-                                <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); handleSubmit(); }}>
-                                    {mode === 'register' && (
-                                        <div className="grid gap-3 sm:grid-cols-2">
-                                            <input
-                                                className={inputClass}
-                                                placeholder="名"
-                                                value={formData.firstName}
-                                                onChange={(e) => handleInputChange('firstName', e.target.value)}
-                                                disabled={isLoading}
-                                            />
-                                            <input
-                                                className={inputClass}
-                                                placeholder="姓"
-                                                value={formData.lastName}
-                                                onChange={(e) => handleInputChange('lastName', e.target.value)}
-                                                disabled={isLoading}
-                                            />
-                                        </div>
-                                    )}
-
-                                    <input
-                                        className={inputClass}
-                                        type="email"
-                                        placeholder="工作邮箱"
-                                        value={formData.email}
-                                        onChange={(e) => handleInputChange('email', e.target.value)}
-                                        disabled={isLoading}
-                                        required
-                                    />
-                                    {mode === 'register' && (
-                                        <input
-                                            className={inputClass}
-                                            placeholder="团队或公司"
-                                            value={formData.organization}
-                                            onChange={(e) => handleInputChange('organization', e.target.value)}
-                                            disabled={isLoading}
-                                        />
-                                    )}
-                                    <input
-                                        className={inputClass}
-                                        type="password"
-                                        placeholder="密码"
-                                        value={formData.password}
-                                        onChange={(e) => handleInputChange('password', e.target.value)}
-                                        disabled={isLoading}
-                                        required
-                                    />
-                                    {mode === 'register' && (
-                                        <input
-                                            className={inputClass}
-                                            type="password"
-                                            placeholder="确认密码"
-                                            value={formData.confirmPassword}
-                                            onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
-                                            disabled={isLoading}
-                                            required
-                                        />
-                                    )}
-
-                                    {mode === 'login' ? (
-                                        <div className="flex items-center justify-between text-xs text-slate-500">
-                                            <label className="flex items-center gap-2 cursor-pointer">
-                                                <input
-                                                    type="checkbox"
-                                                    className="h-4 w-4 rounded border-slate-300"
-                                                    checked={formData.rememberMe}
-                                                    onChange={(e) => handleInputChange('rememberMe', e.target.checked)}
-                                                    disabled={isLoading}
-                                                />
-                                                记住我
-                                            </label>
-                                            <button type="button" className="font-semibold text-[var(--auth-accent-2)]">
-                                                忘记密码？
+                    {/* Right Section - Auth Form */}
+                    <section className="flex items-center justify-center lg:justify-end animate-fade-in" style={{ animationDelay: '200ms', animationFillMode: 'both' }}>
+                        <div className="w-full max-w-md">
+                            {/* Form Card */}
+                            <div className="bg-white rounded-2xl shadow-xl border border-slate-200/60 p-8 lg:p-10">
+                                {/* Mode Switcher - Only show for login/register */}
+                                {(mode === 'login' || mode === 'register') && (
+                                    <div className="mb-8">
+                                        <div className="flex gap-1 p-1 bg-slate-100 rounded-lg">
+                                            <button
+                                                type="button"
+                                                onClick={() => handleModeChange('login')}
+                                                disabled={isTransitioning}
+                                                className={`flex-1 px-4 py-2.5 text-sm font-medium rounded-md transition-all duration-200 ${mode === 'login'
+                                                        ? 'bg-white text-slate-900 shadow-sm'
+                                                        : 'text-slate-600 hover:text-slate-900'
+                                                    }`}
+                                            >
+                                                登录
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleModeChange('register')}
+                                                disabled={isTransitioning}
+                                                className={`flex-1 px-4 py-2.5 text-sm font-medium rounded-md transition-all duration-200 ${mode === 'register'
+                                                        ? 'bg-white text-slate-900 shadow-sm'
+                                                        : 'text-slate-600 hover:text-slate-900'
+                                                    }`}
+                                            >
+                                                注册
                                             </button>
                                         </div>
-                                    ) : (
-                                        <label className="flex items-start gap-2 text-xs text-slate-500 cursor-pointer">
-                                            <input
-                                                type="checkbox"
-                                                className="mt-0.5 h-4 w-4 rounded border-slate-300"
-                                                checked={formData.agreeTerms}
-                                                onChange={(e) => handleInputChange('agreeTerms', e.target.checked)}
-                                                disabled={isLoading}
-                                            />
-                                            我同意服务条款与隐私政策。
-                                        </label>
-                                    )}
+                                    </div>
+                                )}
 
-                                    {error && (
-                                        <div className="flex items-center gap-2 text-sm text-red-500 bg-red-50 p-2 rounded-lg animate-fade-in">
-                                            <AlertCircle size={16} />
-                                            <span>{error}</span>
+                                {/* Form Content */}
+                                <div className={`transition-all duration-300 ${isTransitioning ? 'opacity-0 translate-y-2' : 'opacity-100 translate-y-0'}`}>
+                                    <div className="space-y-6">
+                                        {/* Title */}
+                                        <div className="text-center space-y-2">
+                                            <h2 className="text-2xl font-bold text-slate-900">{title}</h2>
+                                            <p className="text-sm text-slate-600">{subtitle}</p>
                                         </div>
-                                    )}
 
-                                    <button
-                                        type="submit"
-                                        disabled={isLoading}
-                                        className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[var(--auth-accent)] px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-orange-200/60 transition hover:brightness-105 disabled:opacity-70 disabled:cursor-not-allowed"
-                                    >
-                                        {isLoading ? (
+                                        {/* Form */}
+                                        <form className="space-y-5" noValidate onSubmit={(e) => {
+                                            e.preventDefault();
+                                            if (mode === 'forgot-password') {
+                                                handleForgotPassword();
+                                            } else if (mode === 'sso') {
+                                                handleSSO();
+                                            } else {
+                                                handleSubmit();
+                                            }
+                                        }}>
+                                            {mode === 'login' && (
+                                                <>
+                                                    <div className="space-y-2">
+                                                        <label className="block text-sm font-medium text-slate-700">邮箱地址</label>
+                                                        <div className="relative">
+                                                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                                                            <input
+                                                                type="text"
+                                                                placeholder="name@company.com"
+                                                                value={formData.email}
+                                                                onChange={(e) => handleInputChange('email', e.target.value)}
+                                                                disabled={isLoading}
+                                                                className={`w-full pl-10 pr-4 py-3 rounded-lg border bg-white text-slate-900 placeholder:text-slate-400 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${emailError ? 'border-red-300' : 'border-slate-300'
+                                                                    }`}
+                                                            />
+                                                        </div>
+                                                        {emailError && <p className="text-sm text-red-600 flex items-center gap-1.5"><AlertCircle className="w-4 h-4" />{emailError}</p>}
+                                                    </div>
+
+                                                    <div className="space-y-2">
+                                                        <label className="block text-sm font-medium text-slate-700">密码</label>
+                                                        <div className="relative">
+                                                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                                                            <input
+                                                                type="password"
+                                                                placeholder="输入您的密码"
+                                                                value={formData.password}
+                                                                onChange={(e) => handleInputChange('password', e.target.value)}
+                                                                disabled={isLoading}
+                                                                className="w-full pl-10 pr-4 py-3 rounded-lg border border-slate-300 bg-white text-slate-900 placeholder:text-slate-400 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                                            />
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="flex items-center justify-between text-sm">
+                                                        <label className="flex items-center gap-2">
+                                                            <input type="checkbox" checked={formData.rememberMe} onChange={(e) => handleInputChange('rememberMe', e.target.checked)} className="w-4 h-4 rounded border-slate-300 text-blue-600" />
+                                                            <span className="text-slate-600">记住我</span>
+                                                        </label>
+                                                        <button type="button" onClick={() => handleModeChange('forgot-password')} className="text-blue-600 hover:text-blue-700 font-medium">忘记密码？</button>
+                                                    </div>
+                                                </>
+                                            )}
+
+                                            {mode === 'register' && (
+                                                <>
+                                                    <div className="grid grid-cols-2 gap-4">
+                                                        <div className="space-y-2">
+                                                            <label className="block text-sm font-medium text-slate-700">姓氏</label>
+                                                            <input type="text" placeholder="张" value={formData.lastName} onChange={(e) => handleInputChange('lastName', e.target.value)} disabled={isLoading} className="w-full px-4 py-3 rounded-lg border border-slate-300 bg-white" />
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            <label className="block text-sm font-medium text-slate-700">名字</label>
+                                                            <input type="text" placeholder="三" value={formData.firstName} onChange={(e) => handleInputChange('firstName', e.target.value)} disabled={isLoading} className="w-full px-4 py-3 rounded-lg border border-slate-300 bg-white" />
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="space-y-2">
+                                                        <label className="block text-sm font-medium text-slate-700">工作邮箱</label>
+                                                        <div className="relative">
+                                                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                                                            <input type="text" placeholder="name@company.com" value={formData.email} onChange={(e) => handleInputChange('email', e.target.value)} disabled={isLoading} className={`w-full pl-10 pr-4 py-3 rounded-lg border ${emailError ? 'border-red-300' : 'border-slate-300'} bg-white`} />
+                                                        </div>
+                                                        {emailError && <p className="text-sm text-red-600 flex items-center gap-1.5"><AlertCircle className="w-4 h-4" />{emailError}</p>}
+                                                    </div>
+
+                                                    <div className="space-y-2">
+                                                        <label className="block text-sm font-medium text-slate-700">密码</label>
+                                                        <div className="relative">
+                                                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                                                            <input type="password" placeholder="至少8个字符" value={formData.password} onChange={(e) => handleInputChange('password', e.target.value)} disabled={isLoading} className="w-full pl-10 pr-4 py-3 rounded-lg border border-slate-300 bg-white" />
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="space-y-2">
+                                                        <label className="block text-sm font-medium text-slate-700">确认密码</label>
+                                                        <div className="relative">
+                                                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                                                            <input type="password" placeholder="再次输入密码" value={formData.confirmPassword} onChange={(e) => handleInputChange('confirmPassword', e.target.value)} disabled={isLoading} className="w-full pl-10 pr-4 py-3 rounded-lg border border-slate-300 bg-white" />
+                                                        </div>
+                                                    </div>
+
+                                                    <label className="flex items-start gap-3 text-sm">
+                                                        <input type="checkbox" checked={formData.agreeTerms} onChange={(e) => handleInputChange('agreeTerms', e.target.checked)} className="mt-0.5 w-4 h-4 rounded border-slate-300 text-blue-600" />
+                                                        <span className="text-slate-600">我已阅读并同意<button type="button" className="text-blue-600 hover:underline mx-1">服务条款</button>和<button type="button" className="text-blue-600 hover:underline mx-1">隐私政策</button></span>
+                                                    </label>
+                                                </>
+                                            )}
+
+                                            {mode === 'forgot-password' && (
+                                                <>
+                                                    <div className="space-y-2">
+                                                        <label className="block text-sm font-medium text-slate-700">邮箱地址</label>
+                                                        <div className="relative">
+                                                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                                                            <input type="text" placeholder="name@company.com" value={formData.email} onChange={(e) => handleInputChange('email', e.target.value)} disabled={isLoading} className={`w-full pl-10 pr-4 py-3 rounded-lg border ${emailError ? 'border-red-300' : 'border-slate-300'} bg-white`} />
+                                                        </div>
+                                                        {emailError && <p className="text-sm text-red-600 flex items-center gap-1.5"><AlertCircle className="w-4 h-4" />{emailError}</p>}
+                                                    </div>
+
+                                                    <div className="text-sm text-slate-600 bg-blue-50 rounded-lg p-3 border border-blue-100">
+                                                        <p>我们将向您的邮箱发送密码重置链接，请按照邮件中的说明操作。</p>
+                                                    </div>
+
+                                                    <button type="button" onClick={() => handleModeChange('login')} className="text-sm text-blue-600 hover:text-blue-700 font-medium">← 返回登录</button>
+                                                </>
+                                            )}
+
+                                            {mode === 'sso' && (
+                                                <>
+                                                    <div className="text-center py-4">
+                                                        <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                                            <Building className="w-8 h-8 text-blue-600" />
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="space-y-2">
+                                                        <label className="block text-sm font-medium text-slate-700">企业域名</label>
+                                                        <div className="relative">
+                                                            <Building className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                                                            <input type="text" placeholder="company.com" value={formData.organization} onChange={(e) => handleInputChange('organization', e.target.value)} disabled={isLoading} className="w-full pl-10 pr-4 py-3 rounded-lg border border-slate-300 bg-white" />
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="text-sm text-slate-600 bg-slate-50 rounded-lg p-3 border border-slate-200">
+                                                        <p className="font-medium mb-1">支持的SSO提供商：</p>
+                                                        <ul className="list-disc list-inside space-y-1 text-xs">
+                                                            <li>Azure AD / Microsoft Entra ID</li>
+                                                            <li>Okta, Google Workspace</li>
+                                                            <li>其他SAML 2.0兼容提供商</li>
+                                                        </ul>
+                                                    </div>
+
+                                                    <button type="button" onClick={() => handleModeChange('login')} className="text-sm text-blue-600 hover:text-blue-700 font-medium">← 返回登录</button>
+                                                </>
+                                            )}
+
+                                            {error && !success && (
+                                                <div className="p-3.5 bg-red-50/80 border border-red-100 rounded-xl backdrop-blur-sm">
+                                                    <div className="flex items-start gap-3">
+                                                        <div className="flex-shrink-0 w-5 h-5 rounded-full bg-red-100 flex items-center justify-center mt-0.5">
+                                                            <AlertCircle className="w-3.5 h-3.5 text-red-600" />
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className="text-sm font-semibold text-red-900">{error.message}</p>
+                                                        </div>
+                                                        <button type="button" onClick={() => setError(null)} className="flex-shrink-0 p-0.5 text-red-400 hover:text-red-600 rounded hover:bg-red-100/50"><X className="w-4 h-4" /></button>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {success && error && (
+                                                <div className="p-3.5 bg-green-50/80 border border-green-100 rounded-xl backdrop-blur-sm">
+                                                    <div className="flex items-start gap-3">
+                                                        <div className="flex-shrink-0 w-5 h-5 rounded-full bg-green-100 flex items-center justify-center mt-0.5">
+                                                            <CheckCircle2 className="w-3.5 h-3.5 text-green-600" />
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className="text-sm font-semibold text-green-900">{error.message}</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            <button
+                                                type="submit"
+                                                disabled={isLoading || success}
+                                                className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-lg shadow-blue-600/25 transition-all duration-200 hover:shadow-xl hover:shadow-blue-600/30 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                            >
+                                                {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <><span>{getSubmitButtonText()}</span><ArrowRight className="w-5 h-5" /></>}
+                                            </button>
+                                        </form>
+
+                                        {(mode === 'login' || mode === 'register') && (
                                             <>
-                                                <Loader2 size={16} className="animate-spin" />
-                                                处理中...
-                                            </>
-                                        ) : (
-                                            <>
-                                                {mode === 'login' ? '登录' : '注册账号'}
-                                                <ArrowRight size={16} />
+                                                <div className="relative">
+                                                    <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-200" /></div>
+                                                    <div className="relative flex justify-center text-xs uppercase"><span className="bg-white px-3 text-slate-500">或</span></div>
+                                                </div>
+
+                                                <button type="button" onClick={() => handleModeChange('sso')} className="w-full py-3 px-4 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 font-medium rounded-lg transition-all duration-200 flex items-center justify-center gap-2">
+                                                    <Building className="w-5 h-5" />
+                                                    <span>企业 SSO 登录</span>
+                                                </button>
                                             </>
                                         )}
-                                    </button>
-
-                                    <button
-                                        type="button"
-                                        className="w-full rounded-2xl border border-slate-200/80 bg-white/80 px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-white"
-                                    >
-                                        使用单点登录
-                                    </button>
-                                </form>
-
-                                <p className="text-center text-xs text-slate-500">
-                                    {mode === 'login' ? '需要开通权限？' : '已经有账号？'}{' '}
-                                    <button
-                                        type="button"
-                                        onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setError(null); }}
-                                        className="font-semibold text-[var(--auth-accent-2)]"
-                                    >
-                                        {mode === 'login' ? '申请开通' : '去登录'}
-                                    </button>
-                                </p>
+                                    </div>
+                                </div>
                             </div>
+
+                            <p className="mt-6 text-center text-sm text-slate-600">受信任的企业级数据治理解决方案</p>
                         </div>
                     </section>
                 </div>

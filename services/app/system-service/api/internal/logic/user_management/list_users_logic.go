@@ -53,10 +53,10 @@ func (l *ListUsersLogic) ListUsers(req *types.ListUsersReq) (resp *types.ListUse
 		SortOrder:      req.SortOrder,
 	}
 
-	// 处理 Status 筛选（支持 0 值，使用指针以区分未设置和设置为 0）
-	// 由于 types.ListUsersReq 中 Status 是 int8 类型，0 值无法区分是否设置
-	// 这里假设如果 Status 在有效范围内（0-4），则认为是设置了筛选条件
-	if req.Status >= 0 && req.Status <= 4 {
+	// 处理 Status 筛选
+	// 注意：由于 int8 的零值问题，只有当 status > 0 时才应用筛选
+	// status=0 (未激活) 的筛选需要通过其他方式（如添加单独的查询参数）
+	if req.Status > 0 {
 		status := req.Status
 		findReq.Status = &status
 	}

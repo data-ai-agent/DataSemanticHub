@@ -22,9 +22,13 @@ RUN pip install --no-cache-dir -r requirements.txt
 # 复制项目代码
 COPY services/app/agent-service/ /app/
 
+# 创建向量库持久化目录和配置目录
+RUN mkdir -p /app/chroma_db /app/config
+
 # 设置环境变量
 ENV PYTHONPATH=/app
 ENV PORT=8891
+ENV CHROMA_DB_PATH=/app/chroma_db
 
 # 暴露端口
 EXPOSE 8891

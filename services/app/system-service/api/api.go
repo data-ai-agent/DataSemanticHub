@@ -9,6 +9,7 @@ import (
 	"github.com/DataSemanticHub/services/app/system-service/api/internal/svc"
 
 	"github.com/jinguoxing/idrm-go-base/middleware"
+	"github.com/jinguoxing/idrm-go-base/response"
 	"github.com/jinguoxing/idrm-go-base/telemetry"
 	"github.com/jinguoxing/idrm-go-base/validator"
 
@@ -31,6 +32,7 @@ func main() {
 
 	// 初始化参数校验器
 	validator.Init()
+	response.InitErrorHandler()
 
 	// 创建 HTTP 服务器
 	server := rest.MustNewServer(c.RestConf)

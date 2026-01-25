@@ -67,22 +67,28 @@ type (
 
 @server(
     prefix: /api/v1
-    group: user
-    jwt: Auth
+    group: user-public
 )
 service api {
     @doc "用户注册"
     @handler Register
     post /user/register (RegisterReq) returns (RegisterResp)
-    
+
     @doc "用户登录"
     @handler Login
     post /user/login (LoginReq) returns (LoginResp)
-    
+}
+
+@server(
+    prefix: /api/v1
+    group: user
+    jwt: Auth
+)
+service api {
     @doc "获取当前用户信息"
     @handler GetUserInfo
     get /user/info returns (GetUserInfoResp)
-    
+
     @doc "退出登录"
     @handler Logout
     post /user/logout returns (LogoutResp)

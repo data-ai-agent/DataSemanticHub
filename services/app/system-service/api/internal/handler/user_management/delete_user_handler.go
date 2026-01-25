@@ -16,22 +16,17 @@ import (
 func DeleteUserHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// 从路径参数获取用户ID
-		var pathReq struct {
+		var req struct {
 			Id string `path:"id"`
+			types.DeleteUserReq
 		}
-		if err := httpx.Parse(r, &pathReq); err != nil {
-			httpx.ErrorCtx(r.Context(), w, err)
-			return
-		}
-
-		var req types.DeleteUserReq
 		if err := httpx.Parse(r, &req); err != nil {
 			httpx.ErrorCtx(r.Context(), w, err)
 			return
 		}
 
 		l := user_management.NewDeleteUserLogic(r.Context(), svcCtx)
-		resp, err := l.DeleteUser(pathReq.Id, &req)
+		resp, err := l.DeleteUser(req.Id, &req.DeleteUserReq)
 		if err != nil {
 			httpx.ErrorCtx(r.Context(), w, err)
 		} else {

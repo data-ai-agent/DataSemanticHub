@@ -30,6 +30,7 @@ import {
     UserPlus,
     Briefcase
 } from 'lucide-react';
+import { useToast } from '../components/ui/Toast';
 import {
     userManagementService,
     type User as ApiUser,
@@ -231,11 +232,13 @@ const UserManagementView = () => {
     const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(new Set());
     const [advancedFilterOpen, setAdvancedFilterOpen] = useState(false);
     const [drawerOpen, setDrawerOpen] = useState(false);
-    const [toasts, setToasts] = useState<Array<{ id: string; message: string; type: 'success' | 'error' | 'info' }>>([]);
+    const toast = useToast();
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
     const [sortField, setSortField] = useState<SortField>(null);
     const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
+    const [showValidation, setShowValidation] = useState(false);
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
     const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
@@ -286,12 +289,8 @@ const UserManagementView = () => {
     const noPermissionUsers = stats?.no_permission_role ?? 0;
 
     const showToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'info') => {
-        const id = Date.now().toString();
-        setToasts((prev) => [...prev, { id, message, type }]);
-        setTimeout(() => {
-            setToasts((prev) => prev.filter((t) => t.id !== id));
-        }, 3000);
-    }, []);
+        toast[type](message);
+    }, [toast]);
 
     const resolveSortField = (field: SortField) => {
         if (field === 'name') return 'name';
@@ -389,6 +388,7 @@ const UserManagementView = () => {
 
     const openCreateModal = () => {
         setModalMode('create');
+        setErrorMessage(null); // 清除错误信息
         setDraftUser({
             id: `user_${Date.now()}`,
             name: '',
@@ -414,6 +414,7 @@ const UserManagementView = () => {
                 showToast(error?.message || '加载用户详情失败', 'error');
                 setDraftUser({ ...user });
             } finally {
+                setErrorMessage(null); // 清除错误信息
                 setModalOpen(true);
             }
         };
@@ -432,6 +433,7 @@ const UserManagementView = () => {
     const closeModal = () => {
         setModalOpen(false);
         setDraftUser(null);
+        setShowValidation(false);
     };
 
     const closeDrawer = () => {
@@ -450,20 +452,25 @@ const UserManagementView = () => {
         if (!draftUser) {
             return;
         }
-        if (!draftUser.name.trim() || !draftUser.email.trim()) {
-            showToast('请填写用户姓名与邮箱', 'error');
+
+        // 显示验证提示
+        setShowValidation(true);
+        setErrorMessage(null);
+
+        // 验证必填字段
+        if (!draftUser.name.trim() || !draftUser.deptId || !draftUser.phone || !draftUser.phone.trim()) {
             return;
         }
-        if (!validateEmail(draftUser.email)) {
+
+        // 验证邮箱格式（如果填写了）
+        if (draftUser.email && !validateEmail(draftUser.email)) {
             showToast('请输入有效的邮箱地址', 'error');
             return;
         }
-        if (draftUser.phone && !validatePhone(draftUser.phone)) {
-            showToast('请输入有效的手机号码', 'error');
-            return;
-        }
-        if (!draftUser.deptId) {
-            showToast('请选择所属组织', 'error');
+
+        // 验证手机号格式
+        if (!validatePhone(draftUser.phone)) {
+            showToast('请输入有效的手机号码（11位数字）', 'error');
             return;
         }
 
@@ -478,7 +485,7 @@ const UserManagementView = () => {
                 const response = await userManagementService.createUser({
                     name: draftUser.name,
                     email: draftUser.email,
-                    phone: draftUser.phone || undefined,
+                    phone: draftUser.phone.trim(),
                     dept_id: draftUser.deptId,
                     role_bindings: roleBindings.length > 0 ? roleBindings : undefined,
                     account_source: accountSourceCodeMap[draftUser.accountSource] ?? 'local',
@@ -517,7 +524,7 @@ const UserManagementView = () => {
             await fetchUsers();
             await fetchStats();
         } catch (error: any) {
-            showToast(error?.message || '操作失败', 'error');
+            setErrorMessage(error?.message || '操作失败');
         }
     };
 
@@ -653,34 +660,35 @@ const UserManagementView = () => {
 
             return (
                 <div key={dept.id}>
-                    <button
-                        type="button"
-                        onClick={() => setActiveDeptId(dept.id)}
-                        className={`w-full flex items-center gap-2 rounded-lg px-3 py-2 text-xs transition ${isActive
-                            ? 'bg-indigo-50 text-indigo-600 font-medium'
-                            : 'text-slate-600 hover:bg-slate-50'
+                    <div
+                        className={`group flex items-center gap-2 rounded-lg p-2 text-sm transition-colors cursor-pointer ${isActive ? 'bg-indigo-50 text-indigo-700' : 'hover:bg-slate-50 text-slate-700'
                             }`}
-                        style={{ paddingLeft: `${12 + level * 16}px` }}
+                        style={{ paddingLeft: level * 20 + 8 }}
+                        onClick={() => setActiveDeptId(dept.id)}
                     >
-                        {hasChildren ? (
-                            <span
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    toggleExpand(dept.id);
-                                }}
-                                className="flex-shrink-0"
-                            >
-                                <ChevronRight
-                                    size={12}
-                                    className={`transition-transform ${isExpanded ? 'rotate-90' : ''}`}
-                                />
+                        <button
+                            type="button"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                toggleExpand(dept.id);
+                            }}
+                            className={`p-0.5 rounded hover:bg-black/5 ${hasChildren ? 'visible' : 'invisible'}`}
+                        >
+                            {isExpanded ? <ChevronDown size={14} className="text-slate-400" /> : <ChevronRight size={14} className="text-slate-400" />}
+                        </button>
+
+                        <div className="flex-1 flex items-center gap-2 min-w-0">
+                            <Building2 size={14} className={isActive ? 'text-indigo-600' : 'text-slate-400'} />
+
+                            <span className={`font-medium truncate ${isActive ? 'text-indigo-700' : 'text-slate-700'}`}>
+                                {dept.name}
                             </span>
-                        ) : (
-                            <span className="w-3 flex-shrink-0" />
-                        )}
-                        <span className="flex-1 text-left truncate">{dept.name}</span>
-                        <span className="text-slate-400 flex-shrink-0">{userCount}</span>
-                    </button>
+                        </div>
+
+                        <span className="text-xs text-slate-400 scale-90 origin-left flex-shrink-0 ml-auto">
+                            {userCount}
+                        </span>
+                    </div>
                     {hasChildren && isExpanded && renderDeptTree(dept.id, level + 1)}
                 </div>
             );
@@ -734,26 +742,7 @@ const UserManagementView = () => {
     const someSelected = displayUsers.some((u) => selectedUserIds.has(u.id));
 
     return (
-        <div className="space-y-6 h-full flex flex-col pt-6 pb-2 px-1">
-            {/* Toast 通知 */}
-            <div className="fixed top-4 right-4 z-[100] space-y-2">
-                {toasts.map((toast) => (
-                    <div
-                        key={toast.id}
-                        className={`px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 min-w-[280px] ${toast.type === 'success'
-                            ? 'bg-emerald-600 text-white'
-                            : toast.type === 'error'
-                                ? 'bg-rose-600 text-white'
-                                : 'bg-slate-800 text-white'
-                            }`}
-                    >
-                        {toast.type === 'success' && <Check size={18} />}
-                        {toast.type === 'error' && <X size={18} />}
-                        <span className="text-sm font-medium">{toast.message}</span>
-                    </div>
-                ))}
-            </div>
-
+        <div className="space-y-6 h-full flex flex-col pt-0 pb-2 px-1">
             {/* 头部 */}
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between px-1">
                 <div>
@@ -799,9 +788,9 @@ const UserManagementView = () => {
                 ))}
             </div>
 
-            <div className="grid gap-6 px-1 lg:grid-cols-[240px_1fr]">
+            <div className="grid gap-6 px-1 lg:grid-cols-[0.50fr_2.0fr]">
                 {/* 左侧组织树 */}
-                <section className="bg-white rounded-lg border border-slate-200 shadow-sm p-4 h-fit">
+                <section className="bg-white rounded-lg border border-slate-200 shadow-sm p-4 flex flex-col">
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="text-sm font-semibold text-slate-700">组织架构</h3>
                         <span className="text-xs text-slate-400">{departments.length} 个</span>
@@ -1165,17 +1154,56 @@ const UserManagementView = () => {
                                 </button>
                             </div>
                             <div className="space-y-6 px-6 py-6 overflow-y-auto">
+                                {errorMessage && (
+                                    <div className="mb-4 p-3 bg-rose-50 border border-rose-200 rounded-lg flex items-start gap-2 text-rose-700 text-sm animate-in fade-in slide-in-from-top-2">
+                                        <AlertTriangle size={16} className="shrink-0 mt-0.5" />
+                                        <span>{errorMessage}</span>
+                                    </div>
+                                )}
                                 <div className="grid gap-4 md:grid-cols-2">
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-semibold text-slate-600">姓名</label>
+                                    <div className="space-y-1">
+                                        <label className="text-xs font-semibold text-slate-600">
+                                            姓名 <span className="text-red-500">*</span>
+                                        </label>
                                         <input
                                             value={draftUser.name}
                                             onChange={(event) => setDraftUser({ ...draftUser, name: event.target.value })}
-                                            placeholder="用户姓名"
-                                            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none"
+                                            placeholder="请输入姓名"
+                                            className={`w-full rounded-lg border px-3 py-2 text-sm text-slate-700 focus:outline-none ${showValidation && !draftUser.name.trim()
+                                                ? 'border-red-500 focus:border-red-500'
+                                                : 'border-slate-200 focus:border-indigo-500'
+                                                }`}
                                         />
+                                        {showValidation && !draftUser.name.trim() && (
+                                            <p className="text-xs text-red-500 mt-1">请输入用户姓名</p>
+                                        )}
                                     </div>
-                                    <div className="space-y-2">
+                                    <div className="space-y-1">
+                                        <label className="text-xs font-semibold text-slate-600">
+                                            所属组织 <span className="text-red-500">*</span>
+                                        </label>
+                                        <select
+                                            value={draftUser.deptId}
+                                            onChange={(event) =>
+                                                setDraftUser({ ...draftUser, deptId: event.target.value })
+                                            }
+                                            className={`w-full rounded-lg border px-3 py-2 text-sm text-slate-700 focus:outline-none ${showValidation && !draftUser.deptId
+                                                ? 'border-red-500 focus:border-red-500'
+                                                : 'border-slate-200 focus:border-indigo-500'
+                                                }`}
+                                        >
+                                            <option value="">请选择所属组织</option>
+                                            {departments.map((dept) => (
+                                                <option key={dept.id} value={dept.id}>
+                                                    {dept.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        {showValidation && !draftUser.deptId && (
+                                            <p className="text-xs text-red-500 mt-1">请选择所属组织</p>
+                                        )}
+                                    </div>
+                                    <div className="space-y-1">
                                         <label className="text-xs font-semibold text-slate-600">邮箱</label>
                                         <input
                                             value={draftUser.email}
@@ -1184,30 +1212,22 @@ const UserManagementView = () => {
                                             className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none"
                                         />
                                     </div>
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-semibold text-slate-600">手机号</label>
+                                    <div className="space-y-1">
+                                        <label className="text-xs font-semibold text-slate-600">
+                                            手机号 <span className="text-red-500">*</span>
+                                        </label>
                                         <input
                                             value={draftUser.phone}
                                             onChange={(event) => setDraftUser({ ...draftUser, phone: event.target.value })}
-                                            placeholder="138xxxxxxx"
-                                            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none"
+                                            placeholder="请输入手机号"
+                                            className={`w-full rounded-lg border px-3 py-2 text-sm text-slate-700 focus:outline-none ${showValidation && (!draftUser.phone || !draftUser.phone.trim())
+                                                ? 'border-red-500 focus:border-red-500'
+                                                : 'border-slate-200 focus:border-indigo-500'
+                                                }`}
                                         />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-semibold text-slate-600">所属组织</label>
-                                        <select
-                                            value={draftUser.deptId}
-                                            onChange={(event) =>
-                                                setDraftUser({ ...draftUser, deptId: event.target.value })
-                                            }
-                                            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none"
-                                        >
-                                            {departments.map((dept) => (
-                                                <option key={dept.id} value={dept.id}>
-                                                    {dept.name}
-                                                </option>
-                                            ))}
-                                        </select>
+                                        {showValidation && (!draftUser.phone || !draftUser.phone.trim()) && (
+                                            <p className="text-xs text-red-500 mt-1">请输入手机号</p>
+                                        )}
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-xs font-semibold text-slate-600">岗位职责</label>
