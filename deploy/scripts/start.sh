@@ -64,7 +64,7 @@ sleep 15
 # Start application services
 echo ""
 echo -e "${YELLOW}Step 3/3: Starting application services...${NC}"
-docker compose up -d system-service frontend
+docker compose up -d system-service agent-service data-connection frontend
 
 echo ""
 echo -e "${GREEN}All services started!${NC}"
@@ -88,8 +88,10 @@ echo -e "${GREEN}Service Access Information${NC}"
 echo -e "${GREEN}=====================================${NC}"
 echo ""
 echo -e "${BLUE}Application Services:${NC}"
-echo "  Frontend:        http://localhost:${FRONTEND_PORT:-5173}"
-echo "  System Service:  http://localhost:${SYSTEM_SERVICE_PORT:-8888}"
+echo "  Frontend:          http://localhost:${FRONTEND_PORT:-5173}"
+echo "  System Service:    http://localhost:${SYSTEM_SERVICE_PORT:-8888}"
+echo "  Agent Service:     http://localhost:${PYTHON_SERVICE_PORT:-8891}"
+echo "  Data Connection:   http://localhost:${DATA_CONNECTION_PORT:-8892}"
 echo ""
 echo -e "${BLUE}Monitoring & Observability:${NC}"
 echo "  Grafana:         http://localhost:${GRAFANA_PORT:-3000} (admin/admin)"

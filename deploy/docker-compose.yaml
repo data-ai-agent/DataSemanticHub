@@ -9,6 +9,8 @@ networks:
 volumes:
   mariadb-data:
     name: datasemantichub-mariadb-data
+  mysql-data:
+    name: datasemantichub-mysql-data
   redis-data:
     name: datasemantichub-redis-data
   kafka-data:
@@ -363,28 +365,47 @@ services:
   #     mariadb:
   #       condition: service_healthy
 
-  # Java Service (预留)
-  # java-service:
-  #   build:
-  #     context: ..
-  #     dockerfile: deploy/backend/java/Dockerfile
-  #   container_name: datasemantichub-java-service
-  #   restart: unless-stopped
-  #   environment:
-  #     - TZ=Asia/Shanghai
-  #     - SPRING_PROFILES_ACTIVE=${ENVIRONMENT:-dev}
-  #     - DB_HOST=mariadb
-  #     - DB_PORT=3306
-  #     - DB_NAME=${DB_NAME}
-  #     - DB_USER=${DB_USER}
-  #     - DB_PASSWORD=${DB_PASSWORD}
-  #   ports:
-  #     - "${JAVA_SERVICE_PORT:-8890}:8890"
-  #   networks:
-  #     - datasemantichub-network
-  #   depends_on:
-  #     mariadb:
-  #       condition: service_healthy
+  # Data Connection Service (Java Spring Boot)
+  data-connection:
+    build:
+      context: ..
+      dockerfile: deploy/backend/java/Dockerfile
+      args:
+        - SERVICE_NAME=data-connection
+    container_name: datasemantichub-data-connection
+    restart: unless-stopped
+    environment:
+      - TZ=Asia/Shanghai
+      - SPRING_PROFILES_ACTIVE=${ENVIRONMENT:-dev}
+      - DB_HOST=mariadb
+      - DB_PORT=3306
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - KAFKA_BROKERS=kafka:9092
+      - OPENSEARCH_HOSTS=${OPENSEARCH_HOSTS}
+      - JAEGER_ENDPOINT=${JAEGER_ENDPOINT}
+    ports:
+      - "${DATA_CONNECTION_PORT:-8892}:8892"
+    volumes:
+      - ./logs/data-connection:/opt/vega/logs
+    networks:
+      - datasemantichub-network
+    depends_on:
+      mariadb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -f http://localhost:8892/health || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
   # Python Service (预留)
   # python-service:
