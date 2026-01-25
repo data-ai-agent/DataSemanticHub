@@ -1,5 +1,6 @@
 import { useState, useRef, useMemo, useEffect } from 'react';
 import { Sparkles, Activity, CheckCircle, ChevronDown, ChevronRight, Bot, AlertTriangle, ArrowLeft, RefreshCw, Table, Share2, Layers, Shield, Database, Search, Settings, Filter, Plus, FileText, Key, Hash, CheckCircle2, XCircle, Info, PanelLeftOpen, PanelLeftClose, Server, Clock, Edit3, X, Box, ListPlus, Cpu, Star, Tag, ShieldCheck, AlertCircle, Wand2, ArrowRight } from 'lucide-react';
+import { useToast } from '../components/ui/Toast';
 import { TableSemanticProfile, GovernanceStatus, ReviewStats, RunSummary, TableSemanticStage, FieldSemanticStatus } from '../types/semantic';
 import { ReadOnlyBadge } from '../components/common/ReadOnlyBadge';
 import { useVersionContext } from '../contexts/VersionContext';
@@ -65,6 +66,7 @@ const DataSemanticUnderstandingView = ({
     readOnly,
     versionId
 }: DataSemanticUnderstandingViewProps) => {
+    const toast = useToast();
     const versionContext = useVersionContext();
     const isReadOnly = readOnly ?? versionContext.readOnly;
     const effectiveVersionId = versionId ?? versionContext.versionId;
@@ -795,7 +797,7 @@ const DataSemanticUnderstandingView = ({
         if (isReadOnly) return;
         const eligibility = getDirectGenEligibility(table, profile);
         if (!eligibility.canGenerate) {
-            alert('生成前置条件未满足，请先完成 Gate/Review 处理。');
+            toast.error('生成前置条件未满足，请先完成 Gate/Review 处理。');
             return;
         }
         const newBO = {
@@ -845,7 +847,7 @@ const DataSemanticUnderstandingView = ({
 
         // Optional: show feedback (using alert for simplicity as no toast system is visible)
         // In a real app, use toast.success('已保存');
-        alert('语义结论已保存');
+        toast.success('语义结论已保存');
     };
 
     const handleSaveToMetadata = () => {

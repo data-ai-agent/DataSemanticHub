@@ -38,7 +38,7 @@ export function useAutoSave(
     } = options;
 
     const lastSavedAt = useRef<string | null>(null);
-    const saveTimeoutRef = useRef<number | null>(null);
+    const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const isSavingRef = useRef(false);
 
     /**

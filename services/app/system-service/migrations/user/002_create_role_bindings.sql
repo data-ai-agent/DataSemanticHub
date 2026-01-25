@@ -12,3 +12,4 @@ CREATE TABLE IF NOT EXISTS `role_bindings` (
     KEY `idx_permission_role` (`permission_role`),
     CONSTRAINT `fk_role_binding_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='角色绑定表';
+    

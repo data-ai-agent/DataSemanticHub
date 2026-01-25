@@ -1,6 +1,13 @@
 
 import os
 import streamlit as st
+
+# 设置 OpenAI base_url（必须在导入 vanna 之前设置）
+llm_base_url = os.getenv("LLM_BASE_URL")
+if llm_base_url:
+    os.environ["OPENAI_API_BASE"] = llm_base_url
+    os.environ["OPENAI_BASE_URL"] = llm_base_url
+
 from vanna.remote import VannaDefault
 from vanna.openai import OpenAI_Chat
 from vanna.chromadb import ChromaDB_VectorStore
@@ -27,14 +34,23 @@ def setup_vanna():
     if vanna_api_key and vanna_model_name:
         vn = VannaDefault(model=vanna_model_name, api_key=vanna_api_key)
     else:
-        # Fallback to OpenAI + ChromaDB (Local)
+        # Fallback to OpenAI/DeepSeek + ChromaDB (Local)
         openai_api_key = os.getenv("OPENAI_API_KEY")
+        llm_model = os.getenv("LLM_MODEL", "gpt-3.5-turbo")
+
         if openai_api_key:
             class MyVanna(ChromaDB_VectorStore, OpenAI_Chat):
                 def __init__(self, config=None):
                     ChromaDB_VectorStore.__init__(self, config=config)
                     OpenAI_Chat.__init__(self, config=config)
-            vn = MyVanna(config={'api_key': openai_api_key, 'model': 'gpt-3.5-turbo'})
+
+            config = {
+                'api_key': openai_api_key,
+                'model': llm_model,
+                'path': '/app/chroma_db'
+            }
+
+            vn = MyVanna(config=config)
     
     if vn:
         try:

@@ -100,7 +100,7 @@
           "https"
         ],
         "summary": "用户登录",
-        "operationId": "userLogin",
+        "operationId": "user-PublicLogin",
         "parameters": [
           {
             "name": "body",
@@ -211,7 +211,7 @@
           "https"
         ],
         "summary": "用户注册",
-        "operationId": "userRegister",
+        "operationId": "user-PublicRegister",
         "parameters": [
           {
             "name": "body",
@@ -1111,7 +1111,7 @@
       }
     }
   },
-  "x-date": "2026-01-22 23:55:32",
+  "x-date": "2026-01-23 18:21:07",
   "x-description": "This is a goctl generated swagger file.",
   "x-github": "https://github.com/zeromicro/go-zero",
   "x-go-zero-doc": "https://go-zero.dev/",

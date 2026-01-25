@@ -28,10 +28,10 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 	server.AddRoutes(
 		[]rest.Route{
 			{
-				// 获取当前用户信息
-				Method:  http.MethodGet,
-				Path:    "/user/info",
-				Handler: user.GetUserInfoHandler(serverCtx),
+				// 用户注册
+				Method:  http.MethodPost,
+				Path:    "/user/register",
+				Handler: user.RegisterHandler(serverCtx),
 			},
 			{
 				// 用户登录
@@ -39,17 +39,23 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Path:    "/user/login",
 				Handler: user.LoginHandler(serverCtx),
 			},
+		},
+		rest.WithPrefix("/api/v1"),
+	)
+
+	server.AddRoutes(
+		[]rest.Route{
+			{
+				// 获取当前用户信息
+				Method:  http.MethodGet,
+				Path:    "/user/info",
+				Handler: user.GetUserInfoHandler(serverCtx),
+			},
 			{
 				// 退出登录
 				Method:  http.MethodPost,
 				Path:    "/user/logout",
 				Handler: user.LogoutHandler(serverCtx),
-			},
-			{
-				// 用户注册
-				Method:  http.MethodPost,
-				Path:    "/user/register",
-				Handler: user.RegisterHandler(serverCtx),
 			},
 		},
 		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),

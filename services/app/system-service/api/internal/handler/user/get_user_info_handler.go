@@ -8,6 +8,7 @@ import (
 
 	"github.com/DataSemanticHub/services/app/system-service/api/internal/logic/user"
 	"github.com/DataSemanticHub/services/app/system-service/api/internal/svc"
+	"github.com/jinguoxing/idrm-go-base/response"
 	"github.com/zeromicro/go-zero/rest/httpx"
 )
 
@@ -17,6 +18,7 @@ func GetUserInfoHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 		l := user.NewGetUserInfoLogic(r.Context(), svcCtx)
 		resp, err := l.GetUserInfo()
 		if err != nil {
+			response.Error(w, err)
 			httpx.ErrorCtx(r.Context(), w, err)
 		} else {
 			httpx.OkJsonCtx(r.Context(), w, resp)

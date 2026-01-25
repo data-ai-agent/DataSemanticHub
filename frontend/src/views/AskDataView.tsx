@@ -1,10 +1,14 @@
 import { useState } from 'react';
+import { GPTVis } from '@antv/gpt-vis';
 import {
     MessageCircle, Send, Sparkles, Table, Box, Database,
     ChevronRight, RefreshCw, Copy, ThumbsUp, ThumbsDown,
     BarChart3, PieChart, TrendingUp, FileText, Search,
-    ArrowRight, Zap, Clock, CheckCircle
+    ArrowRight, Zap, Clock, CheckCircle, Wrench
 } from 'lucide-react';
+
+// AI API Base URL - 使用新的 API Gateway 路由
+const AI_API_BASE = import.meta.env.VITE_AI_API_BASE_URL || '/api/v1/agent';
 
 interface Message {
     id: string;
@@ -24,6 +28,82 @@ interface ScenarioExample {
     category: string;
 }
 
+const buildChartMarkdown = (message: Message): string => {
+    if (message.type !== 'chart' || !message.data) return '';
+
+    if (message.data.chartConfig) {
+        return `\`\`\`vis-chart\n${JSON.stringify(message.data.chartConfig, null, 2)}\n\`\`\``;
+    }
+
+    const {
+        chartType,
+        data,
+        labels,
+        series,
+        xField,
+        yField,
+        angleField,
+        colorField
+    } = message.data;
+
+    let chartData = data;
+    if (!chartData && Array.isArray(series)) {
+        chartData = series.map((value: number, index: number) => ({
+            category: labels?.[index] ?? `Item ${index + 1}`,
+            value
+        }));
+    }
+
+    if (!chartData) return '';
+
+    const type = chartType || 'column';
+    const spec: Record<string, unknown> = {
+        type,
+        data: chartData
+    };
+
+    if (type === 'pie') {
+        spec.angleField = angleField || 'value';
+        spec.colorField = colorField || 'category';
+    } else {
+        spec.xField = xField || 'category';
+        spec.yField = yField || 'value';
+    }
+
+    return `\`\`\`vis-chart\n${JSON.stringify(spec, null, 2)}\n\`\`\``;
+};
+
+const buildAutoChartConfig = (columns: string[], rows: any[]): Record<string, unknown> | null => {
+    if (!columns.length || rows.length === 0) return null;
+
+    const sampleRows = rows.slice(0, 20);
+    const numericCols = columns.filter((col) =>
+        sampleRows.some((row) => {
+            const value = row?.[col];
+            if (value === null || value === undefined || value === '') return false;
+            return Number.isFinite(Number(value));
+        })
+    );
+
+    if (numericCols.length === 0) return null;
+    const valueCol = numericCols[0];
+    const categoryCol = columns.find((col) => col !== valueCol);
+
+    const data = sampleRows.map((row, index) => ({
+        category: categoryCol ? (row?.[categoryCol] ?? `Row ${index + 1}`) : `Row ${index + 1}`,
+        value: Number(row?.[valueCol]) || 0
+    }));
+
+    if (data.length === 0) return null;
+
+    return {
+        type: data.length > 8 ? 'bar' : 'column',
+        data,
+        xField: 'category',
+        yField: 'value'
+    };
+};
+
 const AskDataView = () => {
     const [messages, setMessages] = useState<Message[]>([
         {
@@ -36,6 +116,10 @@ const AskDataView = () => {
     ]);
     const [inputValue, setInputValue] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const isDev = import.meta.env.DEV;
+    const debugUrl = typeof window !== 'undefined'
+        ? `${window.location.protocol}//${window.location.hostname}:8501`
+        : 'http://localhost:8501';
 
     const scenarioExamples: ScenarioExample[] = [
         {
@@ -91,10 +175,11 @@ const AskDataView = () => {
     const handleSend = async () => {
         if (!inputValue.trim() || isLoading) return;
 
+        const question = inputValue.trim();
         const userMessage: Message = {
             id: Date.now().toString(),
             role: 'user',
-            content: inputValue,
+            content: question,
             timestamp: new Date(),
             type: 'text'
         };
@@ -103,12 +188,107 @@ const AskDataView = () => {
         setInputValue('');
         setIsLoading(true);
 
-        // Simulate AI response
-        setTimeout(() => {
-            const mockResponses = generateMockResponse(inputValue);
-            setMessages(prev => [...prev, ...mockResponses]);
+        try {
+            const response = await fetch(`${AI_API_BASE}/ask`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ question }),
+            });
+
+            if (!response.ok) {
+                const error = await response.json().catch(() => ({}));
+                const detail = error?.detail || error?.message || '请求失败';
+                throw new Error(detail);
+            }
+
+            const data = await response.json();
+            const nextMessages: Message[] = [];
+            if (data?.sql) {
+                nextMessages.push({
+                    id: `${Date.now()}-sql`,
+                    role: 'assistant',
+                    content: data.sql,
+                    timestamp: new Date(),
+                    type: 'sql'
+                });
+            }
+
+            const rows = Array.isArray(data?.data) ? data.data : [];
+            let columns = Array.isArray(data?.columns) ? data.columns : [];
+            if (columns.length === 0 && rows.length > 0 && typeof rows[0] === 'object' && rows[0] !== null) {
+                columns = Object.keys(rows[0]);
+            }
+
+            if (rows.length > 0) {
+                // 添加表格数据
+                nextMessages.push({
+                    id: `${Date.now()}-table`,
+                    role: 'assistant',
+                    content: `返回 ${rows.length} 行结果`,
+                    timestamp: new Date(),
+                    type: 'table',
+                    data: { columns, rows }
+                });
+
+                let chartAdded = false;
+                // 如果有图表推荐，添加图表消息
+                if (data?.chart_recommendation && data.chart_recommendation.suitable) {
+                    const chartRec = data.chart_recommendation;
+                    // 确保图表配置有效
+                    if (chartRec.config && chartRec.config.data && chartRec.config.data.length > 0) {
+                        nextMessages.push({
+                            id: `${Date.now()}-chart`,
+                            role: 'assistant',
+                            content: `📊 ${chartRec.reason}`,
+                            timestamp: new Date(),
+                            type: 'chart',
+                            data: {
+                                chartType: chartRec.type,
+                                chartConfig: chartRec.config,
+                                rawData: rows  // 保留原始数据用于图表渲染
+                            }
+                        });
+                        chartAdded = true;
+                    }
+                }
+
+                if (!chartAdded) {
+                    const chartConfig = buildAutoChartConfig(columns, rows);
+                    if (chartConfig) {
+                        nextMessages.push({
+                            id: `${Date.now()}-chart`,
+                            role: 'assistant',
+                            content: '图表预览',
+                            timestamp: new Date(),
+                            type: 'chart',
+                            data: { chartConfig }
+                        });
+                    }
+                }
+            } else {
+                nextMessages.push({
+                    id: `${Date.now()}-empty`,
+                    role: 'assistant',
+                    content: '查询无结果或未返回数据。',
+                    timestamp: new Date(),
+                    type: 'text'
+                });
+            }
+
+            setMessages(prev => [...prev, ...nextMessages]);
+        } catch (err: any) {
+            setMessages(prev => [...prev, {
+                id: `${Date.now()}-error`,
+                role: 'assistant',
+                content: err?.message || '请求失败，请稍后重试。',
+                timestamp: new Date(),
+                type: 'text'
+            }]);
+        } finally {
             setIsLoading(false);
-        }, 1500);
+        }
     };
 
     const generateMockResponse = (query: string): Message[] => {
@@ -360,14 +540,27 @@ ORDER BY delay_rate DESC;`,
             <div className="flex-1 bg-white border border-slate-200 rounded-xl shadow-sm flex flex-col overflow-hidden">
                 {/* Header */}
                 <div className="px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-indigo-50 to-purple-50">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg">
-                            <MessageCircle size={20} className="text-white" />
+                    <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg">
+                                <MessageCircle size={20} className="text-white" />
+                            </div>
+                            <div>
+                                <h2 className="text-lg font-bold text-slate-800">智能问数</h2>
+                                <p className="text-xs text-slate-500">用自然语言探索您的数据</p>
+                            </div>
                         </div>
-                        <div>
-                            <h2 className="text-lg font-bold text-slate-800">智能问数</h2>
-                            <p className="text-xs text-slate-500">用自然语言探索您的数据</p>
-                        </div>
+                        {isDev && (
+                            <button
+                                type="button"
+                                onClick={() => window.open(debugUrl, '_blank', 'noopener,noreferrer')}
+                                className="inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-white/70 px-3 py-1 text-xs font-semibold text-indigo-600 transition hover:border-indigo-300 hover:text-indigo-700"
+                                title="打开调试工具"
+                            >
+                                <Wrench size={14} />
+                                调试工具
+                            </button>
+                        )}
                     </div>
                 </div>
 
@@ -380,8 +573,8 @@ ORDER BY delay_rate DESC;`,
                         >
                             <div
                                 className={`max-w-[80%] rounded-2xl px-4 py-3 ${message.role === 'user'
-                                        ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white'
-                                        : 'bg-slate-100 text-slate-800'
+                                    ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white'
+                                    : 'bg-slate-100 text-slate-800'
                                     }`}
                             >
                                 {message.type === 'sql' ? (
@@ -395,170 +588,54 @@ ORDER BY delay_rate DESC;`,
                                             {message.content}
                                         </pre>
                                     </div>
-                                ) : message.type === 'chart' ? (
+                                ) : message.type === 'table' ? (
                                     <div className="space-y-2">
                                         <div className="text-xs font-medium text-slate-600">{message.content}</div>
-                                        {message.data?.chartType === 'line' && (() => {
-                                            const series = message.data?.series || [];
-                                            const labels = message.data?.labels || [];
-                                            const maxValue = Math.max(...series, 1);
-                                            const tickCount = 4;
-                                            const ticks = Array.from({ length: tickCount + 1 }, (_, i) => Math.round((maxValue / tickCount) * i));
-                                            const areaPoints = `24 72 ${series.map((v: number, i: number) => `${24 + i * 56},${72 - (v / maxValue) * 54}`).join(' ')}  ${24 + (series.length - 1) * 56} 72`;
-                                            return (
-                                                <svg viewBox="0 0 220 100" className="w-full h-24 bg-white rounded-lg border border-slate-200">
-                                                    <defs>
-                                                        <linearGradient id="lineFill" x1="0" x2="0" y1="0" y2="1">
-                                                            <stop offset="0%" stopColor="#6366f1" stopOpacity="0.25" />
-                                                            <stop offset="100%" stopColor="#6366f1" stopOpacity="0.05" />
-                                                        </linearGradient>
-                                                    </defs>
-                                                    {ticks.map((tick, index) => (
-                                                        <g key={`${tick}-${index}`}>
-                                                            <line
-                                                                x1="24"
-                                                                y1={72 - (tick / maxValue) * 54}
-                                                                x2="210"
-                                                                y2={72 - (tick / maxValue) * 54}
-                                                                stroke="#eef2f7"
-                                                            />
-                                                            <text x="6" y={74 - (tick / maxValue) * 54} fontSize="7" fill="#94a3b8">
-                                                                {tick}%
-                                                            </text>
-                                                        </g>
-                                                    ))}
-                                                    <line x1="24" y1="10" x2="24" y2="72" stroke="#e2e8f0" />
-                                                    <line x1="24" y1="72" x2="210" y2="72" stroke="#e2e8f0" />
-                                                    <polygon points={areaPoints} fill="url(#lineFill)" />
-                                                    <polyline
-                                                        points={series.map((v: number, i: number) => `${24 + i * 56},${72 - (v / maxValue) * 54}`).join(' ')}
-                                                        fill="none"
-                                                        stroke="#6366f1"
-                                                        strokeWidth="2"
-                                                    />
-                                                    {series.map((v: number, i: number) => (
-                                                        <g key={`${v}-${i}`}>
-                                                            <circle cx={24 + i * 56} cy={72 - (v / maxValue) * 54} r="5" fill="#e0e7ff" />
-                                                            <circle cx={24 + i * 56} cy={72 - (v / maxValue) * 54} r="2.6" fill="#6366f1">
-                                                                <title>{`${labels[i] || `点${i + 1}`}: ${v}%`}</title>
-                                                            </circle>
-                                                            <text x={24 + i * 56} y={72 - (v / maxValue) * 54 - 6} textAnchor="middle" fontSize="7" fill="#475569">
-                                                                {v}%
-                                                            </text>
-                                                            <text x={24 + i * 56} y="90" textAnchor="middle" fontSize="7" fill="#94a3b8">
-                                                                {labels[i] || `点${i + 1}`}
-                                                            </text>
-                                                        </g>
-                                                    ))}
-                                                </svg>
-                                            );
-                                        })()}
-                                        {message.data?.chartType === 'bar' && (() => {
-                                            const series = message.data?.series || [];
-                                            const labels = message.data?.labels || [];
-                                            const maxValue = Math.max(...series, 1);
-                                            const tickCount = 4;
-                                            const ticks = Array.from({ length: tickCount + 1 }, (_, i) => Math.round((maxValue / tickCount) * i));
-                                            return (
-                                                <svg viewBox="0 0 220 110" className="w-full h-28 bg-white rounded-lg border border-slate-200">
-                                                    <defs>
-                                                        <linearGradient id="barFill" x1="0" x2="0" y1="0" y2="1">
-                                                            <stop offset="0%" stopColor="#10b981" stopOpacity="0.95" />
-                                                            <stop offset="100%" stopColor="#10b981" stopOpacity="0.55" />
-                                                        </linearGradient>
-                                                    </defs>
-                                                    {ticks.map((tick, index) => (
-                                                        <g key={`${tick}-${index}`}>
-                                                            <line
-                                                                x1="24"
-                                                                y1={80 - (tick / maxValue) * 60}
-                                                                x2="210"
-                                                                y2={80 - (tick / maxValue) * 60}
-                                                                stroke="#eef2f7"
-                                                            />
-                                                            <text x="6" y={82 - (tick / maxValue) * 60} fontSize="7" fill="#94a3b8">
-                                                                {tick}
-                                                            </text>
-                                                        </g>
-                                                    ))}
-                                                    <line x1="24" y1="12" x2="24" y2="80" stroke="#e2e8f0" />
-                                                    <line x1="24" y1="80" x2="210" y2="80" stroke="#e2e8f0" />
-                                                    {series.map((v: number, i: number) => (
-                                                        <g key={`${v}-${i}`}>
-                                                            <rect
-                                                                x={30 + i * 36}
-                                                                y={80 - (v / maxValue) * 60}
-                                                                width="20"
-                                                                height={(v / maxValue) * 60}
-                                                                rx="4"
-                                                                fill="url(#barFill)"
-                                                            />
-                                                            <rect
-                                                                x={30 + i * 36}
-                                                                y={80 - (v / maxValue) * 60}
-                                                                width="20"
-                                                                height="4"
-                                                                rx="2"
-                                                                fill="#34d399"
-                                                            />
-                                                            <text x={40 + i * 36} y={80 - (v / maxValue) * 60 - 4} textAnchor="middle" fontSize="7" fill="#475569">
-                                                                {v}
-                                                            </text>
-                                                            <text x={40 + i * 36} y="98" textAnchor="middle" fontSize="7" fill="#94a3b8">
-                                                                {labels[i] || `项${i + 1}`}
-                                                            </text>
-                                                        </g>
-                                                    ))}
-                                                </svg>
-                                            );
-                                        })()}
-                                        {message.data?.chartType === 'pie' && (() => {
-                                            const series = message.data?.series || [];
-                                            const labels = message.data?.labels || [];
-                                            const total = series.reduce((sum: number, item: number) => sum + item, 0) || 1;
-                                            let acc = 0;
-                                            const colors = ['#6366f1', '#10b981', '#f59e0b', '#f97316'];
-                                            return (
-                                                <div className="flex items-center gap-3">
-                                                    <svg viewBox="0 0 120 80" className="w-24 h-20 bg-white rounded-lg border border-slate-200">
-                                                        <circle cx="40" cy="40" r="26" fill="#e2e8f0" />
-                                                        {series.map((v: number, i: number) => {
-                                                            const start = acc;
-                                                            const slice = (v / total) * Math.PI * 2;
-                                                            const end = start + slice;
-                                                            acc = end;
-                                                            const largeArc = slice > Math.PI ? 1 : 0;
-                                                            const x1 = 40 + 26 * Math.cos(start);
-                                                            const y1 = 40 + 26 * Math.sin(start);
-                                                            const x2 = 40 + 26 * Math.cos(end);
-                                                            const y2 = 40 + 26 * Math.sin(end);
-                                                            return (
-                                                                <path
-                                                                    key={`${v}-${i}`}
-                                                                    d={`M40 40 L ${x1} ${y1} A 26 26 0 ${largeArc} 1 ${x2} ${y2} Z`}
-                                                                    fill={colors[i % colors.length]}
-                                                                />
-                                                            );
-                                                        })}
-                                                        <circle cx="40" cy="40" r="14" fill="#ffffff" />
-                                                        <text x="40" y="38" textAnchor="middle" fontSize="8" fill="#0f172a">总计</text>
-                                                        <text x="40" y="50" textAnchor="middle" fontSize="9" fontWeight="600" fill="#0f172a">{total}</text>
-                                                    </svg>
-                                                    <div className="flex-1 space-y-1">
-                                                        {series.map((v: number, i: number) => (
-                                                            <div key={`${v}-${i}`} className="flex items-center gap-2 text-[10px] text-slate-600">
-                                                                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: colors[i % colors.length] }} />
-                                                                <span>{labels[i] || `分类${i + 1}`}</span>
-                                                                <span className="text-slate-400">{v}</span>
-                                                                <span className="text-slate-400">({Math.round((v / total) * 100)}%)</span>
-                                                            </div>
+                                        <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+                                            <table className="min-w-full text-xs">
+                                                <thead className="bg-slate-50 text-slate-600">
+                                                    <tr>
+                                                        {(message.data?.columns || []).map((col: string) => (
+                                                            <th key={col} className="px-3 py-2 text-left font-semibold">
+                                                                {col}
+                                                            </th>
                                                         ))}
-                                                    </div>
-                                                </div>
-                                            );
-                                        })()}
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-slate-100 text-slate-700">
+                                                    {(message.data?.rows || []).slice(0, 20).map((row: any, idx: number) => (
+                                                        <tr key={`${message.id}-row-${idx}`} className="hover:bg-slate-50">
+                                                            {(message.data?.columns || []).map((col: string) => (
+                                                                <td key={`${message.id}-${idx}-${col}`} className="px-3 py-2 whitespace-nowrap">
+                                                                    {row?.[col] ?? '-'}
+                                                                </td>
+                                                            ))}
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        {(message.data?.rows || []).length > 20 && (
+                                            <div className="text-[10px] text-slate-400">
+                                                仅展示前 20 行结果
+                                            </div>
+                                        )}
                                     </div>
-                                ) : (
+                                ) : message.type === 'chart' ? (() => {
+                                    const chartMarkdown = buildChartMarkdown(message);
+                                    return (
+                                        <div className="space-y-2">
+                                            <div className="text-xs font-medium text-slate-600">{message.content}</div>
+                                            <div className="bg-white rounded-lg border border-slate-200 p-4 min-h-[200px]">
+                                                {chartMarkdown ? (
+                                                    <GPTVis>{chartMarkdown}</GPTVis>
+                                                ) : (
+                                                    <div className="text-xs text-slate-400">暂无可视化配置</div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })() : (
                                     <div className="whitespace-pre-wrap text-sm">{message.content}</div>
                                 )}
                                 {message.role === 'assistant' && message.type === 'text' && (
@@ -603,8 +680,8 @@ ORDER BY delay_rate DESC;`,
                                 onClick={handleSend}
                                 disabled={!inputValue.trim() || isLoading}
                                 className={`absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg transition-colors ${inputValue.trim() && !isLoading
-                                        ? 'bg-indigo-500 text-white hover:bg-indigo-600'
-                                        : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                                    ? 'bg-indigo-500 text-white hover:bg-indigo-600'
+                                    : 'bg-slate-200 text-slate-400 cursor-not-allowed'
                                     }`}
                             >
                                 <Send size={16} />

@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@antv/gpt-vis": "^0.5.14",
     "@tiptap/extension-highlight": "^3.15.3",
     "@tiptap/extension-mention": "^3.15.3",
     "@tiptap/pm": "^3.15.3",

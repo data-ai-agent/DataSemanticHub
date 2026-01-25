@@ -11,6 +11,7 @@ import {
     X,
     Filter
 } from 'lucide-react';
+import { useToast } from '../components/ui/Toast';
 
 type WorkflowStatus = '启用' | '停用';
 
@@ -160,6 +161,7 @@ const createStepFromTemplate = (template: Omit<WorkflowStep, 'required'>): Workf
 });
 
 const WorkflowManagementView = () => {
+    const toast = useToast();
     const [workflows, setWorkflows] = useState<Workflow[]>(initialWorkflows);
     const [activeWorkflowId, setActiveWorkflowId] = useState(initialWorkflows[0]?.id ?? '');
     const [searchTerm, setSearchTerm] = useState('');
@@ -233,7 +235,7 @@ const WorkflowManagementView = () => {
             return;
         }
         if (!draftWorkflow.name.trim() || !draftWorkflow.code.trim()) {
-            alert('请填写工作流名称与编码。');
+            toast.error('请填写工作流名称与编码。');
             return;
         }
         const nextWorkflow = {
@@ -395,11 +397,10 @@ const WorkflowManagementView = () => {
                                 <button
                                     key={workflow.id}
                                     onClick={() => setActiveWorkflowId(workflow.id)}
-                                    className={`w-full text-left rounded-xl border p-4 transition ${
-                                        isActive
+                                    className={`w-full text-left rounded-xl border p-4 transition ${isActive
                                             ? 'border-indigo-200 bg-indigo-50 shadow-sm'
                                             : 'border-slate-200 hover:border-indigo-200 hover:bg-slate-50'
-                                    }`}
+                                        }`}
                                 >
                                     <div className="flex items-start justify-between">
                                         <div>
@@ -414,11 +415,10 @@ const WorkflowManagementView = () => {
                                             <p className="mt-1 text-xs text-slate-500">{workflow.description}</p>
                                         </div>
                                         <span
-                                            className={`text-xs px-2 py-0.5 rounded-full ${
-                                                workflow.status === '启用'
+                                            className={`text-xs px-2 py-0.5 rounded-full ${workflow.status === '启用'
                                                     ? 'bg-emerald-50 text-emerald-600'
                                                     : 'bg-slate-100 text-slate-500'
-                                            }`}
+                                                }`}
                                         >
                                             {workflow.status}
                                         </span>
@@ -456,11 +456,10 @@ const WorkflowManagementView = () => {
                             <button
                                 onClick={() => activeWorkflow && handleDeleteWorkflow(activeWorkflow)}
                                 disabled={activeWorkflow?.builtIn}
-                                className={`px-3 py-1.5 rounded-lg border text-xs flex items-center gap-1 ${
-                                    activeWorkflow?.builtIn
+                                className={`px-3 py-1.5 rounded-lg border text-xs flex items-center gap-1 ${activeWorkflow?.builtIn
                                         ? 'border-slate-100 text-slate-300 cursor-not-allowed'
                                         : 'border-rose-200 text-rose-600 hover:text-rose-700 hover:border-rose-300'
-                                }`}
+                                    }`}
                             >
                                 <Trash2 size={14} /> 删除
                             </button>
@@ -587,205 +586,202 @@ const WorkflowManagementView = () => {
                 <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/40">
                     <div className="min-h-screen p-4 flex items-start justify-center">
                         <div className="w-full max-w-5xl rounded-2xl bg-white shadow-2xl flex max-h-[92vh] flex-col">
-                        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
-                            <div>
-                                <h3 className="text-lg font-semibold text-slate-800">
-                                    {modalMode === 'create' ? '新建工作流' : '编辑工作流'}
-                                </h3>
-                                <p className="text-xs text-slate-500">配置流程信息、触发条件与节点策略。</p>
+                            <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+                                <div>
+                                    <h3 className="text-lg font-semibold text-slate-800">
+                                        {modalMode === 'create' ? '新建工作流' : '编辑工作流'}
+                                    </h3>
+                                    <p className="text-xs text-slate-500">配置流程信息、触发条件与节点策略。</p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={closeModal}
+                                    className="rounded-full border border-slate-200 p-2 text-slate-500 hover:text-slate-700"
+                                >
+                                    <X size={16} />
+                                </button>
                             </div>
-                            <button
-                                type="button"
-                                onClick={closeModal}
-                                className="rounded-full border border-slate-200 p-2 text-slate-500 hover:text-slate-700"
-                            >
-                                <X size={16} />
-                            </button>
-                        </div>
-                        <div className="space-y-6 px-6 py-6 overflow-y-auto">
-                            <div className="grid gap-4 md:grid-cols-2">
-                                <div className="space-y-2">
-                                    <label className="text-xs font-semibold text-slate-600">工作流名称</label>
-                                    <input
-                                        value={draftWorkflow.name}
-                                        onChange={(event) =>
-                                            setDraftWorkflow({ ...draftWorkflow, name: event.target.value })
-                                        }
-                                        placeholder="例如：语义裁决与版本发布"
-                                        className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none"
-                                    />
+                            <div className="space-y-6 px-6 py-6 overflow-y-auto">
+                                <div className="grid gap-4 md:grid-cols-2">
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-semibold text-slate-600">工作流名称</label>
+                                        <input
+                                            value={draftWorkflow.name}
+                                            onChange={(event) =>
+                                                setDraftWorkflow({ ...draftWorkflow, name: event.target.value })
+                                            }
+                                            placeholder="例如：语义裁决与版本发布"
+                                            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-semibold text-slate-600">工作流编码</label>
+                                        <input
+                                            value={draftWorkflow.code}
+                                            onChange={(event) =>
+                                                setDraftWorkflow({ ...draftWorkflow, code: event.target.value })
+                                            }
+                                            placeholder="semantic_release"
+                                            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none"
+                                        />
+                                    </div>
+                                    <div className="space-y-2 md:col-span-2">
+                                        <label className="text-xs font-semibold text-slate-600">流程描述</label>
+                                        <textarea
+                                            value={draftWorkflow.description}
+                                            onChange={(event) =>
+                                                setDraftWorkflow({ ...draftWorkflow, description: event.target.value })
+                                            }
+                                            placeholder="描述该流程适用的业务与治理场景"
+                                            className="h-20 w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-semibold text-slate-600">状态</label>
+                                        <select
+                                            value={draftWorkflow.status}
+                                            onChange={(event) =>
+                                                setDraftWorkflow({
+                                                    ...draftWorkflow,
+                                                    status: event.target.value as WorkflowStatus
+                                                })
+                                            }
+                                            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none"
+                                        >
+                                            <option value="启用">启用</option>
+                                            <option value="停用">停用</option>
+                                        </select>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-semibold text-slate-600">责任团队</label>
+                                        <input
+                                            value={draftWorkflow.owner}
+                                            onChange={(event) =>
+                                                setDraftWorkflow({ ...draftWorkflow, owner: event.target.value })
+                                            }
+                                            placeholder="语义治理中心"
+                                            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none"
+                                        />
+                                    </div>
                                 </div>
-                                <div className="space-y-2">
-                                    <label className="text-xs font-semibold text-slate-600">工作流编码</label>
-                                    <input
-                                        value={draftWorkflow.code}
-                                        onChange={(event) =>
-                                            setDraftWorkflow({ ...draftWorkflow, code: event.target.value })
-                                        }
-                                        placeholder="semantic_release"
-                                        className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none"
-                                    />
-                                </div>
-                                <div className="space-y-2 md:col-span-2">
-                                    <label className="text-xs font-semibold text-slate-600">流程描述</label>
-                                    <textarea
-                                        value={draftWorkflow.description}
-                                        onChange={(event) =>
-                                            setDraftWorkflow({ ...draftWorkflow, description: event.target.value })
-                                        }
-                                        placeholder="描述该流程适用的业务与治理场景"
-                                        className="h-20 w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-xs font-semibold text-slate-600">状态</label>
-                                    <select
-                                        value={draftWorkflow.status}
-                                        onChange={(event) =>
-                                            setDraftWorkflow({
-                                                ...draftWorkflow,
-                                                status: event.target.value as WorkflowStatus
-                                            })
-                                        }
-                                        className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none"
-                                    >
-                                        <option value="启用">启用</option>
-                                        <option value="停用">停用</option>
-                                    </select>
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-xs font-semibold text-slate-600">责任团队</label>
-                                    <input
-                                        value={draftWorkflow.owner}
-                                        onChange={(event) =>
-                                            setDraftWorkflow({ ...draftWorkflow, owner: event.target.value })
-                                        }
-                                        placeholder="语义治理中心"
-                                        className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none"
-                                    />
-                                </div>
-                            </div>
 
-                            <div>
-                                <p className="text-sm font-semibold text-slate-700">适用范围</p>
-                                <div className="mt-3 flex flex-wrap gap-2">
-                                    {scopeOptions.map((scope) => {
-                                        const active = draftWorkflow.scope.includes(scope);
-                                        return (
-                                            <button
-                                                key={scope}
-                                                type="button"
-                                                onClick={() => toggleDraftScope(scope)}
-                                                className={`rounded-full border px-3 py-1 text-xs transition ${
-                                                    active
-                                                        ? 'border-indigo-200 bg-indigo-50 text-indigo-600'
-                                                        : 'border-slate-200 text-slate-500 hover:border-indigo-200 hover:text-slate-700'
-                                                }`}
-                                            >
-                                                {scope}
-                                            </button>
-                                        );
-                                    })}
+                                <div>
+                                    <p className="text-sm font-semibold text-slate-700">适用范围</p>
+                                    <div className="mt-3 flex flex-wrap gap-2">
+                                        {scopeOptions.map((scope) => {
+                                            const active = draftWorkflow.scope.includes(scope);
+                                            return (
+                                                <button
+                                                    key={scope}
+                                                    type="button"
+                                                    onClick={() => toggleDraftScope(scope)}
+                                                    className={`rounded-full border px-3 py-1 text-xs transition ${active
+                                                            ? 'border-indigo-200 bg-indigo-50 text-indigo-600'
+                                                            : 'border-slate-200 text-slate-500 hover:border-indigo-200 hover:text-slate-700'
+                                                        }`}
+                                                >
+                                                    {scope}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
                                 </div>
-                            </div>
 
-                            <div>
-                                <p className="text-sm font-semibold text-slate-700">触发条件</p>
-                                <div className="mt-3 flex flex-wrap gap-2">
-                                    {triggerOptions.map((trigger) => {
-                                        const active = draftWorkflow.triggers.includes(trigger);
-                                        return (
-                                            <button
-                                                key={trigger}
-                                                type="button"
-                                                onClick={() => toggleDraftTrigger(trigger)}
-                                                className={`rounded-full border px-3 py-1 text-xs transition ${
-                                                    active
-                                                        ? 'border-emerald-200 bg-emerald-50 text-emerald-600'
-                                                        : 'border-slate-200 text-slate-500 hover:border-emerald-200 hover:text-slate-700'
-                                                }`}
-                                            >
-                                                {trigger}
-                                            </button>
-                                        );
-                                    })}
+                                <div>
+                                    <p className="text-sm font-semibold text-slate-700">触发条件</p>
+                                    <div className="mt-3 flex flex-wrap gap-2">
+                                        {triggerOptions.map((trigger) => {
+                                            const active = draftWorkflow.triggers.includes(trigger);
+                                            return (
+                                                <button
+                                                    key={trigger}
+                                                    type="button"
+                                                    onClick={() => toggleDraftTrigger(trigger)}
+                                                    className={`rounded-full border px-3 py-1 text-xs transition ${active
+                                                            ? 'border-emerald-200 bg-emerald-50 text-emerald-600'
+                                                            : 'border-slate-200 text-slate-500 hover:border-emerald-200 hover:text-slate-700'
+                                                        }`}
+                                                >
+                                                    {trigger}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
                                 </div>
-                            </div>
 
-                            <div>
-                                <p className="text-sm font-semibold text-slate-700">流程节点</p>
-                                <div className="mt-3 grid gap-3 md:grid-cols-2">
-                                    {stepTemplates.map((template) => {
-                                        const active = draftSteps.some((step) => step.id === template.id);
-                                        return (
-                                            <div
-                                                key={template.id}
-                                                className={`rounded-xl border p-3 ${
-                                                    active ? 'border-indigo-200 bg-indigo-50/50' : 'border-slate-200'
-                                                }`}
-                                            >
-                                                <label className="flex items-center justify-between">
-                                                    <span className="text-sm font-semibold text-slate-700">
-                                                        {template.name}
-                                                    </span>
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={active}
-                                                        onChange={() => toggleDraftStep(template.id)}
-                                                        className="h-4 w-4 accent-indigo-600"
-                                                    />
-                                                </label>
-                                                <p className="mt-1 text-xs text-slate-500">
-                                                    {template.type} · 默认 {template.role}
-                                                </p>
-                                                {active && (
-                                                    <div className="mt-3 grid gap-2 text-xs text-slate-600">
+                                <div>
+                                    <p className="text-sm font-semibold text-slate-700">流程节点</p>
+                                    <div className="mt-3 grid gap-3 md:grid-cols-2">
+                                        {stepTemplates.map((template) => {
+                                            const active = draftSteps.some((step) => step.id === template.id);
+                                            return (
+                                                <div
+                                                    key={template.id}
+                                                    className={`rounded-xl border p-3 ${active ? 'border-indigo-200 bg-indigo-50/50' : 'border-slate-200'
+                                                        }`}
+                                                >
+                                                    <label className="flex items-center justify-between">
+                                                        <span className="text-sm font-semibold text-slate-700">
+                                                            {template.name}
+                                                        </span>
                                                         <input
-                                                            value={
-                                                                draftSteps.find((step) => step.id === template.id)?.role ??
-                                                                template.role
-                                                            }
-                                                            onChange={(event) =>
-                                                                updateDraftStep(template.id, { role: event.target.value })
-                                                            }
-                                                            placeholder="负责人角色"
-                                                            className="w-full rounded-lg border border-slate-200 px-2 py-1 text-xs focus:border-indigo-500 focus:outline-none"
+                                                            type="checkbox"
+                                                            checked={active}
+                                                            onChange={() => toggleDraftStep(template.id)}
+                                                            className="h-4 w-4 accent-indigo-600"
                                                         />
-                                                        <input
-                                                            value={
-                                                                draftSteps.find((step) => step.id === template.id)?.sla ??
-                                                                template.sla
-                                                            }
-                                                            onChange={(event) =>
-                                                                updateDraftStep(template.id, { sla: event.target.value })
-                                                            }
-                                                            placeholder="SLA"
-                                                            className="w-full rounded-lg border border-slate-200 px-2 py-1 text-xs focus:border-indigo-500 focus:outline-none"
-                                                        />
-                                                    </div>
-                                                )}
-                                            </div>
-                                        );
-                                    })}
+                                                    </label>
+                                                    <p className="mt-1 text-xs text-slate-500">
+                                                        {template.type} · 默认 {template.role}
+                                                    </p>
+                                                    {active && (
+                                                        <div className="mt-3 grid gap-2 text-xs text-slate-600">
+                                                            <input
+                                                                value={
+                                                                    draftSteps.find((step) => step.id === template.id)?.role ??
+                                                                    template.role
+                                                                }
+                                                                onChange={(event) =>
+                                                                    updateDraftStep(template.id, { role: event.target.value })
+                                                                }
+                                                                placeholder="负责人角色"
+                                                                className="w-full rounded-lg border border-slate-200 px-2 py-1 text-xs focus:border-indigo-500 focus:outline-none"
+                                                            />
+                                                            <input
+                                                                value={
+                                                                    draftSteps.find((step) => step.id === template.id)?.sla ??
+                                                                    template.sla
+                                                                }
+                                                                onChange={(event) =>
+                                                                    updateDraftStep(template.id, { sla: event.target.value })
+                                                                }
+                                                                placeholder="SLA"
+                                                                className="w-full rounded-lg border border-slate-200 px-2 py-1 text-xs focus:border-indigo-500 focus:outline-none"
+                                                            />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        <div className="flex items-center justify-end gap-3 border-t border-slate-200 px-6 py-4">
-                            <button
-                                type="button"
-                                onClick={closeModal}
-                                className="rounded-lg border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:text-slate-800"
-                            >
-                                取消
-                            </button>
-                            <button
-                                type="button"
-                                onClick={handleSaveWorkflow}
-                                className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
-                            >
-                                {modalMode === 'create' ? '创建工作流' : '保存修改'}
-                            </button>
-                        </div>
+                            <div className="flex items-center justify-end gap-3 border-t border-slate-200 px-6 py-4">
+                                <button
+                                    type="button"
+                                    onClick={closeModal}
+                                    className="rounded-lg border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:text-slate-800"
+                                >
+                                    取消
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleSaveWorkflow}
+                                    className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+                                >
+                                    {modalMode === 'create' ? '创建工作流' : '保存修改'}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

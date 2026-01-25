@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS `users` (
     `last_login_at` DATETIME DEFAULT NULL COMMENT '最后登录时间',
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-    `deleted_at` DATETIME DEFAULT NULL COMMENT '删除时间（软删除）',
+    `deleted_at` DATETIME(3) DEFAULT NULL COMMENT '删除时间（软删除）',
     PRIMARY KEY (`id`),
     UNIQUE KEY `uk_email` (`email`),
     KEY `idx_email` (`email`),

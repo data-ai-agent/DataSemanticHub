@@ -7,7 +7,7 @@ toolchain go1.24.12
 require (
 	github.com/golang-jwt/jwt/v4 v4.5.2
 	github.com/google/uuid v1.6.0
-	github.com/jinguoxing/idrm-go-base v0.2.0
+	github.com/jinguoxing/idrm-go-base v0.2.1
 	github.com/stretchr/testify v1.11.1
 	github.com/zeromicro/go-zero v1.9.4
 	golang.org/x/crypto v0.47.0

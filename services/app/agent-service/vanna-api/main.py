@@ -1,13 +1,25 @@
 
 import os
+import time
 import uvicorn
 from fastapi import FastAPI, HTTPException, Body
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
+
+# 设置 OpenAI base_url（必须在导入 vanna 之前设置）
+llm_base_url = os.getenv("LLM_BASE_URL")
+if llm_base_url:
+    os.environ["OPENAI_API_BASE"] = llm_base_url
+    os.environ["OPENAI_BASE_URL"] = llm_base_url
+
 from vanna.remote import VannaDefault
 from vanna.openai import OpenAI_Chat
 from vanna.chromadb import ChromaDB_VectorStore
+
+# 导入配置模块
+from config import get_db_config, get_vanna_config
+from chart_recommender import recommend_chart_type
 
 # 配置日志
 import logging
@@ -50,14 +62,15 @@ app.add_middleware(
 )
 
 # 初始化 Vanna
-# 这里我们定义一个自定义的 Vanna 类，可以根据环境变量灵活配置
-# 为了演示，我们先尝试使用 OpenAI + ChromaDB 的组合，或者使用 VannaDefault (如果用户有 Vanna API key)
-# 如果环境变量中有 VANNA_API_KEY 和 VANNA_MODEL，则使用 VannaDefault (Remote)
-# 否则尝试使用本地配置 (OpenAI + ChromaDB)
+# 根据环境变量灵活配置，支持三种模式：
+# 1. VannaDefault (Remote) - 使用 Vanna API
+# 2. OpenAI/DeepSeek + ChromaDB (Local) - 使用云端 API
+# 3. Ollama + ChromaDB (Local) - 使用本地 Ollama 模型
 
 vn = None
 
-class MyVanna(ChromaDB_VectorStore, OpenAI_Chat):
+# 定义自定义 Vanna 类
+class MyVannaOpenAI(ChromaDB_VectorStore, OpenAI_Chat):
     def __init__(self, config=None):
         ChromaDB_VectorStore.__init__(self, config=config)
         OpenAI_Chat.__init__(self, config=config)
@@ -65,50 +78,101 @@ class MyVanna(ChromaDB_VectorStore, OpenAI_Chat):
 def setup_vanna():
     global vn
     
-    # 1. 尝试连接数据库 (MariaDB)
-    # 从环境变量读取配置
-    db_host = os.getenv("DB_HOST", "mariadb")
-    db_port = int(os.getenv("DB_PORT", 3306))
-    db_name = os.getenv("DB_NAME", "datasemantichub")
-    db_user = os.getenv("DB_USER", "root")
-    db_password = os.getenv("DB_PASSWORD", "")
+    # 1. 从配置文件读取数据库配置 (MariaDB)
+    db_config = get_db_config()
+    db_host = db_config['host']
+    db_port = db_config['port']
+    db_name = db_config['database']
+    db_user = db_config['user']
+    db_password = db_config['password']
+    
+    # 2. 从配置文件读取 Vanna 配置
+    vanna_config = get_vanna_config()
+    chroma_db_path = vanna_config['chroma_db_path']
+    os.makedirs(chroma_db_path, exist_ok=True)
 
-    # 2. 初始化 Vanna 模型
-    vanna_api_key = os.getenv("VANNA_API_KEY")
-    vanna_model_name = os.getenv("VANNA_MODEL")
+    # 3. 根据配置选择 Vanna 模式
+    vanna_api_key = vanna_config['vanna_api_key']
+    vanna_model_name = vanna_config['vanna_model']
+    use_ollama = vanna_config['use_ollama']
     
     if vanna_api_key and vanna_model_name:
-        logger.info(f"Using Remote Vanna model: {vanna_model_name}")
+        # 模式 1: 使用 VannaDefault (Remote)
+        logger.info(f"🚀 正在使用 Remote Vanna 模型: {vanna_model_name}")
         vn = VannaDefault(model=vanna_model_name, api_key=vanna_api_key)
+    elif use_ollama:
+        # 模式 3: 使用本地 Ollama
+        try:
+            from vanna.ollama import Ollama
+            class MyVannaOllama(ChromaDB_VectorStore, Ollama):
+                def __init__(self, config=None):
+                    ChromaDB_VectorStore.__init__(self, config=config)
+                    Ollama.__init__(self, config=config)
+            
+            ollama_model = vanna_config['ollama_model']
+            ollama_host = vanna_config['ollama_host']
+            
+            config = {
+                'model': ollama_model,
+                'ollama_host': ollama_host,
+                'path': chroma_db_path
+            }
+            logger.info(f"🚀 正在使用本地 Ollama 模型: {config['model']} (host: {ollama_host})")
+            vn = MyVannaOllama(config=config)
+        except ImportError:
+            logger.error("Ollama support not available. Please install vanna[ollama]")
+            return
     else:
-        # Fallback to OpenAI + ChromaDB (Local)
-        # 需要 OPENAI_API_KEY
-        openai_api_key = os.getenv("OPENAI_API_KEY")
+        # 模式 2: 使用 OpenAI/DeepSeek + ChromaDB (Local)
+        openai_api_key = vanna_config['openai_api_key']
+        llm_model = vanna_config['llm_model']
+        llm_base_url = vanna_config['llm_base_url']
+
         if openai_api_key:
-            logger.info("Using Local Vanna (OpenAI + ChromaDB)")
-            vn = MyVanna(config={'api_key': openai_api_key, 'model': 'gpt-3.5-turbo'}) # Default to 3.5 turbo
+            config = {
+                'api_key': openai_api_key,
+                'model': llm_model,
+                'path': chroma_db_path
+            }
+            if llm_base_url:
+                logger.info(f"🚀 正在使用云端 API 模型: {llm_model} (base_url: {llm_base_url})")
+            else:
+                logger.info(f"🚀 正在使用云端 API 模型: {llm_model}")
+            vn = MyVannaOpenAI(config=config)
         else:
-            logger.warning("No Vanna API Key or OpenAI API Key found. Vanna will not be initialized properly.")
+            logger.warning("⚠️ 未找到 Vanna API Key、OpenAI API Key 或未启用 Ollama。Vanna 将无法正常初始化。")
             return
 
-    # 连接到数据库
-    try:
-        vn.connect_to_mysql(
-            host=db_host,
-            dbname=db_name,
-            user=db_user,
-            password=db_password,
-            port=db_port
-        )
-        logger.info(f"Connected to MariaDB at {db_host}:{db_port}/{db_name}")
-    except Exception as e:
-        logger.error(f"Failed to connect to database: {e}")
+    # 4. 等待数据库启动并连接
+    logger.info("⏳ 等待数据库启动...")
+    max_retries = 10
+    retry_delay = 3
+    
+    for attempt in range(max_retries):
+        try:
+            vn.connect_to_mysql(
+                host=db_host,
+                dbname=db_name,
+                user=db_user,
+                password=db_password,
+                port=db_port
+            )
+            logger.info(f"✅ 已连接到 MariaDB: {db_host}:{db_port}/{db_name}")
+            break
+        except Exception as e:
+            if attempt < max_retries - 1:
+                logger.warning(f"数据库连接失败 (尝试 {attempt + 1}/{max_retries}): {e}，{retry_delay} 秒后重试...")
+                time.sleep(retry_delay)
+            else:
+                logger.error(f"❌ 数据库连接失败，已重试 {max_retries} 次: {e}")
+                raise
 
 @app.on_event("startup")
 async def startup_event():
     setup_vanna()
 
 @app.get("/health")
+@app.head("/health")
 def health_check():
     return {"status": "ok", "vanna_initialized": vn is not None}
 
@@ -140,6 +204,7 @@ def run_sql(request: SqlRequest):
 def ask(request: QuestionRequest):
     """
     Combined generate and run
+    返回 SQL、数据以及图表推荐信息
     """
     if not vn:
         raise HTTPException(status_code=503, detail="Vanna is not initialized")
@@ -150,12 +215,30 @@ def ask(request: QuestionRequest):
         df = vn.run_sql(sql=sql)
         
         results = df.to_dict(orient='records') if df is not None else []
+        columns = df.columns.tolist() if df is not None else []
+        
+        # 图表推荐：基于问题语义和数据特征
+        chart_recommendation = None
+        if len(results) > 0:
+            try:
+                # 取前10行作为样本进行分析
+                data_sample = results[:10]
+                chart_recommendation = recommend_chart_type(
+                    question=request.question,
+                    columns=columns,
+                    data_sample=data_sample,
+                    row_count=len(results)
+                )
+                logger.info(f"📊 图表推荐: {chart_recommendation['type']} - {chart_recommendation['reason']}")
+            except Exception as e:
+                logger.warning(f"图表推荐失败: {e}")
         
         return {
             "question": request.question,
             "sql": sql,
             "data": results,
-            "columns": df.columns.tolist() if df is not None else []
+            "columns": columns,
+            "chart_recommendation": chart_recommendation  # 新增图表推荐
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -204,5 +287,8 @@ def remove_training_data(id: str):
 
 
 if __name__ == "__main__":
-    port = int(os.getenv("PORT", 8891))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    from config import get_config
+    config = get_config()
+    port = config.get('server.port', 8891, 'PORT')
+    host = config.get('server.host', '0.0.0.0', 'HOST')
+    uvicorn.run(app, host=host, port=port)

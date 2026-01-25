@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     Users,
     ShieldCheck,
@@ -22,11 +22,13 @@ import {
     UserPlus,
     FolderPlus,
     FileText,
-    Link2
+    Link2,
+    MessageCircle
 } from 'lucide-react';
 import RoleChangeConfirmModal from './components/RoleChangeConfirmModal';
 import { EffectivePermissionPreviewModal } from './components/EffectivePermissionPreviewModal';
 import SoDRulesModal from './components/SoDRulesModal';
+import { useToast } from '../components/ui/Toast';
 
 type ScopeType = 'Global' | 'Tenant' | 'Organization' | 'Domain';
 
@@ -157,6 +159,40 @@ const initialRolePermissions: Record<string, PermissionItem[]> = {
     ]
 };
 
+const permissionTemplatePresets = [
+    {
+        id: 'tpl_admin',
+        label: '平台管理员模板',
+        description: '覆盖全平台治理与配置能力。',
+        permissions: [
+            { module: '语义资产', actions: ['查看', '编辑', '发布', '管理'], note: '全量可操作' },
+            { module: '语义版本', actions: ['查看', '编辑', '发布', '管理'], note: '版本策略配置' },
+            { module: '数据安全', actions: ['查看', '管理'], note: '策略与审计' },
+            { module: '数据服务', actions: ['查看', '编辑', '发布', '管理'], note: '服务配置与路由' }
+        ]
+    },
+    {
+        id: 'tpl_governance',
+        label: '语义治理负责人模板',
+        description: '聚焦语义资产裁决、版本发布与质量治理。',
+        permissions: [
+            { module: '语义资产', actions: ['查看', '编辑', '发布'], note: '裁决与发布' },
+            { module: '语义版本', actions: ['查看', '编辑', '发布'], note: '版本评审' },
+            { module: '数据质量', actions: ['查看', '管理'], note: '质量规则' },
+            { module: '业务场景', actions: ['查看', '编辑'], note: '编排确认' }
+        ]
+    },
+    {
+        id: 'tpl_ops',
+        label: '数据服务运营模板',
+        description: '保障问数/找数与服务运营。',
+        permissions: [
+            { module: '数据服务', actions: ['查看', '编辑', '发布'], note: '服务运营' },
+            { module: '问数/找数', actions: ['查看', '编辑'], note: '模板与词典' }
+        ]
+    }
+];
+
 const permissionCatalog: PermissionItem[] = [
     { module: '语义资产', actions: [], note: '裁决与发布' },
     { module: '语义版本', actions: [], note: '版本评审与回溯' },
@@ -236,6 +272,7 @@ const computeRiskLevel = (role: Role, permissions: PermissionItem[]): RiskLevel 
 };
 
 const UserPermissionView = () => {
+    const toast = useToast();
     const [rolesState, setRolesState] = useState<Role[]>(initialRoles);
     const [rolePermissionsState, setRolePermissionsState] = useState<Record<string, PermissionItem[]>>(
         initialRolePermissions
@@ -260,11 +297,18 @@ const UserPermissionView = () => {
     const [showUnusedPerms, setShowUnusedPerms] = useState(false);
     const [rlsEnabled, setRlsEnabled] = useState(false);
     const [showSoDModal, setShowSoDModal] = useState(false);
+    const [handledDeepLink, setHandledDeepLink] = useState(false);
 
     const templateOptions = useMemo(() => {
         const builtInTemplates = rolesState.filter((role) => role.builtIn);
+        const presetTemplates = permissionTemplatePresets.map((preset) => ({
+            id: preset.id,
+            label: preset.label,
+            description: preset.description
+        }));
         return [
             { id: 'blank', label: '空白模板', description: '从零配置权限' },
+            ...presetTemplates,
             ...builtInTemplates.map((role) => ({
                 id: role.id,
                 label: role.name,
@@ -273,6 +317,17 @@ const UserPermissionView = () => {
         ];
     }, [rolesState]);
     const activeTemplate = templateOptions.find((option) => option.id === draftTemplateId);
+
+    const resolveTemplatePermissions = useCallback((templateId: string) => {
+        if (templateId === 'blank') {
+            return normalizePermissions();
+        }
+        const preset = permissionTemplatePresets.find((item) => item.id === templateId);
+        if (preset) {
+            return normalizePermissions(preset.permissions);
+        }
+        return normalizePermissions(rolePermissionsState[templateId]);
+    }, [rolePermissionsState]);
 
     const filteredRoles = useMemo(() => {
         const filtered = rolesState.filter(role => {
@@ -315,14 +370,10 @@ const UserPermissionView = () => {
         if (!modalOpen || modalMode !== 'create') {
             return;
         }
-        if (draftTemplateId === 'blank') {
-            setDraftPermissions(normalizePermissions());
-            return;
-        }
-        setDraftPermissions(normalizePermissions(rolePermissionsState[draftTemplateId]));
-    }, [draftTemplateId, modalMode, modalOpen, rolePermissionsState]);
+        setDraftPermissions(resolveTemplatePermissions(draftTemplateId));
+    }, [draftTemplateId, modalMode, modalOpen, resolveTemplatePermissions]);
 
-    const openCreateModal = (templateId: string) => {
+    const openCreateModal = useCallback((templateId: string) => {
         const newRole: Role = {
             id: `role_${Date.now()}`,
             name: '',
@@ -342,14 +393,30 @@ const UserPermissionView = () => {
         setModalMode('create');
         setDraftRole(newRole);
         setDraftTemplateId(templateId);
-        setDraftPermissions(
-            templateId === 'blank'
-                ? normalizePermissions()
-                : normalizePermissions(rolePermissionsState[templateId])
-        );
+        setDraftPermissions(resolveTemplatePermissions(templateId));
         setRlsEnabled(false);
         setModalOpen(true);
-    };
+    }, [resolveTemplatePermissions]);
+
+    useEffect(() => {
+        if (handledDeepLink || modalOpen) return;
+        if (typeof window === 'undefined') return;
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('tab') !== 'user_permission') return;
+        if (params.get('createRole') !== '1') return;
+        const templateId = params.get('templateId') || 'blank';
+        const isPreset = permissionTemplatePresets.some((preset) => preset.id === templateId);
+        const resolvedTemplate = templateId !== 'blank' && (isPreset || rolePermissionsState[templateId])
+            ? templateId
+            : 'blank';
+        openCreateModal(resolvedTemplate);
+        setHandledDeepLink(true);
+        params.delete('createRole');
+        params.delete('templateId');
+        const url = new URL(window.location.href);
+        url.search = params.toString() ? `?${params.toString()}` : '';
+        window.history.replaceState({ path: url.href }, '', url.href);
+    }, [handledDeepLink, modalOpen, openCreateModal, rolePermissionsState]);
 
     const openEditModal = (role: Role) => {
         setModalMode('edit');
@@ -372,7 +439,7 @@ const UserPermissionView = () => {
             return;
         }
         if (!draftRole.name.trim() || !draftRole.code.trim()) {
-            alert('请填写角色名称与编码。');
+            toast.error('请填写角色名称与编码。');
             return;
         }
         setConfirmModalOpen(true);
@@ -518,7 +585,7 @@ const UserPermissionView = () => {
     };
 
     const handleBatchRecertify = () => {
-        alert('已发起权限重新认证任务');
+        toast.success('已发起权限重新认证任务');
         clearSelection();
     };
 
@@ -844,7 +911,7 @@ const UserPermissionView = () => {
                                         <Copy size={14} /> 复制
                                     </button>
                                     <button
-                                        onClick={() => alert('查看角色历史版本')}
+                                        onClick={() => toast.info('功能开发中：查看角色历史版本')}
                                         className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs text-slate-600 hover:text-slate-800 flex items-center gap-1"
                                     >
                                         <History size={14} /> 历史版本
@@ -883,7 +950,7 @@ const UserPermissionView = () => {
                                 <div className="flex items-center justify-between">
                                     <p className="text-sm font-semibold text-slate-700">授权范围与数据过滤</p>
                                     <button
-                                        onClick={() => alert('查看范围明细')}
+                                        onClick={() => toast.info('功能开发中：查看范围明细')}
                                         className="text-xs text-indigo-600 hover:text-indigo-700"
                                     >
                                         查看全部范围

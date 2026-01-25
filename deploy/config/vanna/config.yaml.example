@@ -1,0 +1,47 @@
+# Vanna API 配置文件示例
+# 复制此文件为 config.yaml 并根据实际情况修改配置
+# 注意：环境变量的优先级高于配置文件
+
+# 数据库配置
+db:
+  host: mariadb
+  port: 3306
+  database: datasemantichub
+  user: root
+  password: ""  # 建议通过环境变量 DB_PASSWORD 设置
+
+# Vanna 配置
+vanna:
+  # 模式选择：remote, openai, ollama
+  # 如果设置了 api_key 和 model，则使用 remote 模式
+  # 如果设置了 use_ollama: true，则使用 ollama 模式
+  # 否则使用 openai 模式
+  
+  # Remote 模式配置（使用 Vanna API）
+  api_key: ""  # 建议通过环境变量 VANNA_API_KEY 设置
+  model: ""   # 建议通过环境变量 VANNA_MODEL 设置
+  
+  # Ollama 模式配置（本地模型）
+  use_ollama: false
+  ollama:
+    model: qwen2.5-coder:7b
+    host: http://host.docker.internal:11434
+  
+  # 向量库持久化路径
+  chroma_db_path: /app/chroma_db
+
+# LLM 配置（OpenAI/DeepSeek 模式）
+llm:
+  # OpenAI API Key（用于 OpenAI 或兼容 API）
+  openai_api_key: ""  # 建议通过环境变量 OPENAI_API_KEY 设置
+  
+  # 模型名称
+  model: gpt-3.5-turbo  # 可选值: gpt-3.5-turbo, gpt-4, deepseek-chat 等
+  
+  # API Base URL（可选，用于 DeepSeek 等兼容 OpenAI API 的服务）
+  base_url: ""  # 例如: https://api.deepseek.com
+
+# 服务配置
+server:
+  port: 8891
+  host: 0.0.0.0

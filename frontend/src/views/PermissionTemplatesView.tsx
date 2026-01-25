@@ -60,6 +60,8 @@ const operationPointDefinitions: Record<string, { label: string; key: string; pa
     ]
 };
 
+const scopeHintOptions = ['全平台', '组织级', '数据域', '租户'];
+
 const initialTemplates: Template[] = [
     {
         id: 'tpl_admin',
@@ -134,11 +136,20 @@ const PermissionTemplatesView = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState<'all' | TemplateStatus>('all');
     const [showAdvanced, setShowAdvanced] = useState(false);
+
     const [modalOpen, setModalOpen] = useState(false);
-    const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
     const [draftTemplate, setDraftTemplate] = useState<Template | null>(null);
     const [draftPermissions, setDraftPermissions] = useState<PermissionItem[]>([]);
     const [showAdvancedPermissions, setShowAdvancedPermissions] = useState(false);
+
+    const [drawerOpen, setDrawerOpen] = useState(false);
+    const [drawerTemplate, setDrawerTemplate] = useState<Template | null>(null);
+    const [drawerPermissions, setDrawerPermissions] = useState<PermissionItem[]>([]);
+    const [drawerShowAdvanced, setDrawerShowAdvanced] = useState(false);
+    const [actionModalOpen, setActionModalOpen] = useState(false);
+    const [actionType, setActionType] = useState<'publish' | 'disable'>('publish');
+    const [actionTarget, setActionTarget] = useState<Template | null>(null);
+    const [actionReason, setActionReason] = useState('');
 
     const filteredTemplates = useMemo(() => {
         return templates.filter((template) => {
@@ -166,16 +177,17 @@ const PermissionTemplatesView = () => {
         };
         setDraftTemplate(draft);
         setDraftPermissions(normalizePermissions());
-        setModalMode('create');
+        setShowAdvancedPermissions(false);
         setModalOpen(true);
     };
 
-    const openEditModal = () => {
-        if (!activeTemplate) return;
-        setDraftTemplate({ ...activeTemplate });
-        setDraftPermissions(normalizePermissions(activeTemplate.permissions));
-        setModalMode('edit');
-        setModalOpen(true);
+    const openEditDrawer = (template?: Template) => {
+        const target = template ?? activeTemplate;
+        if (!target) return;
+        setDrawerTemplate({ ...target });
+        setDrawerPermissions(normalizePermissions(target.permissions));
+        setDrawerShowAdvanced(false);
+        setDrawerOpen(true);
     };
 
     const closeModal = () => {
@@ -183,7 +195,12 @@ const PermissionTemplatesView = () => {
         setDraftTemplate(null);
     };
 
-    const saveTemplate = () => {
+    const closeDrawer = () => {
+        setDrawerOpen(false);
+        setDrawerTemplate(null);
+    };
+
+    const saveNewTemplate = () => {
         if (!draftTemplate) return;
         const permissions = draftPermissions.filter((item) => item.actions.length > 0);
         const nextTemplate = {
@@ -192,13 +209,61 @@ const PermissionTemplatesView = () => {
             moduleCount: permissions.length,
             permissions
         };
-        if (modalMode === 'create') {
-            setTemplates((prev) => [nextTemplate, ...prev]);
-            setActiveTemplateId(nextTemplate.id);
-        } else {
-            setTemplates((prev) => prev.map((item) => (item.id === nextTemplate.id ? nextTemplate : item)));
-        }
+        setTemplates((prev) => [nextTemplate, ...prev]);
+        setActiveTemplateId(nextTemplate.id);
         closeModal();
+    };
+
+    const saveDrawerTemplate = () => {
+        if (!drawerTemplate) return;
+        const permissions = drawerPermissions.filter((item) => item.actions.length > 0);
+        const nextTemplate = {
+            ...drawerTemplate,
+            updatedAt: new Date().toISOString().split('T')[0],
+            moduleCount: permissions.length,
+            permissions
+        };
+        setTemplates((prev) => prev.map((item) => (item.id === nextTemplate.id ? nextTemplate : item)));
+        setActiveTemplateId(nextTemplate.id);
+        closeDrawer();
+    };
+
+    const openTemplateAction = (type: 'publish' | 'disable', template: Template) => {
+        setActionType(type);
+        setActionTarget(template);
+        setActionReason('');
+        setActionModalOpen(true);
+    };
+
+    const closeActionModal = () => {
+        setActionModalOpen(false);
+        setActionTarget(null);
+        setActionReason('');
+    };
+
+    const confirmTemplateAction = () => {
+        if (!actionTarget) return;
+        const nextStatus: TemplateStatus = actionType === 'publish' ? '已发布' : '停用';
+        const updatedAt = new Date().toISOString().split('T')[0];
+        setTemplates((prev) => prev.map((item) => (
+            item.id === actionTarget.id
+                ? { ...item, status: nextStatus, updatedAt }
+                : item
+        )));
+        if (drawerTemplate?.id === actionTarget.id) {
+            setDrawerTemplate({ ...drawerTemplate, status: nextStatus, updatedAt });
+        }
+        closeActionModal();
+    };
+
+    const navigateToRoleCreate = (templateId: string) => {
+        if (typeof window === 'undefined') return;
+        const url = new URL(window.location.href);
+        url.searchParams.set('tab', 'user_permission');
+        url.searchParams.set('createRole', '1');
+        url.searchParams.set('templateId', templateId);
+        window.history.pushState({ path: url.href }, '', url.href);
+        window.dispatchEvent(new PopStateEvent('popstate'));
     };
 
     const togglePermissionAction = (module: string, action: string) => {
@@ -218,6 +283,36 @@ const PermissionTemplatesView = () => {
 
     const toggleOperationPoint = (module: string, pointKey: string) => {
         setDraftPermissions((prev) =>
+            prev.map((item) => {
+                if (item.module !== module) return item;
+                const currentPoints = item.operationPoints || [];
+                return {
+                    ...item,
+                    operationPoints: currentPoints.includes(pointKey)
+                        ? currentPoints.filter(p => p !== pointKey)
+                        : [...currentPoints, pointKey]
+                };
+            })
+        );
+    };
+
+    const toggleDrawerPermissionAction = (module: string, action: string) => {
+        setDrawerPermissions((prev) =>
+            prev.map((item) =>
+                item.module === module
+                    ? {
+                        ...item,
+                        actions: item.actions.includes(action)
+                            ? item.actions.filter((itemAction) => itemAction !== action)
+                            : [...item.actions, action]
+                    }
+                    : item
+            )
+        );
+    };
+
+    const toggleDrawerOperationPoint = (module: string, pointKey: string) => {
+        setDrawerPermissions((prev) =>
             prev.map((item) => {
                 if (item.module !== module) return item;
                 const currentPoints = item.operationPoints || [];
@@ -334,7 +429,7 @@ const PermissionTemplatesView = () => {
                                 </div>
                                 <div className="flex flex-wrap items-center gap-2">
                                     <button
-                                        onClick={openEditModal}
+                                        onClick={() => openEditDrawer(activeTemplate)}
                                         className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs text-slate-600 hover:text-slate-800 flex items-center gap-1"
                                     >
                                         <Pencil size={14} /> 编辑
@@ -343,11 +438,17 @@ const PermissionTemplatesView = () => {
                                         <Copy size={14} /> 复制
                                     </button>
                                     {activeTemplate.status === '已发布' ? (
-                                        <button className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs text-slate-600 hover:text-slate-800 flex items-center gap-1">
+                                        <button
+                                            onClick={() => openTemplateAction('disable', activeTemplate)}
+                                            className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs text-slate-600 hover:text-slate-800 flex items-center gap-1"
+                                        >
                                             <PauseCircle size={14} /> 停用
                                         </button>
                                     ) : (
-                                        <button className="px-3 py-1.5 rounded-lg border border-emerald-200 text-xs text-emerald-600 hover:text-emerald-700 flex items-center gap-1">
+                                        <button
+                                            onClick={() => openTemplateAction('publish', activeTemplate)}
+                                            className="px-3 py-1.5 rounded-lg border border-emerald-200 text-xs text-emerald-600 hover:text-emerald-700 flex items-center gap-1"
+                                        >
                                             <PlayCircle size={14} /> 发布
                                         </button>
                                     )}
@@ -430,12 +531,10 @@ const PermissionTemplatesView = () => {
             {modalOpen && draftTemplate && (
                 <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/40">
                     <div className="min-h-screen p-4 flex items-start justify-center">
-                        <div className="w-full max-w-5xl rounded-2xl bg-white shadow-2xl flex max-h-[92vh] flex-col">
+                        <div className="w-full max-w-4xl rounded-2xl bg-white shadow-2xl flex max-h-[92vh] flex-col">
                             <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
                                 <div>
-                                    <h3 className="text-lg font-semibold text-slate-800">
-                                        {modalMode === 'create' ? '新建模板' : '编辑模板'}
-                                    </h3>
+                                    <h3 className="text-lg font-semibold text-slate-800">新建模板</h3>
                                     <p className="text-xs text-slate-500">配置模板的基本信息与权限策略。</p>
                                 </div>
                                 <button
@@ -485,6 +584,20 @@ const PermissionTemplatesView = () => {
                                             <option value="草稿">草稿</option>
                                             <option value="已发布">已发布</option>
                                             <option value="停用">停用</option>
+                                        </select>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-semibold text-slate-600">推荐范围</label>
+                                        <select
+                                            value={draftTemplate.scopeHint}
+                                            onChange={(event) => setDraftTemplate({ ...draftTemplate, scopeHint: event.target.value })}
+                                            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none"
+                                        >
+                                            {scopeHintOptions.map((option) => (
+                                                <option key={option} value={option}>
+                                                    {option}
+                                                </option>
+                                            ))}
                                         </select>
                                     </div>
                                 </div>
@@ -578,12 +691,304 @@ const PermissionTemplatesView = () => {
                                 </button>
                                 <button
                                     type="button"
-                                    onClick={saveTemplate}
+                                    onClick={saveNewTemplate}
                                     className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
                                 >
-                                    {modalMode === 'create' ? '创建模板' : '保存修改'}
+                                    创建模板
                                 </button>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {drawerOpen && drawerTemplate && (
+                <div className="fixed inset-0 z-50">
+                    <div
+                        className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+                        onClick={closeDrawer}
+                    />
+                    <div className="absolute right-0 top-0 h-full w-[720px] max-w-[92vw] bg-white shadow-2xl flex flex-col">
+                        <div className="sticky top-0 z-10 border-b border-slate-200 bg-white px-6 py-4">
+                            <div className="flex items-start justify-between gap-4">
+                                <div>
+                                    <div className="text-xs text-slate-400">模板编辑</div>
+                                    <h3 className="text-xl font-semibold text-slate-800">{drawerTemplate.name || '未命名模板'}</h3>
+                                    <div className="mt-2 flex items-center gap-2">
+                                        <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${statusStyles[drawerTemplate.status]}`}>
+                                            {drawerTemplate.status}
+                                        </span>
+                                        <span className="text-xs text-slate-400">更新：{drawerTemplate.updatedAt}</span>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={saveDrawerTemplate}
+                                        className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700"
+                                    >
+                                        保存修改
+                                    </button>
+                                    {drawerTemplate.status === '已发布' ? (
+                                        <button
+                                            onClick={() => openTemplateAction('disable', drawerTemplate)}
+                                            className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-600 hover:text-slate-800"
+                                        >
+                                            停用
+                                        </button>
+                                    ) : (
+                                        <button
+                                            onClick={() => openTemplateAction('publish', drawerTemplate)}
+                                            className="rounded-lg border border-emerald-200 px-3 py-1.5 text-xs text-emerald-600 hover:text-emerald-700"
+                                        >
+                                            发布
+                                        </button>
+                                    )}
+                                    <button
+                                        onClick={closeDrawer}
+                                        className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-600 hover:text-slate-800"
+                                    >
+                                        关闭
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
+                            <section className="rounded-xl border border-slate-200 p-4 space-y-4">
+                                <div className="text-sm font-semibold text-slate-700">基本信息</div>
+                                <div className="grid gap-4 md:grid-cols-2">
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-semibold text-slate-600">模板名称</label>
+                                        <input
+                                            value={drawerTemplate.name}
+                                            onChange={(event) => setDrawerTemplate({ ...drawerTemplate, name: event.target.value })}
+                                            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                                            placeholder="例如：语义治理负责人模板"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-semibold text-slate-600">模板编码</label>
+                                        <input
+                                            value={drawerTemplate.code}
+                                            onChange={(event) => setDrawerTemplate({ ...drawerTemplate, code: event.target.value })}
+                                            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                                            placeholder="tpl_semantic_owner"
+                                        />
+                                    </div>
+                                    <div className="space-y-2 md:col-span-2">
+                                        <label className="text-xs font-semibold text-slate-600">模板描述</label>
+                                        <textarea
+                                            value={drawerTemplate.description}
+                                            onChange={(event) => setDrawerTemplate({ ...drawerTemplate, description: event.target.value })}
+                                            className="h-20 w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                                            placeholder="描述模板适用的岗位与权限范围"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-semibold text-slate-600">状态</label>
+                                        <select
+                                            value={drawerTemplate.status}
+                                            onChange={(event) => setDrawerTemplate({ ...drawerTemplate, status: event.target.value as TemplateStatus })}
+                                            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                                        >
+                                            <option value="草稿">草稿</option>
+                                            <option value="已发布">已发布</option>
+                                            <option value="停用">停用</option>
+                                        </select>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-semibold text-slate-600">推荐范围</label>
+                                        <select
+                                            value={drawerTemplate.scopeHint}
+                                            onChange={(event) => setDrawerTemplate({ ...drawerTemplate, scopeHint: event.target.value })}
+                                            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                                        >
+                                            {scopeHintOptions.map((option) => (
+                                                <option key={option} value={option}>
+                                                    {option}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+                            </section>
+
+                            <section className="rounded-xl border border-slate-200 p-4">
+                                <div className="flex items-center justify-between">
+                                    <div className="text-sm font-semibold text-slate-700">权限策略</div>
+                                    <button
+                                        onClick={() => setDrawerShowAdvanced(!drawerShowAdvanced)}
+                                        className={`text-xs flex items-center gap-1 ${drawerShowAdvanced ? 'text-indigo-600 font-medium' : 'text-slate-500'}`}
+                                    >
+                                        <Sparkles size={12} />
+                                        {drawerShowAdvanced ? '隐藏高级权限点' : '显示高级权限点'}
+                                    </button>
+                                </div>
+                                <div className="mt-3 overflow-hidden rounded-lg border border-slate-200">
+                                    <div className="grid grid-cols-[1.1fr_repeat(4,0.7fr)_1fr] bg-slate-50 text-xs font-semibold text-slate-500">
+                                        <div className="px-4 py-2">治理模块</div>
+                                        {actionLabels.map((label) => (
+                                            <div key={label} className="px-3 py-2 text-center">
+                                                {label}
+                                            </div>
+                                        ))}
+                                        <div className="px-4 py-2">说明</div>
+                                    </div>
+                                    {drawerPermissions.map((item, index) => {
+                                        const ops = operationPointDefinitions[item.module];
+                                        const hasOps = ops && ops.length > 0;
+                                        return (
+                                            <div key={item.module} className={`${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}>
+                                                <div className="grid grid-cols-[1.1fr_repeat(4,0.7fr)_1fr] text-xs text-slate-600">
+                                                    <div className="px-4 py-3 font-semibold text-slate-700 flex flex-col justify-center">
+                                                        {item.module}
+                                                        {drawerShowAdvanced && hasOps && (
+                                                            <span className="text-[10px] font-normal text-slate-400 mt-0.5">
+                                                                包含 {ops.length} 个细分权限点
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    {actionLabels.map((label) => (
+                                                        <label
+                                                            key={label}
+                                                            className="px-3 py-3 text-center flex items-center justify-center cursor-pointer hover:bg-slate-100/50"
+                                                        >
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={item.actions.includes(label)}
+                                                                onChange={() => toggleDrawerPermissionAction(item.module, label)}
+                                                                className="h-4 w-4 accent-indigo-600 rounded"
+                                                            />
+                                                        </label>
+                                                    ))}
+                                                    <div className="px-4 py-3 text-slate-500 flex items-center">{item.note}</div>
+                                                </div>
+                                                {drawerShowAdvanced && hasOps && (
+                                                    <div className="px-4 pb-3 pt-0 border-t border-slate-100 bg-slate-50/30">
+                                                        <div className="mt-2 flex flex-wrap gap-x-6 gap-y-2">
+                                                            {ops.map(op => (
+                                                                <label key={op.key} className="flex items-center gap-2 cursor-pointer group">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={(item.operationPoints || []).includes(op.key)}
+                                                                        onChange={() => toggleDrawerOperationPoint(item.module, op.key)}
+                                                                        className="h-3 w-3 accent-indigo-500 rounded-sm"
+                                                                    />
+                                                                    <div className="flex flex-col">
+                                                                        <span className="text-xs text-slate-600 group-hover:text-indigo-600">{op.label}</span>
+                                                                        <span className="text-[10px] text-slate-400 scale-90 origin-top-left">
+                                                                            归属: {op.parentAction}
+                                                                        </span>
+                                                                    </div>
+                                                                </label>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                                <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                                    风险提示：包含管理/发布权限的模板需走审批流程。
+                                </div>
+                            </section>
+
+                            <section className="rounded-xl border border-slate-200 p-4">
+                                <div className="text-sm font-semibold text-slate-700">使用情况</div>
+                                <div className="mt-3 grid gap-3 md:grid-cols-3 text-xs text-slate-600">
+                                    <div className="rounded-lg border border-slate-100 bg-slate-50 p-3">
+                                        <div className="text-slate-400">引用角色</div>
+                                        <div className="mt-2 text-lg font-semibold text-slate-800">12</div>
+                                    </div>
+                                    <div className="rounded-lg border border-slate-100 bg-slate-50 p-3">
+                                        <div className="text-slate-400">最近应用</div>
+                                        <div className="mt-2 text-lg font-semibold text-slate-800">2 天前</div>
+                                    </div>
+                                    <div className="rounded-lg border border-slate-100 bg-slate-50 p-3">
+                                        <div className="text-slate-400">推荐范围</div>
+                                        <div className="mt-2 text-lg font-semibold text-slate-800">{drawerTemplate.scopeHint}</div>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        closeDrawer();
+                                        navigateToRoleCreate(drawerTemplate.id);
+                                    }}
+                                    className="mt-3 text-xs text-indigo-600 hover:text-indigo-700"
+                                >
+                                    从模板创建角色
+                                </button>
+                            </section>
+                        </div>
+                        <div className="border-t border-slate-200 px-6 py-4 flex justify-end gap-3">
+                            <button
+                                onClick={closeDrawer}
+                                className="rounded-lg border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:text-slate-800"
+                            >
+                                取消
+                            </button>
+                            <button
+                                onClick={saveDrawerTemplate}
+                                className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+                            >
+                                保存修改
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {actionModalOpen && actionTarget && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm">
+                    <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl">
+                        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+                            <div>
+                                <h3 className="text-lg font-semibold text-slate-800">
+                                    {actionType === 'publish' ? '发布模板确认' : '停用模板确认'}
+                                </h3>
+                                <p className="text-xs text-slate-500">
+                                    {actionType === 'publish'
+                                        ? '发布后模板将可被角色快速复用。'
+                                        : '停用后模板将无法被新增角色使用。'}
+                                </p>
+                            </div>
+                            <button
+                                onClick={closeActionModal}
+                                className="rounded-full border border-slate-200 p-2 text-slate-500 hover:text-slate-700"
+                            >
+                                <X size={16} />
+                            </button>
+                        </div>
+                        <div className="px-6 py-5 space-y-3 text-sm text-slate-600">
+                            <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                                模板：{actionTarget.name}
+                            </div>
+                            {actionType === 'disable' && (
+                                <div className="space-y-2">
+                                    <label className="text-xs font-semibold text-slate-600">停用原因</label>
+                                    <textarea
+                                        value={actionReason}
+                                        onChange={(event) => setActionReason(event.target.value)}
+                                        placeholder="请输入停用原因（必填）"
+                                        className="h-20 w-full resize-none rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                                    />
+                                </div>
+                            )}
+                        </div>
+                        <div className="flex items-center justify-end gap-2 border-t border-slate-200 px-6 py-4">
+                            <button
+                                onClick={closeActionModal}
+                                className="rounded-lg border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:text-slate-800"
+                            >
+                                取消
+                            </button>
+                            <button
+                                onClick={confirmTemplateAction}
+                                disabled={actionType === 'disable' && !actionReason.trim()}
+                                className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
+                            >
+                                {actionType === 'publish' ? '确认发布' : '确认停用'}
+                            </button>
                         </div>
                     </div>
                 </div>

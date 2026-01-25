@@ -29,6 +29,7 @@ import {
     Star,
     Layout
 } from 'lucide-react';
+import { useToast } from '../components/ui/Toast';
 
 type OrgStatus = '启用' | '停用';
 
@@ -214,6 +215,7 @@ const memberMap: Record<string, Member[]> = {
 const formatDate = () => new Date().toISOString().split('T')[0];
 
 const OrgManagementView = () => {
+    const toast = useToast();
     const [departments, setDepartments] = useState<Department[]>(initialDepartments);
     const [activeDeptId, setActiveDeptId] = useState(initialDepartments[0]?.id ?? '');
     const [searchTerm, setSearchTerm] = useState('');
@@ -223,6 +225,8 @@ const OrgManagementView = () => {
     const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
     const [createStep, setCreateStep] = useState<'form' | 'success'>('form'); // New state for post-create guide
     const [draftDept, setDraftDept] = useState<Department | null>(null);
+    const [showValidation, setShowValidation] = useState(false);
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
     // V2.4 Refactor: Tree State
     const [expandedNodeIds, setExpandedNodeIds] = useState<Set<string>>(new Set(['dept_root']));
@@ -237,6 +241,48 @@ const OrgManagementView = () => {
     const [memberSearch, setMemberSearch] = useState('');
     const [memberRoleFilter, setMemberRoleFilter] = useState('all');
     const [selectedMembers, setSelectedMembers] = useState<Set<string>>(new Set());
+
+    // Member Form State
+    const [memberForm, setMemberForm] = useState({
+        id: '',
+        name: '', // Display only for edit
+        role: '',
+        isPrimary: true,
+        permissions: [] as string[],
+        status: '在岗' as Member['status']
+    });
+
+    const openMemberModal = (member?: Member) => {
+        if (member) {
+            // Edit Mode
+            setMemberForm({
+                id: member.id,
+                name: member.name,
+                role: member.role,
+                isPrimary: member.isPrimary,
+                permissions: member.permissions || [],
+                status: member.status
+            });
+        } else {
+            // Create Mode
+            setMemberForm({
+                id: '',
+                name: '',
+                role: '语义治理', // Default
+                isPrimary: true,
+                permissions: [],
+                status: '在岗'
+            });
+        }
+        setShowMemberModal(true);
+    };
+
+    const handleSaveMember = () => {
+        // Mock save logic
+        // In a real app, update memberMap or call API
+        toast.success(`已保存成员信息：${memberForm.name || '新成员'} (${memberForm.role})`);
+        setShowMemberModal(false);
+    };
 
     const toggleExpand = (id: string) => {
         const next = new Set(expandedNodeIds);
@@ -449,6 +495,8 @@ const OrgManagementView = () => {
     const openCreateModal = () => {
         setModalMode('create');
         setCreateStep('form');
+        setShowValidation(false);
+        setErrorMessage(null);
         setDraftDept({
             id: '',
             name: '',
@@ -472,6 +520,8 @@ const OrgManagementView = () => {
     const openEditModal = (dept: Department) => {
         setModalMode('edit');
         setDraftDept({ ...dept });
+        setShowValidation(false);
+        setErrorMessage(null);
         setModalOpen(true);
     };
 
@@ -485,8 +535,8 @@ const OrgManagementView = () => {
         if (!draftDept) {
             return;
         }
+        setShowValidation(true);
         if (!draftDept.name.trim() || !draftDept.code.trim()) {
-            alert('请填写组织名称与编码。');
             return;
         }
         if (modalMode === 'create') {
@@ -878,7 +928,7 @@ const OrgManagementView = () => {
                                 </select>
                                 <button
                                     className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white text-xs rounded-lg hover:bg-indigo-700"
-                                    onClick={() => setShowMemberModal(true)}
+                                    onClick={() => openMemberModal()}
                                 >
                                     <Plus size={14} /> 添加成员
                                 </button>
@@ -956,7 +1006,12 @@ const OrgManagementView = () => {
                                                     </span>
                                                 </td>
                                                 <td className="px-3 py-2 text-right opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <button className="text-indigo-600 hover:text-indigo-700 mr-2">设置</button>
+                                                    <button
+                                                        className="text-indigo-600 hover:text-indigo-700 mr-2"
+                                                        onClick={() => openMemberModal(member)}
+                                                    >
+                                                        设置
+                                                    </button>
                                                     <button className="text-rose-600 hover:text-rose-700">移除</button>
                                                 </td>
                                             </tr>
@@ -973,7 +1028,7 @@ const OrgManagementView = () => {
                         </div>
                     </div>
                 </section>
-            </div>
+            </div >
 
             {modalOpen && draftDept && (
                 <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 flex items-center justify-center p-4">
@@ -990,6 +1045,12 @@ const OrgManagementView = () => {
                                 </div>
 
                                 <div className="p-6 overflow-y-auto space-y-6">
+                                    {errorMessage && (
+                                        <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg flex items-start gap-2 text-rose-700 text-sm animate-in fade-in slide-in-from-top-2">
+                                            <AlertTriangle size={16} className="shrink-0 mt-0.5" />
+                                            <span>{errorMessage}</span>
+                                        </div>
+                                    )}
                                     {/* Basic Info Group */}
                                     <div className="space-y-4">
                                         <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">基本信息</h4>
@@ -1029,8 +1090,14 @@ const OrgManagementView = () => {
                                                         setDraftDept({ ...draftDept, name: event.target.value })
                                                     }
                                                     placeholder="请输入组织名称，如：语义运营部"
-                                                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none"
+                                                    className={`w-full rounded-lg border px-3 py-2 text-sm text-slate-700 focus:outline-none ${showValidation && !draftDept.name.trim()
+                                                        ? 'border-red-500 focus:border-red-500'
+                                                        : 'border-slate-200 focus:border-indigo-500'
+                                                        }`}
                                                 />
+                                                {showValidation && !draftDept.name.trim() && (
+                                                    <p className="text-xs text-red-500 mt-1">请输入组织名称</p>
+                                                )}
                                             </div>
                                             <div className="space-y-2">
                                                 <label className="text-sm font-semibold text-slate-700">组织编码 <span className="text-rose-500">*</span></label>
@@ -1042,7 +1109,10 @@ const OrgManagementView = () => {
                                                             setDraftDept({ ...draftDept, code: event.target.value })
                                                         }
                                                         placeholder="小写字母+下划线"
-                                                        className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none"
+                                                        className={`flex-1 rounded-lg border px-3 py-2 text-sm text-slate-700 focus:outline-none ${showValidation && !draftDept.code.trim()
+                                                            ? 'border-red-500 focus:border-red-500'
+                                                            : 'border-slate-200 focus:border-indigo-500'
+                                                            }`}
                                                     />
                                                     <button
                                                         onClick={generateCode}
@@ -1051,6 +1121,9 @@ const OrgManagementView = () => {
                                                         自动生成
                                                     </button>
                                                 </div>
+                                                {showValidation && !draftDept.code.trim() && (
+                                                    <p className="text-xs text-red-500 mt-1">请输入组织编码</p>
+                                                )}
                                             </div>
                                             <div className="space-y-2">
                                                 <label className="text-sm font-semibold text-slate-700">负责人</label>
@@ -1068,7 +1141,7 @@ const OrgManagementView = () => {
                                                         )}
                                                     </div>
                                                     <button
-                                                        onClick={() => alert('打开用户选择弹窗（待实现）')}
+                                                        onClick={() => toast.info('打开用户选择弹窗（待实现）')}
                                                         className="px-3 py-2 bg-indigo-50 text-indigo-600 rounded-lg text-xs hover:bg-indigo-100"
                                                     >
                                                         选择
@@ -1185,7 +1258,7 @@ const OrgManagementView = () => {
 
                                 <div className="grid grid-cols-2 gap-4 w-full">
                                     <button
-                                        onClick={() => { closeModal(); setShowMemberModal(true); }}
+                                        onClick={() => { closeModal(); openMemberModal(); }}
                                         className="flex flex-col items-center gap-3 p-4 border border-slate-200 rounded-xl hover:border-indigo-500 hover:bg-indigo-50 transition-all group"
                                     >
                                         <div className="p-3 bg-slate-100 rounded-full group-hover:bg-indigo-100 text-slate-600 group-hover:text-indigo-600">
@@ -1194,7 +1267,7 @@ const OrgManagementView = () => {
                                         <div className="text-sm font-semibold text-slate-700">添加成员</div>
                                     </button>
                                     <button
-                                        onClick={() => { alert('跳转权限配置 (Mock)'); closeModal(); }}
+                                        onClick={() => { toast.info('跳转权限配置 (Mock)'); closeModal(); }}
                                         className="flex flex-col items-center gap-3 p-4 border border-slate-200 rounded-xl hover:border-indigo-500 hover:bg-indigo-50 transition-all group"
                                     >
                                         <div className="p-3 bg-slate-100 rounded-full group-hover:bg-indigo-100 text-slate-600 group-hover:text-indigo-600">
@@ -1222,7 +1295,9 @@ const OrgManagementView = () => {
                     <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 flex items-center justify-center p-4">
                         <div className="w-full max-w-lg bg-white rounded-xl shadow-2xl flex flex-col max-h-[90vh]">
                             <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
-                                <h3 className="text-base font-bold text-slate-800">添加成员</h3>
+                                <h3 className="text-base font-bold text-slate-800">
+                                    {memberForm.id ? '编辑成员配置' : '添加成员'}
+                                </h3>
                                 <button
                                     onClick={() => setShowMemberModal(false)}
                                     className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100"
@@ -1231,13 +1306,20 @@ const OrgManagementView = () => {
                                 </button>
                             </div>
 
-                            <div className="p-5 space-y-4 overflow-y-auto">
-                                {/* Mock User Selection */}
+                            <div className="p-5 space-y-5 overflow-y-auto">
+                                {/* User Selection */}
                                 <div className="space-y-1.5">
-                                    <label className="text-sm font-semibold text-slate-700">选择用户 <span className="text-rose-500">*</span></label>
-                                    <div className="p-3 border border-slate-200 rounded-lg bg-slate-50 text-sm text-slate-400 cursor-not-allowed">
-                                        点击搜索用户 (Mock: 暂时不支持真实搜索)
-                                    </div>
+                                    <label className="text-sm font-semibold text-slate-700">用户 <span className="text-rose-500">*</span></label>
+                                    {memberForm.id ? (
+                                        <div className="p-3 border border-slate-200 rounded-lg bg-slate-50 text-sm text-slate-700 font-medium flex items-center justify-between">
+                                            {memberForm.name}
+                                            <span className="text-xs text-slate-400">不可修改</span>
+                                        </div>
+                                    ) : (
+                                        <div className="p-3 border border-slate-200 rounded-lg bg-white text-sm text-slate-400 hover:border-indigo-300 cursor-pointer">
+                                            点击搜索用户...
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Governance Role */}
@@ -1245,8 +1327,17 @@ const OrgManagementView = () => {
                                     <label className="text-sm font-semibold text-slate-700">分配治理角色</label>
                                     <div className="flex flex-wrap gap-2">
                                         {roleCatalog.map(role => (
-                                            <label key={role} className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 rounded-lg text-xs cursor-pointer hover:border-indigo-300 has-[:checked]:bg-indigo-50 has-[:checked]:border-indigo-200 has-[:checked]:text-indigo-700">
-                                                <input type="radio" name="role" className="accent-indigo-600" />
+                                            <label key={role} className={`flex items-center gap-1.5 px-3 py-1.5 border rounded-lg text-xs cursor-pointer transition-colors ${memberForm.role === role
+                                                ? 'bg-indigo-50 border-indigo-200 text-indigo-700'
+                                                : 'border-slate-200 hover:border-indigo-300'
+                                                }`}>
+                                                <input
+                                                    type="radio"
+                                                    name="role"
+                                                    className="accent-indigo-600 hidden"
+                                                    checked={memberForm.role === role}
+                                                    onChange={() => setMemberForm({ ...memberForm, role })}
+                                                />
                                                 {role}
                                             </label>
                                         ))}
@@ -1256,17 +1347,63 @@ const OrgManagementView = () => {
                                 {/* Function & Permission */}
                                 <div className="space-y-2">
                                     <label className="text-sm font-semibold text-slate-700">权限与归属</label>
-                                    <div className="space-y-2 bg-slate-50 p-3 rounded-lg border border-slate-100">
-                                        <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
-                                            <input type="checkbox" className="rounded border-slate-300 accent-indigo-600" defaultChecked />
+                                    <div className="space-y-3 bg-slate-50 p-4 rounded-lg border border-slate-100">
+                                        <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer select-none">
+                                            <input
+                                                type="checkbox"
+                                                className="rounded border-slate-300 accent-indigo-600 w-4 h-4"
+                                                checked={memberForm.isPrimary}
+                                                onChange={(e) => setMemberForm({ ...memberForm, isPrimary: e.target.checked })}
+                                            />
                                             设为主归属组织 (Primary Org)
                                         </label>
-                                        <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
-                                            <input type="checkbox" className="rounded border-slate-300 accent-indigo-600" />
-                                            授予部门管理权限 (Manager)
-                                        </label>
+                                        <div className="h-px bg-slate-200 my-1" />
+                                        <div className="space-y-2">
+                                            <div className="text-xs font-semibold text-slate-500">操作权限</div>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                {[
+                                                    { id: 'manage', label: '部门管理 (Manager)' },
+                                                    { id: 'audit', label: '审核 (Audit)' },
+                                                    { id: 'operate', label: '操作 (Operate)' },
+                                                    { id: 'view', label: '只读 (View)' }
+                                                ].map(perm => {
+                                                    const hasPerm = memberForm.permissions.includes(perm.id);
+                                                    return (
+                                                        <label key={perm.id} className="flex items-center gap-2 text-xs text-slate-600 cursor-pointer">
+                                                            <input
+                                                                type="checkbox"
+                                                                className="rounded border-slate-300 accent-indigo-600"
+                                                                checked={hasPerm}
+                                                                onChange={(e) => {
+                                                                    const next = e.target.checked
+                                                                        ? [...memberForm.permissions, perm.id]
+                                                                        : memberForm.permissions.filter(p => p !== perm.id);
+                                                                    setMemberForm({ ...memberForm, permissions: next });
+                                                                }}
+                                                            />
+                                                            {perm.label}
+                                                        </label>
+                                                    )
+                                                })}
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
+
+                                {memberForm.id && (
+                                    <div className="space-y-2 pt-2 border-t border-slate-100">
+                                        <label className="text-sm font-semibold text-slate-700">成员状态</label>
+                                        <select
+                                            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500"
+                                            value={memberForm.status}
+                                            onChange={(e) => setMemberForm({ ...memberForm, status: e.target.value as any })}
+                                        >
+                                            <option value="在岗">在岗</option>
+                                            <option value="调岗">调岗</option>
+                                            <option value="离职">离职</option>
+                                        </select>
+                                    </div>
+                                )}
                             </div>
 
                             <div className="border-t border-slate-200 px-5 py-4 flex justify-end gap-3 bg-slate-50 rounded-b-xl">
@@ -1277,13 +1414,10 @@ const OrgManagementView = () => {
                                     取消
                                 </button>
                                 <button
-                                    onClick={() => {
-                                        alert('已添加成员 (Mock action)');
-                                        setShowMemberModal(false);
-                                    }}
+                                    onClick={handleSaveMember}
                                     className="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm"
                                 >
-                                    确认添加
+                                    {memberForm.id ? '保存修改' : '确认添加'}
                                 </button>
                             </div>
                         </div>

@@ -16,22 +16,17 @@ import (
 func UpdateUserHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// 从路径参数获取用户ID
-		var pathReq struct {
+		var req struct {
 			Id string `path:"id"`
+			types.UpdateUserReq
 		}
-		if err := httpx.Parse(r, &pathReq); err != nil {
-			httpx.ErrorCtx(r.Context(), w, err)
-			return
-		}
-
-		var req types.UpdateUserReq
 		if err := httpx.Parse(r, &req); err != nil {
 			httpx.ErrorCtx(r.Context(), w, err)
 			return
 		}
 
 		l := user_management.NewUpdateUserLogic(r.Context(), svcCtx)
-		resp, err := l.UpdateUser(pathReq.Id, &req)
+		resp, err := l.UpdateUser(req.Id, &req.UpdateUserReq)
 		if err != nil {
 			httpx.ErrorCtx(r.Context(), w, err)
 		} else {

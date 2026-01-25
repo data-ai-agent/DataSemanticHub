@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
-import { Tag, Plus, Search, Edit, Trash2, X, List, Folder, Upload, Download, Settings, Eye, EyeOff, Link, MoreHorizontal, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
+import { Tag, Plus, Search, Edit, Trash2, X, List, Folder, Upload, Download, Settings, Eye, EyeOff, Link, MoreHorizontal, CheckCircle, XCircle, AlertTriangle, ChevronRight, ChevronDown, Check, GripVertical } from 'lucide-react';
+import { useToast } from '../components/ui/Toast';
 
 // Extended Tag Interface
 interface TagItem {
@@ -28,6 +29,7 @@ interface TagCategory {
 }
 
 const TagManagementView = () => {
+    const toast = useToast();
     const [tags, setTags] = useState<TagItem[]>([
         {
             id: 'TAG_001',
@@ -107,13 +109,13 @@ const TagManagementView = () => {
         }
     ]);
 
-    const categories: TagCategory[] = [
+    const [categories, setCategories] = useState<TagCategory[]>([
         { id: 'CAT_001', name: '资产分类', code: 'asset_category', scope: ['table', 'business_object'], multiSelectAllowed: false },
         { id: 'CAT_002', name: '业务场景', code: 'business_scenario', scope: ['table', 'business_object', 'term'], multiSelectAllowed: true },
         { id: 'CAT_003', name: '数据分类', code: 'data_category', scope: ['table', 'field'], multiSelectAllowed: true },
         { id: 'CAT_004', name: '技术标签', code: 'tech_tag', scope: ['table', 'field'], multiSelectAllowed: true },
         { id: 'CAT_005', name: '质量标签', code: 'quality_tag', scope: ['field'], multiSelectAllowed: true }
-    ];
+    ]);
 
     const scopeOptions = [
         { value: 'table', label: '表' },
@@ -141,6 +143,10 @@ const TagManagementView = () => {
     const [viewingTag, setViewingTag] = useState<TagItem | null>(null);
     const [isCreating, setIsCreating] = useState(false);
     const [activeDetailTab, setActiveDetailTab] = useState<'overview' | 'references' | 'rules' | 'audit'>('overview');
+
+    // Tree View State
+    const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
+    const [activeTreeNodeId, setActiveTreeNodeId] = useState<string | null>(null);
 
     // Filtered Tags
     const filteredTags = useMemo(() => {
@@ -230,12 +236,12 @@ const TagManagementView = () => {
     const handleDelete = (tag: TagItem) => {
         // Check constraints
         if (tag.usage > 0) {
-            alert(`无法删除：该标签正在被 ${tag.usage} 个对象使用。请先解除绑定或迁移引用。`);
+            toast.error(`无法删除：该标签正在被 ${tag.usage} 个对象使用。请先解除绑定或迁移引用。`);
             return;
         }
         const hasChildren = tags.some(t => t.parentId === tag.id);
         if (hasChildren) {
-            alert('无法删除：该标签存在子标签。请先删除或移动子标签。');
+            toast.error('无法删除：该标签存在子标签。请先删除或移动子标签。');
             return;
         }
         if (confirm(`确定要永久删除标签"${tag.name}"吗？此操作不可恢复。`)) {
@@ -259,7 +265,7 @@ const TagManagementView = () => {
         });
 
         if (!canDelete) {
-            alert('部分标签无法删除：存在使用中或包含子标签的项。');
+            toast.error('部分标签无法删除：存在使用中或包含子标签的项。');
             return;
         }
 
@@ -419,9 +425,7 @@ const TagManagementView = () => {
             {viewMode === 'list' ? (
                 <ListViewContinued />
             ) : (
-                <div className="text-center py-12 text-slate-400">
-                    树形视图开发中...
-                </div>
+                <TreeSplitView />
             )}
         </div>
     );
@@ -895,23 +899,66 @@ const TagManagementView = () => {
                         )}
 
                         {activeDetailTab === 'references' && (
-                            <div className="text-center py-12 text-slate-400">
-                                <Link size={48} className="mx-auto mb-4 opacity-20" />
-                                <p>引用明细功能开发中...</p>
+                            <div className="space-y-4">
+                                <div className="flex justify-between items-center">
+                                    <h4 className="font-bold text-slate-700">引用列表</h4>
+                                    <button className="text-xs text-indigo-600 hover:underline">查看全部</button>
+                                </div>
+                                <div className="border border-slate-200 rounded-lg overflow-hidden">
+                                    <table className="w-full text-sm text-left">
+                                        <thead className="bg-slate-50">
+                                            <tr>
+                                                <th className="px-4 py-2 text-xs font-medium text-slate-500">对象名称</th>
+                                                <th className="px-4 py-2 text-xs font-medium text-slate-500">类型</th>
+                                                <th className="px-4 py-2 text-xs font-medium text-slate-500">绑定时间</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100">
+                                            <tr>
+                                                <td className="px-4 py-2 text-slate-700">user_profile</td>
+                                                <td className="px-4 py-2"><span className="bg-blue-50 text-blue-600 text-xs px-1 rounded">table</span></td>
+                                                <td className="px-4 py-2 text-slate-500 text-xs">2024-05-20</td>
+                                            </tr>
+                                            <tr>
+                                                <td className="px-4 py-2 text-slate-700">age</td>
+                                                <td className="px-4 py-2"><span className="bg-green-50 text-green-600 text-xs px-1 rounded">field</span></td>
+                                                <td className="px-4 py-2 text-slate-500 text-xs">2024-05-21</td>
+                                            </tr>
+                                            <tr>
+                                                <td className="px-4 py-2 text-slate-700">每日活跃用户</td>
+                                                <td className="px-4 py-2"><span className="bg-orange-50 text-orange-600 text-xs px-1 rounded">metric</span></td>
+                                                <td className="px-4 py-2 text-slate-500 text-xs">2024-05-22</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         )}
 
                         {activeDetailTab === 'rules' && (
-                            <div className="text-center py-12 text-slate-400">
-                                <Settings size={48} className="mx-auto mb-4 opacity-20" />
-                                <p>自动打标规则功能开发中...</p>
+                            <div className="space-y-4">
+                                <div className="bg-slate-50 p-6 rounded-lg text-center border border-dashed border-slate-300">
+                                    <p className="text-sm text-slate-600 font-medium">暂无自动打标规则</p>
+                                    <p className="text-xs text-slate-400 mt-1">配置规则后，系统将自动为匹配的数据资产打上此标签</p>
+                                    <button className="mt-3 px-3 py-1.5 text-xs bg-white border border-slate-300 rounded text-slate-700 hover:bg-slate-50 font-medium transition-colors shadow-sm">+ 添加规则</button>
+                                </div>
                             </div>
                         )}
 
                         {activeDetailTab === 'audit' && (
-                            <div className="text-center py-12 text-slate-400">
-                                <CheckCircle size={48} className="mx-auto mb-4 opacity-20" />
-                                <p>审计日志功能开发中...</p>
+                            <div className="space-y-4 p-2">
+                                <div className="border-l-2 border-slate-200 pl-4 space-y-6">
+                                    <div className="relative">
+                                        <div className="absolute -left-[21px] top-1.5 w-2.5 h-2.5 bg-indigo-500 rounded-full ring-4 ring-white"></div>
+                                        <p className="text-sm font-medium text-slate-800">标签更新</p>
+                                        <p className="text-xs text-slate-500 mt-0.5">管理员 于 2024-05-20 14:30 更新了基本信息与描述</p>
+                                    </div>
+                                    <div className="relative">
+                                        <div className="absolute -left-[21px] top-1.5 w-2.5 h-2.5 bg-slate-300 rounded-full ring-4 ring-white"></div>
+                                        <p className="text-sm font-medium text-slate-800">标签创建</p>
+                                        <p className="text-xs text-slate-500 mt-0.5">管理员 于 2024-01-10 09:00 创建了标签</p>
+                                    </div>
+                                </div>
                             </div>
                         )}
                     </div>
@@ -941,38 +988,404 @@ const TagManagementView = () => {
     function UsageDrawer() {
         if (!showUsageDrawer || !viewingTag) return null;
 
+        const mockUsageList = [
+            { id: 'U001', name: 'user_profile_v2', type: 'table', system: '数仓-ODS', owner: '张三', time: '2024-05-20 10:30' },
+            { id: 'U002', name: 'mobile_encrypted', type: 'field', system: '数仓-DWD', owner: '李四', time: '2024-05-21 14:20' },
+            { id: 'U003', name: '高价值客户', type: 'business_object', system: '指标平台', owner: '王五', time: '2024-05-22 09:15' },
+            { id: 'U004', name: 'order_amount', type: 'field', system: '数仓-ADS', owner: '赵六', time: '2024-05-23 16:45' },
+        ];
+
         return (
             <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex justify-end animate-fade-in">
-                <div className="w-[600px] h-full bg-white shadow-2xl flex flex-col animate-slide-in-right">
+                <div className="w-[800px] h-full bg-white shadow-2xl flex flex-col animate-slide-in-right">
                     <div className="p-6 border-b border-slate-200 flex justify-between items-center">
                         <div>
-                            <h3 className="text-xl font-bold text-slate-800">引用明细</h3>
+                            <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                                <Link className="text-indigo-600" size={20} />
+                                引用明细
+                            </h3>
                             <p className="text-sm text-slate-500 mt-1">
-                                标签: {viewingTag.name} • 共{viewingTag.usage}处引用
+                                标签 <span className="font-medium text-slate-800">{viewingTag.name}</span> 正被 {viewingTag.usage} 个对象使用
                             </p>
                         </div>
                         <button
                             onClick={() => setShowUsageDrawer(false)}
-                            className="text-slate-400 hover:text-slate-600"
+                            className="p-1 rounded hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors"
                         >
                             <X size={24} />
                         </button>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto p-6">
-                        <div className="text-center py-12 text-slate-400">
-                            <Link size={48} className="mx-auto mb-4 opacity-20" />
-                            <p>引用明细加载中...</p>
+                    <div className="p-4 border-b border-slate-100 bg-slate-50 flex gap-4">
+                        <select className="px-3 py-1.5 bg-white border border-slate-200 rounded text-sm focus:outline-none focus:border-indigo-500">
+                            <option>全部对象类型</option>
+                            <option>数据表</option>
+                            <option>字段</option>
+                            <option>业务对象</option>
+                        </select>
+                        <div className="relative flex-1">
+                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                            <input
+                                placeholder="搜索对象名称..."
+                                className="w-full pl-8 pr-3 py-1.5 text-sm bg-white border border-slate-200 rounded focus:outline-none focus:border-indigo-500"
+                            />
                         </div>
                     </div>
 
-                    <div className="p-4 border-t border-slate-200">
+                    <div className="flex-1 overflow-y-auto">
+                        <table className="w-full text-sm text-left">
+                            <thead className="bg-slate-50 border-b border-slate-100 sticky top-0">
+                                <tr>
+                                    <th className="px-6 py-3 font-medium text-slate-600">对象名称</th>
+                                    <th className="px-6 py-3 font-medium text-slate-600">类型</th>
+                                    <th className="px-6 py-3 font-medium text-slate-600">所属系统</th>
+                                    <th className="px-6 py-3 font-medium text-slate-600">绑定人</th>
+                                    <th className="px-6 py-3 font-medium text-slate-600">绑定时间</th>
+                                    <th className="px-6 py-3 font-medium text-slate-600 text-right">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {mockUsageList.map(item => (
+                                    <tr key={item.id} className="hover:bg-slate-50">
+                                        <td className="px-6 py-4 font-medium text-slate-700">{item.name}</td>
+                                        <td className="px-6 py-4">
+                                            <span className={`px-2 py-0.5 rounded text-xs ${item.type === 'table' ? 'bg-blue-50 text-blue-600' :
+                                                item.type === 'field' ? 'bg-green-50 text-green-600' :
+                                                    'bg-orange-50 text-orange-600'
+                                                }`}>
+                                                {item.type}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 text-slate-600">{item.system}</td>
+                                        <td className="px-6 py-4 text-slate-600">{item.owner}</td>
+                                        <td className="px-6 py-4 text-slate-500 text-xs">{item.time}</td>
+                                        <td className="px-6 py-4 text-right">
+                                            <button className="text-slate-400 hover:text-red-600 text-xs border border-slate-200 hover:border-red-200 px-2 py-1 rounded">解绑</button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div className="p-4 border-t border-slate-200 flex justify-end gap-2 bg-slate-50">
+                        <button
+                            className="px-4 py-2 text-sm border border-slate-300 text-slate-600 hover:bg-white rounded-lg"
+                        >
+                            批量解绑
+                        </button>
                         <button
                             onClick={() => setShowUsageDrawer(false)}
-                            className="w-full px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg"
+                            className="px-4 py-2 text-sm bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 rounded-lg"
                         >
                             关闭
                         </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // Category Management Modal
+    function CategoryManagementModal() {
+        if (!showCategoryManagement) return null;
+
+        const [draftCat, setDraftCat] = useState<Partial<TagCategory>>({
+            name: '', code: '', scope: ['table'], multiSelectAllowed: true
+        });
+        const [mode, setMode] = useState<'create' | 'edit'>('create');
+        const [editingId, setEditingId] = useState<string | null>(null);
+
+        const handleEdit = (cat: TagCategory) => {
+            setMode('edit');
+            setEditingId(cat.id);
+            setDraftCat({ ...cat });
+        };
+
+        const handleCancelEdit = () => {
+            setMode('create');
+            setEditingId(null);
+            setDraftCat({ name: '', code: '', scope: ['table'], multiSelectAllowed: true });
+        };
+
+        const handleSubmit = () => {
+            if (!draftCat.name || !draftCat.code) return;
+
+            if (mode === 'create') {
+                const newCat: TagCategory = {
+                    id: `CAT_${Date.now()}`,
+                    name: draftCat.name!,
+                    code: draftCat.code!,
+                    scope: draftCat.scope || [],
+                    multiSelectAllowed: draftCat.multiSelectAllowed ?? true
+                };
+                setCategories([...categories, newCat]);
+                toast.success('分类创建成功');
+            } else {
+                setCategories(categories.map(c => c.id === editingId ? { ...c, ...draftCat } as TagCategory : c));
+                toast.success('分类更新成功');
+            }
+            handleCancelEdit();
+        };
+
+        const handleDeleteCat = (id: string) => {
+            const inUse = tags.some(t => t.category === categories.find(c => c.id === id)?.name);
+            if (inUse) {
+                toast.error('无法删除：该分类下存在标签');
+                return;
+            }
+            if (confirm('确定删除该分类吗？')) {
+                setCategories(categories.filter(c => c.id !== id));
+                if (editingId === id) handleCancelEdit();
+            }
+        };
+
+        return (
+            <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center animate-fade-in">
+                <div className="bg-white rounded-xl shadow-2xl w-[900px] h-[600px] flex overflow-hidden animate-scale-up">
+                    {/* Left: List */}
+                    <div className="w-1/3 border-r border-slate-200 bg-slate-50 flex flex-col">
+                        <div className="p-4 border-b border-slate-200 bg-white">
+                            <h3 className="font-bold text-slate-800">分类列表</h3>
+                            <button onClick={handleCancelEdit} className="mt-3 w-full py-2 text-xs bg-white border border-slate-300 rounded-lg hover:bg-slate-50 flex items-center justify-center gap-1 font-medium text-slate-700 shadow-sm">
+                                <Plus size={14} /> 新建分类
+                            </button>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-3 space-y-2">
+                            {categories.map(cat => (
+                                <div
+                                    key={cat.id}
+                                    onClick={() => handleEdit(cat)}
+                                    className={`p-3 rounded-lg cursor-pointer transition-all flex justify-between items-start group border ${editingId === cat.id ? 'bg-indigo-50 border-indigo-200 shadow-sm' : 'bg-white border-transparent hover:border-slate-200'}`}
+                                >
+                                    <div>
+                                        <div className={`font-medium ${editingId === cat.id ? 'text-indigo-700' : 'text-slate-700'}`}>{cat.name}</div>
+                                        <div className="text-xs text-slate-400 font-mono mt-0.5">{cat.code}</div>
+                                    </div>
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); handleDeleteCat(cat.id); }}
+                                        className="opacity-0 group-hover:opacity-100 p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded"
+                                        title="删除分类"
+                                    >
+                                        <Trash2 size={14} />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Right: Form */}
+                    <div className="flex-1 flex flex-col bg-white">
+                        <div className="p-4 border-b border-slate-200 flex justify-between items-center">
+                            <div className="flex items-center gap-2">
+                                <Settings size={18} className="text-indigo-600" />
+                                <h3 className="font-bold text-slate-800">{mode === 'create' ? '新建分类' : '编辑分类'}</h3>
+                            </div>
+                            <button onClick={() => setShowCategoryManagement(false)} className="p-1 rounded hover:bg-slate-100"><X size={20} className="text-slate-400 hover:text-slate-600" /></button>
+                        </div>
+                        <div className="p-6 flex-1 overflow-y-auto space-y-6">
+                            {/* Name & Code */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-sm font-medium text-slate-700">分类名称 <span className="text-red-500">*</span></label>
+                                    <input
+                                        value={draftCat.name}
+                                        onChange={e => setDraftCat({ ...draftCat, name: e.target.value })}
+                                        className="w-full mt-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-shadow"
+                                        placeholder="例如：业务场景"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-sm font-medium text-slate-700">分类编码 <span className="text-red-500">*</span></label>
+                                    <input
+                                        value={draftCat.code}
+                                        onChange={e => setDraftCat({ ...draftCat, code: e.target.value })}
+                                        className="w-full mt-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-mono text-sm transition-shadow"
+                                        placeholder="例如：business_scenario"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Scope */}
+                            <div>
+                                <label className="text-sm font-medium text-slate-700 mb-3 block">允许适用对象范围</label>
+                                <div className="grid grid-cols-2 gap-3">
+                                    {scopeOptions.map(opt => (
+                                        <label key={opt.value} className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg hover:bg-slate-50 cursor-pointer transition-colors">
+                                            <input
+                                                type="checkbox"
+                                                checked={draftCat.scope?.includes(opt.value)}
+                                                onChange={e => {
+                                                    const current = draftCat.scope || [];
+                                                    const next = e.target.checked ? [...current, opt.value] : current.filter(x => x !== opt.value);
+                                                    setDraftCat({ ...draftCat, scope: next });
+                                                }}
+                                                className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                                            />
+                                            <span className="text-sm text-slate-700">{opt.label}</span>
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Config */}
+                            <div className="bg-slate-50 p-5 rounded-lg border border-slate-100">
+                                <h4 className="text-sm font-semibold text-slate-800 mb-3">高级配置</h4>
+                                <label className="flex items-start gap-3 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={draftCat.multiSelectAllowed}
+                                        onChange={e => setDraftCat({ ...draftCat, multiSelectAllowed: e.target.checked })}
+                                        className="mt-1 w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                                    />
+                                    <div>
+                                        <span className="text-sm font-medium text-slate-700 select-none">允许多选 (Multi-select)</span>
+                                        <p className="text-xs text-slate-500 mt-1">启用后，一个数据对象（如一张表）可以同时拥有该分类下的多个标签。</p>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+                        <div className="p-4 border-t border-slate-200 flex justify-end gap-3 bg-slate-50">
+                            {mode === 'edit' && (
+                                <button onClick={handleCancelEdit} className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-200 rounded-lg transition-colors">取消编辑</button>
+                            )}
+                            <button onClick={handleSubmit} className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 shadow-sm transition-colors font-medium">
+                                {mode === 'create' ? '立即创建' : '保存修改'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // Tree Split View
+    function TreeSplitView() {
+        const renderTreeNode = (node: any, level = 0) => {
+            const hasChildren = node.children && node.children.length > 0;
+            const isExpanded = expandedKeys.has(node.id);
+            const isActive = activeTreeNodeId === node.id;
+
+            const handleToggle = (e: React.MouseEvent) => {
+                e.stopPropagation();
+                const newKeys = new Set(expandedKeys);
+                if (isExpanded) newKeys.delete(node.id);
+                else newKeys.add(node.id);
+                setExpandedKeys(newKeys);
+            };
+
+            return (
+                <div key={node.id}>
+                    <div
+                        className={`group flex items-center gap-1.5 py-1.5 px-2 rounded-md cursor-pointer transition-colors ${isActive ? 'bg-indigo-50 text-indigo-700' : 'hover:bg-slate-100 text-slate-700'}`}
+                        style={{ paddingLeft: level * 16 + 8 }}
+                        onClick={() => setActiveTreeNodeId(node.id)}
+                    >
+                        <button
+                            onClick={handleToggle}
+                            className={`p-0.5 rounded hover:bg-black/5 ${hasChildren ? 'visible' : 'invisible'}`}
+                        >
+                            {isExpanded ? <ChevronDown size={14} className="text-slate-400" /> : <ChevronRight size={14} className="text-slate-400" />}
+                        </button>
+                        <Folder size={14} className={isActive ? 'text-indigo-500' : 'text-slate-400'} />
+                        <span className="text-sm truncate">{node.name}</span>
+                        {node.usage > 0 && <span className="text-xs text-slate-400 ml-auto bg-slate-100 px-1.5 rounded-full">{node.usage}</span>}
+                    </div>
+                    {hasChildren && isExpanded && (
+                        <div>
+                            {node.children.map((child: any) => renderTreeNode(child, level + 1))}
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        // Filter list based on active node
+        // Logic: if active node selected, show tags with parentId === activeNodeId (direct children) OR tags with this tag in path?
+        // Usually Tree View shows content of the folder. 
+        // Let's filter tags that have `parentId === activeTreeNodeId`.
+        const treeFilteredTags = activeTreeNodeId
+            ? filteredTags.filter(t => t.parentId === activeTreeNodeId)
+            : filteredTags.filter(t => !t.parentId); // Root level if no selection? Or all? 
+        // If nothing selected, maybe show Root Level tags.
+
+        return (
+            <div className="flex h-[calc(100vh-240px)] bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm animate-fade-in">
+                {/* Left Tree */}
+                <div className="w-[280px] border-r border-slate-200 flex flex-col bg-slate-50">
+                    <div className="p-3 border-b border-slate-200 bg-white">
+                        <div className="relative">
+                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                            <input
+                                placeholder="过滤节点..."
+                                className="w-full pl-8 pr-3 py-1.5 text-xs border border-slate-200 rounded-md focus:outline-none focus:border-indigo-500"
+                            />
+                        </div>
+                    </div>
+                    <div className="flex-1 overflow-y-auto p-2">
+                        <div
+                            className={`flex items-center gap-2 py-1.5 px-2 rounded-md cursor-pointer mb-2 ${activeTreeNodeId === null ? 'bg-indigo-50 text-indigo-700 font-medium' : 'hover:bg-slate-100 text-slate-600'}`}
+                            onClick={() => setActiveTreeNodeId(null)}
+                        >
+                            <List size={14} />
+                            <span className="text-sm">全部根标签</span>
+                        </div>
+                        {tagTree.map(node => renderTreeNode(node))}
+                    </div>
+                </div>
+
+                {/* Right List - Reusing Table Logic somewhat simplified */}
+                <div className="flex-1 overflow-hidden flex flex-col bg-white">
+                    <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+                        <div>
+                            <h3 className="font-bold text-slate-800">
+                                {activeTreeNodeId ? tags.find(t => t.id === activeTreeNodeId)?.name : '根标签'}
+                            </h3>
+                            <p className="text-xs text-slate-500 mt-1">包含 {treeFilteredTags.length} 个子标签</p>
+                        </div>
+                        <button onClick={handleCreateTag} className="text-xs flex items-center gap-1 text-indigo-600 hover:text-indigo-700 font-medium">
+                            <Plus size={14} /> 在此新建
+                        </button>
+                    </div>
+                    <div className="flex-1 overflow-auto">
+                        <table className="w-full text-sm text-left">
+                            <thead className="bg-slate-50 border-b border-slate-100 sticky top-0 z-10">
+                                <tr>
+                                    <th className="px-6 py-3 text-slate-600 font-medium bg-slate-50">标签名称</th>
+                                    <th className="px-6 py-3 text-slate-600 font-medium bg-slate-50">编码</th>
+                                    <th className="px-6 py-3 text-slate-600 font-medium bg-slate-50">分类</th>
+                                    <th className="px-6 py-3 text-slate-600 font-medium bg-slate-50">状态</th>
+                                    <th className="px-6 py-3 text-right text-slate-600 font-medium bg-slate-50">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {treeFilteredTags.length > 0 ? treeFilteredTags.map(tag => (
+                                    <tr key={tag.id} className="hover:bg-slate-50">
+                                        <td className="px-6 py-3">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: tag.color }} />
+                                                <span className="font-medium text-slate-700">{tag.name}</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-3 font-mono text-xs text-slate-600">{tag.code}</td>
+                                        <td className="px-6 py-3">
+                                            <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-xs">{tag.category}</span>
+                                        </td>
+                                        <td className="px-6 py-3"><StatusBadge status={tag.status} /></td>
+                                        <td className="px-6 py-3 text-right">
+                                            <button onClick={() => handleEditTag(tag)} className="text-indigo-600 hover:text-indigo-800 mr-3">编辑</button>
+                                            <button onClick={() => handleDelete(tag)} className="text-red-600 hover:text-red-800">删除</button>
+                                        </td>
+                                    </tr>
+                                )) : (
+                                    <tr>
+                                        <td colSpan={5} className="py-12 text-center text-slate-400">
+                                            暂无子标签
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -985,6 +1398,7 @@ const TagManagementView = () => {
             {UpsertDrawer()}
             {DetailDrawer()}
             {UsageDrawer()}
+            {CategoryManagementModal()}
         </>
     );
 };

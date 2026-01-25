@@ -30,6 +30,7 @@ import {
     UserPlus,
     Briefcase
 } from 'lucide-react';
+import { useToast } from '../components/ui/Toast';
 import {
     userManagementService,
     type User as ApiUser,
@@ -231,7 +232,7 @@ const UserManagementView = () => {
     const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(new Set());
     const [advancedFilterOpen, setAdvancedFilterOpen] = useState(false);
     const [drawerOpen, setDrawerOpen] = useState(false);
-    const [toasts, setToasts] = useState<Array<{ id: string; message: string; type: 'success' | 'error' | 'info' }>>([]);
+    const toast = useToast();
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
     const [sortField, setSortField] = useState<SortField>(null);
@@ -288,12 +289,8 @@ const UserManagementView = () => {
     const noPermissionUsers = stats?.no_permission_role ?? 0;
 
     const showToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'info') => {
-        const id = Date.now().toString();
-        setToasts((prev) => [...prev, { id, message, type }]);
-        setTimeout(() => {
-            setToasts((prev) => prev.filter((t) => t.id !== id));
-        }, 3000);
-    }, []);
+        toast[type](message);
+    }, [toast]);
 
     const resolveSortField = (field: SortField) => {
         if (field === 'name') return 'name';
@@ -746,25 +743,6 @@ const UserManagementView = () => {
 
     return (
         <div className="space-y-6 h-full flex flex-col pt-0 pb-2 px-1">
-            {/* Toast 通知 */}
-            <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] space-y-2">
-                {toasts.map((toast) => (
-                    <div
-                        key={toast.id}
-                        className={`px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 min-w-[280px] ${toast.type === 'success'
-                            ? 'bg-emerald-600 text-white'
-                            : toast.type === 'error'
-                                ? 'bg-rose-600 text-white'
-                                : 'bg-slate-800 text-white'
-                            }`}
-                    >
-                        {toast.type === 'success' && <Check size={18} />}
-                        {toast.type === 'error' && <X size={18} />}
-                        <span className="text-sm font-medium">{toast.message}</span>
-                    </div>
-                ))}
-            </div>
-
             {/* 头部 */}
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between px-1">
                 <div>
