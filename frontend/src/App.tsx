@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, Suspense, lazy } from 'react';
 import {
     Layout, Database, GitMerge, Server, Layers,
     Search, AlertCircle, CheckCircle, ArrowRight,
@@ -22,41 +22,52 @@ import { BusinessObject } from './types/semantic';
 import Sidebar from './components/layout/Sidebar';
 import Header from './components/layout/Header';
 import BreadcrumbBar from './components/layout/BreadcrumbBar';
-import DashboardView from './views/DashboardView';
-import SemanticModelingOverview from './views/SemanticModelingOverview';
-import MappingStudioView from './views/MappingStudioView';
-import BOMappingStudioView from './views/BOMappingStudioView';
-import CandidateConfirmationView from './views/CandidateConfirmationView';
-import ScenarioOrchestrationView from './views/ScenarioOrchestrationView';
-import BusinessScenarioView from './views/BusinessScenarioView';
-import BusinessModelingView from './views/BusinessModelingView';
-import ResourceKnowledgeNetworkView from './views/ResourceKnowledgeNetworkView';
-import TechDiscoveryView from './views/TechDiscoveryView';
-import DataSemanticUnderstandingView from './views/DataSemanticUnderstandingView';
-import DataSemanticUnderstandingViewV2 from './views/DataSemanticUnderstandingViewV2';
-import CandidateGenerationView from './views/CandidateGenerationView';
-import ConflictDetectionView from './views/ConflictDetectionView';
-import SmartDataHubView from './views/SmartDataHubView';
-import ApiGatewayView from './views/ApiGatewayView';
-import CacheStrategyView from './views/CacheStrategyView';
-import SemanticVersionView from './views/SemanticVersionView';
-import DataSourceManagementView from './views/DataSourceManagementView';
-import AssetScanningView from './views/AssetScanningView';
-import AskDataView from './views/AskDataView';
-import AdvancedAskDataView from './views/AdvancedAskDataView';
-import { DataCatalogView } from './views/DataCatalogView';
-import SemanticAssetManagerView from './views/SemanticAssetManagerView';
-import { FieldSemanticWorkbenchView } from './views/FieldSemanticWorkbenchView';
+const DashboardView = lazy(() => import('./views/DashboardView'));
+const SemanticModelingOverview = lazy(() => import('./views/SemanticModelingOverview'));
+const MappingStudioView = lazy(() => import('./views/MappingStudioView'));
+const BOMappingStudioView = lazy(() => import('./views/BOMappingStudioView'));
+const CandidateConfirmationView = lazy(() => import('./views/CandidateConfirmationView'));
+const ScenarioOrchestrationView = lazy(() => import('./views/ScenarioOrchestrationView'));
+const BusinessScenarioView = lazy(() => import('./views/BusinessScenarioView'));
+const BusinessModelingView = lazy(() => import('./views/BusinessModelingView'));
+const ResourceKnowledgeNetworkView = lazy(() => import('./views/ResourceKnowledgeNetworkView'));
+const TechDiscoveryView = lazy(() => import('./views/TechDiscoveryView'));
+const DataSemanticUnderstandingView = lazy(() => import('./views/DataSemanticUnderstandingView'));
+const DataSemanticUnderstandingViewV2 = lazy(() => import('./views/DataSemanticUnderstandingViewV2'));
+const CandidateGenerationView = lazy(() => import('./views/CandidateGenerationView'));
+const ConflictDetectionView = lazy(() => import('./views/ConflictDetectionView'));
+const SmartDataHubView = lazy(() => import('./views/SmartDataHubView'));
+const ApiGatewayView = lazy(() => import('./views/ApiGatewayView'));
+const CacheStrategyView = lazy(() => import('./views/CacheStrategyView'));
+const SemanticVersionView = lazy(() => import('./views/SemanticVersionView'));
+const DataSourceManagementView = lazy(() => import('./views/DataSourceManagementView'));
+const AssetScanningView = lazy(() => import('./views/AssetScanningView'));
+const AskDataView = lazy(() => import('./views/AskDataView'));
+const AdvancedAskDataView = lazy(() => import('./views/AdvancedAskDataView'));
+// Handling named exports for lazy loading
+const DataCatalogView = lazy(() => import('./views/DataCatalogView').then(module => ({ default: module.DataCatalogView })));
+const SemanticAssetManagerView = lazy(() => import('./views/SemanticAssetManagerView'));
+const FieldSemanticWorkbenchView = lazy(() => import('./views/FieldSemanticWorkbenchView').then(module => ({ default: module.FieldSemanticWorkbenchView })));
+
 import { useModuleNavigation } from './hooks/useModuleNavigation';
-import AuthView from './views/AuthView';
-import UserPermissionView from './views/UserPermissionView';
-import PermissionTemplatesView from './views/PermissionTemplatesView';
-import WorkflowManagementView from './views/WorkflowManagementView';
-import ApprovalPolicyView from './views/ApprovalPolicyView';
-import AuditLogView from './views/AuditLogView';
-import MenuManagementView from './views/MenuManagementView';
-import OrgManagementView from './views/OrgManagementView';
-import UserManagementView from './views/UserManagementView';
+
+const AuthView = lazy(() => import('./views/AuthView'));
+const UserPermissionView = lazy(() => import('./views/UserPermissionView'));
+const PermissionTemplatesView = lazy(() => import('./views/PermissionTemplatesView'));
+const WorkflowManagementView = lazy(() => import('./views/WorkflowManagementView'));
+const ApprovalPolicyView = lazy(() => import('./views/ApprovalPolicyView'));
+const AuditLogView = lazy(() => import('./views/AuditLogView'));
+const MenuManagementView = lazy(() => import('./views/MenuManagementView'));
+const OrgManagementView = lazy(() => import('./views/OrgManagementView'));
+const UserManagementView = lazy(() => import('./views/UserManagementView'));
+
+// Loading Component
+const PageLoading = () => (
+    <div className="h-full flex flex-col items-center justify-center space-y-4">
+        <div className="w-10 h-10 border-4 border-indigo-100 border-t-indigo-500 rounded-full animate-spin"></div>
+        <p className="text-slate-500 text-sm animate-pulse">加载资源中...</p>
+    </div>
+);
 
 // ==========================================
 // 组件定义
@@ -204,7 +215,11 @@ export default function SemanticLayerApp() {
 
     // 如果当前是登录页面，直接渲染登录页面
     if (activeModule === 'auth') {
-        return <AuthView onContinue={handleAuthSuccess} />;
+        return (
+            <Suspense fallback={<div className="h-screen w-screen flex items-center justify-center"><div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div></div>}>
+                <AuthView onContinue={handleAuthSuccess} />
+            </Suspense>
+        );
     }
 
 
@@ -221,7 +236,9 @@ export default function SemanticLayerApp() {
                     <Header activeModule={activeModule} setActiveModule={setActiveModule} />
                     <BreadcrumbBar activeModule={activeModule} />
                     <main className="flex-1 overflow-auto p-4 relative">
-                        {renderContent()}
+                        <Suspense fallback={<PageLoading />}>
+                            {renderContent()}
+                        </Suspense>
                     </main>
                 </div>
             </div>
