@@ -67,9 +67,10 @@ USER app
 # Expose port (default 8892 for data-connection)
 EXPOSE 8892
 
-# Health check
-HEALTHCHECK --interval=10s --timeout=5s --start-period=30s --retries=3 \
-    CMD curl -f http://localhost:8892/health || exit 1
+# Health check - Disabled until /health endpoint is implemented
+# HEALTHCHECK --interval=10s --timeout=5s --start-period=30s --retries=3 \
+#     CMD curl -f http://localhost:8892/health || exit 1
 
 # Run the service
-CMD java -Dfile.encoding=UTF-8 $JAVA_OPTS -jar -server data-connection.jar --spring.config.location=./config/
+# Use additional-location to allow loading from classpath AND external config directory
+CMD java -Dfile.encoding=UTF-8 $JAVA_OPTS -jar -server data-connection.jar --spring.config.additional-location=./config/

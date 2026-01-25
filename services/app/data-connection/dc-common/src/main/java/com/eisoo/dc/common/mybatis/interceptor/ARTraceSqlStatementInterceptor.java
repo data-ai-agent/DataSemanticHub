@@ -16,7 +16,7 @@ import java.util.Properties;
 @Slf4j
 @Intercepts({
         @Signature(type = StatementHandler.class, method = "update", args = {Statement.class}),
-        @Signature(type = StatementHandler.class, method = "query", args = {Statement.class})
+        @Signature(type = StatementHandler.class, method = "query", args = {Statement.class, org.apache.ibatis.session.ResultHandler.class})
 })
 public class ARTraceSqlStatementInterceptor implements Interceptor {
 
