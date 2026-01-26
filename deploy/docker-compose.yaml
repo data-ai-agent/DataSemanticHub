@@ -286,6 +286,29 @@ services:
       retries: 3
       start_period: 30s
 
+  # Database Migrator
+  migrator:
+    build:
+      context: ..
+      dockerfile: deploy/docker/migrator/Dockerfile
+    container_name: datasemantichub-migrator
+    environment:
+      - DB_HOST=mariadb
+      - DB_PORT=3306
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME}
+    volumes:
+      - ../services/app:/services/app:ro
+    networks:
+      - datasemantichub-network
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    # Run once and exit
+    profiles:
+      - tools
+
   # Python AI Service (Vanna)
   agent-service:
     build:
@@ -320,8 +343,8 @@ services:
     ports:
       - "${PYTHON_SERVICE_PORT:-8891}:8891"
     volumes:
-      - vanna-chroma-data:/app/chroma_db  # 持久化向量数据
-      - ./config/vanna:/app/config:ro  # 挂载配置文件（可选）
+      - vanna-chroma-data:/app/chroma_db # 持久化向量数据
+      - ./config/vanna:/app/config:ro # 挂载配置文件（可选）
     networks:
       - datasemantichub-network
     depends_on:
@@ -369,14 +392,7 @@ services:
     depends_on:
       mariadb:
         condition: service_healthy
-    command: [
-      "streamlit",
-      "run",
-      "ui/app.py",
-      "--server.address=0.0.0.0",
-      "--server.port=8501",
-      "--server.headless=true"
-    ]
+    command: [ "streamlit", "run", "ui/app.py", "--server.address=0.0.0.0", "--server.port=8501", "--server.headless=true" ]
 
   # Faker Data Service (测试数据生成)
   faker-data-service:
@@ -401,7 +417,7 @@ services:
       mariadb:
         condition: service_healthy
     profiles:
-      - tools  # 使用 profile，默认不启动
+      - tools # 使用 profile，默认不启动
 
   # Frontend (React + Vite)
   frontend:
@@ -496,25 +512,25 @@ services:
     #   retries: 3
     #   start_period: 30s
 
-  # Python Service (预留)
-  # python-service:
-  #   build:
-  #     context: ..
-  #     dockerfile: deploy/backend/python/Dockerfile
-  #   container_name: datasemantichub-python-service
-  #   restart: unless-stopped
-  #   environment:
-  #     - TZ=Asia/Shanghai
-  #     - APP_ENV=${ENVIRONMENT:-dev}
-  #     - DB_HOST=mariadb
-  #     - DB_PORT=3306
-  #     - DB_NAME=${DB_NAME}
-  #     - DB_USER=${DB_USER}
-  #     - DB_PASSWORD=${DB_PASSWORD}
-  #   ports:
-  #     - "${PYTHON_SERVICE_PORT:-8891}:8891"
-  #   networks:
-  #     - datasemantichub-network
-  #   depends_on:
-  #     mariadb:
-  #       condition: service_healthy
+    # Python Service (预留)
+    # python-service:
+    #   build:
+    #     context: ..
+    #     dockerfile: deploy/backend/python/Dockerfile
+    #   container_name: datasemantichub-python-service
+    #   restart: unless-stopped
+    #   environment:
+    #     - TZ=Asia/Shanghai
+    #     - APP_ENV=${ENVIRONMENT:-dev}
+    #     - DB_HOST=mariadb
+    #     - DB_PORT=3306
+    #     - DB_NAME=${DB_NAME}
+    #     - DB_USER=${DB_USER}
+    #     - DB_PASSWORD=${DB_PASSWORD}
+    #   ports:
+    #     - "${PYTHON_SERVICE_PORT:-8891}:8891"
+    #   networks:
+    #     - datasemantichub-network
+    #   depends_on:
+    #     mariadb:
+    #       condition: service_healthy

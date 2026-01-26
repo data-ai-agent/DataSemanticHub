@@ -27,8 +27,18 @@ EOF
 # Get script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEPLOY_DIR="$(dirname "$SCRIPT_DIR")"
-REPO_DIR="$(dirname "$DEPLOY_DIR")"
-SERVICES_DIR="$REPO_DIR/services/app"
+
+# Detection: Container vs Local
+if [ -d "/services/app" ]; then
+    # Container mode
+    REPO_DIR="/"
+    SERVICES_DIR="/services/app"
+    echo "Running in Container mode. Services dir: $SERVICES_DIR"
+else
+    # Local mode
+    REPO_DIR="$(dirname "$DEPLOY_DIR")"
+    SERVICES_DIR="$REPO_DIR/services/app"
+fi
 
 ENV_FILE="$DEPLOY_DIR/.env"
 SERVICE_NAME=""
@@ -67,21 +77,23 @@ echo -e "${GREEN}DataSemanticHub - Migration Runner${NC}"
 echo -e "${GREEN}=====================================${NC}"
 echo ""
 
-if [ ! -f "$ENV_FILE" ]; then
-    echo -e "${RED}Error: env file not found at ${ENV_FILE}${NC}"
-    exit 1
+if [ -f "$ENV_FILE" ]; then
+    # Load environment variables from file
+    set -o allexport
+    source "$ENV_FILE"
+    set +o allexport
+else
+    echo -e "${YELLOW}Notice: env file not found at ${ENV_FILE}. Using environment variables.${NC}"
 fi
 
-# Load environment variables
-set -o allexport
-source "$ENV_FILE"
-set +o allexport
+
 
 DB_HOST="${DB_HOST:-localhost}"
 DB_PORT="${DB_PORT:-3306}"
 DB_NAME="${DB_NAME:-datasemantichub}"
 DB_USER="${DB_USER:-root}"
 DB_PASSWORD="${DB_PASSWORD:-}"
+DB_TYPE="${DB_TYPE:-mariadb}" # Default to mariadb
 
 if [[ -z "$DB_NAME" || -z "$DB_USER" ]]; then
     echo -e "${RED}Error: DB_NAME and DB_USER must be set${NC}"
@@ -162,6 +174,13 @@ skipped=0
 for service in "${services[@]}"; do
     service_dir="$SERVICES_DIR/$service"
     migrations_dir="$service_dir/migrations"
+    
+    # Check for DB-specific migrations (e.g., migrations/mariadb)
+    if [[ -d "$migrations_dir/$DB_TYPE" ]]; then
+        echo -e "${BLUE}  Using ${DB_TYPE} migrations for ${service}${NC}"
+        migrations_dir="$migrations_dir/$DB_TYPE"
+    fi
+
     if [[ ! -d "$migrations_dir" ]]; then
         echo -e "${YELLOW}Skip ${service}: no migrations directory${NC}"
         continue

@@ -68,7 +68,7 @@ deps:
 
 # 构建 Docker 镜像 (使用 build.sh 脚本)
 docker-build:
-	@cd deploy/docker && ./build.sh $(VERSION)
+	@./deploy/docker/build.sh $(VERSION)
 
 # 运行 Docker 容器
 docker-run:

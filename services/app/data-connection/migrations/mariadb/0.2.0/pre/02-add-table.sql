@@ -1,4 +1,4 @@
-USE adp;
+USE datasemantichub;
 
 CREATE TABLE IF NOT EXISTS `t_task_scan_schedule` (
   `id` char(36) NOT NULL COMMENT '唯一id，雪花算法',
