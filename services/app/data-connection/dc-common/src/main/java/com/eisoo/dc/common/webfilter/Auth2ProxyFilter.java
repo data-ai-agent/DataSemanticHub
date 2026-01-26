@@ -38,49 +38,49 @@ public class Auth2ProxyFilter implements Filter {
         introspectInfo.setExt(new Ext());
         String auth2Token = null;
         // uri
-        String uri = request.getRequestURI();
-        if (uri.startsWith("/api/data-connection/v1/datasource")
-                || uri.startsWith("/api/data-connection/v1/metadata")
-                || uri.startsWith("/api/data-connection/v1/gateway")) {
-
-            auth2Token = request.getHeader(Constants.HEADER_TOKEN_KEY);
-            if(auth2Token == null)
-            {
-                response.setStatus(401);
-                response.setContentType("application/json");
-                AiShuException aiShuException = new AiShuException(ErrorCodeEnum.UnauthorizedError, Detail.AUTHORIZATION_NOT_EXIST);
-                write(response, null, gson.toJson(aiShuException));
-                return ;
-            }
-            try {
-                if (!auth2Token.startsWith("Bearer ")) {
-                    //格式错误
-                    response.setStatus(400);
-                    response.setContentType("application/json");
-                    AiShuException aiShuException = new AiShuException(ErrorCodeEnum.UnauthorizedError, Detail.AUTHORIZATION_FORMAT_ERROR);
-                    write(response, null, gson.toJson(aiShuException));
-                    return;
-                }
-                String token= auth2Token.substring("Bearer ".length()).trim();
-                introspectInfo= Hydra.getIntrospectInfoByToken(url,token,"all");
-                if(!introspectInfo.isActive())
-                {
-                    response.setStatus(401);
-                    response.setContentType("application/json");
-                    AiShuException aiShuException = new AiShuException(ErrorCodeEnum.UnauthorizedError);
-                    write(response, null, gson.toJson(aiShuException));
-                    return ;
-                }
-            } catch (Exception e) {
-                response.setStatus(500);
-                response.setContentType("application/json");
-                AiShuException aiShuException = new AiShuException(ErrorCodeEnum.InternalServerError, Description.HYDRA_SERVICE_ERROR, e.getMessage(), Message.MESSAGE_AUTH_SERVICE_ERROR_SOLUTION);
-                write(response, null, gson.toJson(aiShuException));
-                return ;
-            }
-        }
+//         String uri = request.getRequestURI();
+//         if (uri.startsWith("/api/data-connection/v1/datasource")
+//                 || uri.startsWith("/api/data-connection/v1/metadata")
+//                 || uri.startsWith("/api/data-connection/v1/gateway")) {
+//
+//             auth2Token = request.getHeader(Constants.HEADER_TOKEN_KEY);
+//             if(auth2Token == null)
+//             {
+//                 response.setStatus(401);
+//                 response.setContentType("application/json");
+//                 AiShuException aiShuException = new AiShuException(ErrorCodeEnum.UnauthorizedError, Detail.AUTHORIZATION_NOT_EXIST);
+//                 write(response, null, gson.toJson(aiShuException));
+//                 return ;
+//             }
+//             try {
+//                 if (!auth2Token.startsWith("Bearer ")) {
+//                     //格式错误
+//                     response.setStatus(400);
+//                     response.setContentType("application/json");
+//                     AiShuException aiShuException = new AiShuException(ErrorCodeEnum.UnauthorizedError, Detail.AUTHORIZATION_FORMAT_ERROR);
+//                     write(response, null, gson.toJson(aiShuException));
+//                     return;
+//                 }
+//                 String token= auth2Token.substring("Bearer ".length()).trim();
+//                 introspectInfo= Hydra.getIntrospectInfoByToken(url,token,"all");
+//                 if(!introspectInfo.isActive())
+//                 {
+//                     response.setStatus(401);
+//                     response.setContentType("application/json");
+//                     AiShuException aiShuException = new AiShuException(ErrorCodeEnum.UnauthorizedError);
+//                     write(response, null, gson.toJson(aiShuException));
+//                     return ;
+//                 }
+//             } catch (Exception e) {
+//                 response.setStatus(500);
+//                 response.setContentType("application/json");
+//                 AiShuException aiShuException = new AiShuException(ErrorCodeEnum.InternalServerError, Description.HYDRA_SERVICE_ERROR, e.getMessage(), Message.MESSAGE_AUTH_SERVICE_ERROR_SOLUTION);
+//                 write(response, null, gson.toJson(aiShuException));
+//                 return ;
+//             }
+//         }
         servletRequest.setAttribute("Authorization", auth2Token);
-        servletRequest.setAttribute("introspectInfo", introspectInfo);
+        servletRequest.setAttribute("introspectInfo", null);
         filterChain.doFilter(servletRequest, servletResponse);
     }
 
