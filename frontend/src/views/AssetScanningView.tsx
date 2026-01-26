@@ -1,877 +1,237 @@
-import { useState } from 'react';
-import { Scan, Database, Table, Search, RefreshCw, X, ChevronRight, CheckCircle, AlertCircle, Clock, XCircle, Settings, History, Grid, List as ListIcon, Star, Users, Tag } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import {
+    Plus, Play, Pause, RefreshCw, Clock, Database, Calendar,
+    CheckCircle, XCircle, AlertCircle, Activity, List,
+    Settings, ChevronDown, MoreHorizontal, X,
+    Eye, Trash2, Zap, Layers, User
+} from 'lucide-react';
+import {
+    scanService,
+    type ScanTask,
+    type ScheduledScan,
+    type ScheduledScanExecutionHistory,
+    type TableScan,
+    ScanTaskType,
+    ScanStrategy,
+} from '../services/scanService';
+import { dataSourceService, type DataSource } from '../services/dataSourceService';
 
-// 扩展的数据模型
-interface ScanAsset {
-    id: string;
-    name: string;
-    comment: string;
-    rows: string;
-    updateTime: string;
-    status: 'new' | 'changed' | 'synced' | 'removed' | 'error';
-    reviewState: 'unreviewed' | 'reviewed' | 'ignored';
-    sourceId: string;
-    sourceName: string;
-    sourceType: string;
-    healthScore?: number;
-    owner?: string;
-    semanticTags?: string[];
-    columns: { name: string; type: string; comment: string; nullable: boolean; isPK: boolean }[];
-}
+const AssetScanningView = ({ onNavigate }: { onNavigate?: (moduleId: string) => void } = {}) => {
+    // Tab 切换
+    const [activeTab, setActiveTab] = useState<'instant' | 'scheduled' | 'history'>('instant');
 
-interface AssetScanningViewProps {
-    onNavigate?: (module: string) => void;
-}
+    // 即时扫描任务
+    const [instantTasks, setInstantTasks] = useState<ScanTask[]>([]);
+    const [instantLoading, setInstantLoading] = useState(false);
 
-// Scan History Modal Component
-const ScanHistoryModal = ({ onClose }: { onClose: () => void }) => {
-    const [selectedRun, setSelectedRun] = useState<string | null>(null);
+    // 定时扫描任务
+    const [scheduledTasks, setScheduledTasks] = useState<ScheduledScan[]>([]);
+    const [scheduledLoading, setScheduledLoading] = useState(false);
 
-    const scanRuns = [
-        {
-            id: 'RUN_001',
-            startTime: '2024-05-21 10:00:00',
-            endTime: '2024-05-21 10:05:32',
-            duration: '5分32秒',
-            scope: '全量',
-            dataSourceCount: 3,
-            results: { new: 2, changed: 1, removed: 0, error: 0 },
-            status: 'success' as const,
-            totalTables: 156
-        },
-        {
-            id: 'RUN_002',
-            startTime: '2024-05-20 10:00:00',
-            endTime: '2024-05-20 10:04:15',
-            duration: '4分15秒',
-            scope: '增量',
-            dataSourceCount: 2,
-            results: { new: 1, changed: 3, removed: 1, error: 0 },
-            status: 'success' as const,
-            totalTables: 154
-        },
-        {
-            id: 'RUN_003',
-            startTime: '2024-05-19 10:00:00',
-            endTime: '2024-05-19 10:03:45',
-            duration: '3分45秒',
-            scope: '全量',
-            dataSourceCount: 3,
-            results: { new: 0, changed: 2, removed: 0, error: 1 },
-            status: 'partial_failure' as const,
-            totalTables: 153
-        }
-    ];
+    // 数据源列表
+    const [dataSources, setDataSources] = useState<DataSource[]>([]);
 
-    const statusConfig = {
-        success: { label: '成功', color: 'text-green-700', bgColor: 'bg-green-100' },
-        partial_failure: { label: '部分失败', color: 'text-orange-700', bgColor: 'bg-orange-100' },
-        failure: { label: '失败', color: 'text-red-700', bgColor: 'bg-red-100' }
-    };
+    // 弹窗状态
+    const [showCreateModal, setShowCreateModal] = useState(false);
+    const [showDetailModal, setShowDetailModal] = useState(false);
+    const [showScheduledDetailModal, setShowScheduledDetailModal] = useState(false);
+    const [showExecutionHistoryModal, setShowExecutionHistoryModal] = useState(false);
 
-    return (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center animate-fade-in">
-            <div className="w-[900px] max-h-[80vh] bg-white rounded-xl shadow-2xl flex flex-col">
-                <div className="p-6 border-b border-slate-200 flex justify-between items-center">
-                    <div>
-                        <h3 className="text-xl font-bold text-slate-800">扫描历史</h3>
-                        <p className="text-sm text-slate-500 mt-1">查看历史扫描任务和结果</p>
-                    </div>
-                    <button
-                        onClick={onClose}
-                        className="text-slate-400 hover:text-slate-600 transition-colors"
-                    >
-                        <X size={24} />
-                    </button>
-                </div>
+    // 当前选中的任务
+    const [selectedTask, setSelectedTask] = useState<ScanTask | null>(null);
+    const [selectedScheduledTask, setSelectedScheduledTask] = useState<ScheduledScan | null>(null);
 
-                <div className="flex-1 overflow-hidden flex">
-                    {/* Run List */}
-                    <div className="w-1/2 border-r border-slate-200 overflow-y-auto">
-                        <div className="p-4 space-y-3">
-                            {scanRuns.map(run => {
-                                const config = statusConfig[run.status];
-                                return (
-                                    <div
-                                        key={run.id}
-                                        onClick={() => setSelectedRun(run.id)}
-                                        className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${selectedRun === run.id
-                                            ? 'border-emerald-500 bg-emerald-50'
-                                            : 'border-slate-200 hover:border-slate-300 bg-white'
-                                            }`}
-                                    >
-                                        <div className="flex justify-between items-start mb-3">
-                                            <div>
-                                                <div className="flex items-center gap-2">
-                                                    <Clock size={14} className="text-slate-400" />
-                                                    <span className="text-sm font-medium text-slate-700">
-                                                        {run.startTime}
-                                                    </span>
-                                                </div>
-                                                <p className="text-xs text-slate-500 mt-1">
-                                                    耗时: {run.duration} | {run.scope} | {run.dataSourceCount} 个数据源
-                                                </p>
-                                            </div>
-                                            <span className={`text-xs px-2 py-1 rounded ${config.bgColor} ${config.color}`}>
-                                                {config.label}
-                                            </span>
-                                        </div>
+    // 表扫描信息
+    const [tableScans, setTableScans] = useState<TableScan[]>([]);
+    const [tableScansLoading, setTableScansLoading] = useState(false);
 
-                                        <div className="flex gap-2 text-xs">
-                                            <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded">新增 {run.results.new}</span>
-                                            <span className="bg-orange-100 text-orange-700 px-2 py-1 rounded">变更 {run.results.changed}</span>
-                                            <span className="bg-red-100 text-red-700 px-2 py-1 rounded">缺失 {run.results.removed}</span>
-                                            {run.results.error > 0 && (
-                                                <span className="bg-red-100 text-red-700 px-2 py-1 rounded">失败 {run.results.error}</span>
-                                            )}
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
+    // 执行历史
+    const [executionHistory, setExecutionHistory] = useState<ScheduledScanExecutionHistory[]>([]);
 
-                    {/* Run Detail */}
-                    <div className="flex-1 overflow-y-auto p-6">
-                        {selectedRun ? (
-                            <div className="space-y-4">
-                                {(() => {
-                                    const run = scanRuns.find(r => r.id === selectedRun)!;
-                                    return (
-                                        <>
-                                            <div>
-                                                <h4 className="font-bold text-slate-800 mb-3">运行概览</h4>
-                                                <div className="grid grid-cols-2 gap-3">
-                                                    <div className="bg-slate-50 rounded-lg p-3">
-                                                        <p className="text-xs text-slate-500">发现表总数</p>
-                                                        <p className="text-lg font-bold text-slate-800 mt-1">{run.totalTables}</p>
-                                                    </div>
-                                                    <div className="bg-slate-50 rounded-lg p-3">
-                                                        <p className="text-xs text-slate-500">扫描耗时</p>
-                                                        <p className="text-lg font-bold text-slate-800 mt-1">{run.duration}</p>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div>
-                                                <h4 className="font-bold text-slate-800 mb-3">扫描配置</h4>
-                                                <div className="bg-slate-50 rounded-lg p-4 space-y-2 text-sm">
-                                                    <div className="flex justify-between">
-                                                        <span className="text-slate-600">扫描范围</span>
-                                                        <span className="font-medium text-slate-800">{run.scope}</span>
-                                                    </div>
-                                                    <div className="flex justify-between">
-                                                        <span className="text-slate-600">数据源数量</span>
-                                                        <span className="font-medium text-slate-800">{run.dataSourceCount}</span>
-                                                    </div>
-                                                    <div className="flex justify-between">
-                                                        <span className="text-slate-600">开始时间</span>
-                                                        <span className="font-medium text-slate-800">{run.startTime}</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            {run.results.error > 0 && (
-                                                <div>
-                                                    <h4 className="font-bold text-slate-800 mb-3">失败资产</h4>
-                                                    <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                                                        <p className="text-sm text-red-700">
-                                                            共 {run.results.error} 个表扫描失败，请查看日志排查
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                            )}
-
-                                            <div className="flex gap-2">
-                                                <button className="flex-1 px-4 py-2 text-sm bg-emerald-600 text-white rounded-lg hover:bg-emerald-700">
-                                                    查看详情
-                                                </button>
-                                                <button className="flex-1 px-4 py-2 text-sm border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50">
-                                                    重新运行
-                                                </button>
-                                            </div>
-                                        </>
-                                    );
-                                })()}
-                            </div>
-                        ) : (
-                            <div className="h-full flex items-center justify-center text-slate-400">
-                                <div className="text-center">
-                                    <History size={48} className="mx-auto mb-3 opacity-20" />
-                                    <p>选择一个扫描任务查看详情</p>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                <div className="p-4 border-t border-slate-200 flex justify-end">
-                    <button
-                        onClick={onClose}
-                        className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
-                    >
-                        关闭
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-// Auto-Scan Config Modal Component
-const AutoScanConfigModal = ({ onClose }: { onClose: () => void }) => {
-    const [scheduleEnabled, setScheduleEnabled] = useState(true);
-    const [scheduleType, setScheduleType] = useState<'daily' | 'weekly' | 'custom'>('daily');
-    const [scheduleTime, setScheduleTime] = useState('02:00');
-    const [selectedDataSources, setSelectedDataSources] = useState<string[]>(['DS_001', 'DS_002']);
-
-    const dataSources = [
-        { id: 'DS_001', name: '卫健委_前置库_01', type: 'MySQL' },
-        { id: 'DS_002', name: '市人口库_主库', type: 'Oracle' },
-        { id: 'DS_003', name: '政务数据中心', type: 'PostgreSQL' }
-    ];
-
-    return (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center animate-fade-in">
-            <div className="w-[600px] bg-white rounded-xl shadow-2xl">
-                <div className="p-6 border-b border-slate-200 flex justify-between items-center">
-                    <div>
-                        <h3 className="text-xl font-bold text-slate-800">自动扫描配置</h3>
-                        <p className="text-sm text-slate-500 mt-1">设置定时和自动化扫描规则</p>
-                    </div>
-                    <button
-                        onClick={onClose}
-                        className="text-slate-400 hover:text-slate-600 transition-colors"
-                    >
-                        <X size={24} />
-                    </button>
-                </div>
-
-                <div className="p-6 space-y-6 max-h-[60vh] overflow-y-auto">
-                    {/* Schedule Enable */}
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <h4 className="font-bold text-slate-800">启用定时扫描</h4>
-                            <p className="text-sm text-slate-500 mt-1">按计划自动扫描数据源</p>
-                        </div>
-                        <button
-                            onClick={() => setScheduleEnabled(!scheduleEnabled)}
-                            className={`relative w-12 h-6 rounded-full transition-colors ${scheduleEnabled ? 'bg-emerald-500' : 'bg-slate-300'
-                                }`}
-                        >
-                            <div
-                                className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${scheduleEnabled ? 'transform translate-x-6' : ''
-                                    }`}
-                            />
-                        </button>
-                    </div>
-
-                    {scheduleEnabled && (
-                        <>
-                            {/* Schedule Type */}
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-2">
-                                    扫描频率
-                                </label>
-                                <div className="flex gap-2">
-                                    {(['daily', 'weekly', 'custom'] as const).map(type => (
-                                        <button
-                                            key={type}
-                                            onClick={() => setScheduleType(type)}
-                                            className={`flex-1 px-4 py-2 text-sm rounded-lg border-2 transition-colors ${scheduleType === type
-                                                ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
-                                                : 'border-slate-200 text-slate-600 hover:border-slate-300'
-                                                }`}
-                                        >
-                                            {type === 'daily' ? '每日' : type === 'weekly' ? '每周' : '自定义'}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Schedule Time */}
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-2">
-                                    扫描时间
-                                </label>
-                                <input
-                                    type="time"
-                                    value={scheduleTime}
-                                    onChange={(e) => setScheduleTime(e.target.value)}
-                                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                                />
-                                <p className="text-xs text-slate-500 mt-1">
-                                    建议选择业务低峰期（如凌晨）执行扫描
-                                </p>
-                            </div>
-
-                            {/* Data Sources */}
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-2">
-                                    扫描范围
-                                </label>
-                                <div className="space-y-2">
-                                    {dataSources.map(ds => (
-                                        <label
-                                            key={ds.id}
-                                            className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg hover:bg-slate-50 cursor-pointer"
-                                        >
-                                            <input
-                                                type="checkbox"
-                                                checked={selectedDataSources.includes(ds.id)}
-                                                onChange={(e) => {
-                                                    if (e.target.checked) {
-                                                        setSelectedDataSources([...selectedDataSources, ds.id]);
-                                                    } else {
-                                                        setSelectedDataSources(selectedDataSources.filter(id => id !== ds.id));
-                                                    }
-                                                }}
-                                                className="rounded border-slate-300"
-                                            />
-                                            <div className="flex-1">
-                                                <p className="text-sm font-medium text-slate-700">{ds.name}</p>
-                                                <p className="text-xs text-slate-500">{ds.type}</p>
-                                            </div>
-                                        </label>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Notification */}
-                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                                <div className="flex items-start gap-2">
-                                    <AlertCircle size={16} className="text-blue-600 mt-0.5" />
-                                    <div className="text-sm text-blue-700">
-                                        <p className="font-medium mb-1">通知设置</p>
-                                        <p>扫描完成后将通过系统消息通知管理员</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </>
-                    )}
-                </div>
-
-                <div className="p-4 border-t border-slate-200 flex justify-end gap-2">
-                    <button
-                        onClick={onClose}
-                        className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
-                    >
-                        取消
-                    </button>
-                    <button className="px-4 py-2 text-sm bg-emerald-600 text-white rounded-lg hover:bg-emerald-700">
-                        保存配置
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-// Detail Drawer Component
-const DetailDrawer = ({ asset, onClose }: { asset: ScanAsset; onClose: () => void }) => {
-    const [activeTab, setActiveTab] = useState<'overview' | 'schema' | 'quality' | 'diff' | 'log' | 'collaborate' | 'source'>('overview');
-
-    const tabs = [
-        { key: 'overview' as const, label: '概览' },
-        { key: 'schema' as const, label: '字段结构' },
-        { key: 'quality' as const, label: '数据质量' },
-        { key: 'diff' as const, label: '变更 Diff' },
-        { key: 'log' as const, label: '扫描日志' },
-        { key: 'collaborate' as const, label: '协作讨论' },
-        { key: 'source' as const, label: '数据源信息' }
-    ];
-
-    return (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex justify-end animate-fade-in">
-            <div className="w-[720px] h-full bg-white shadow-2xl flex flex-col animate-slide-in-right">
-                {/* Header */}
-                <div className="p-6 border-b border-slate-100 flex justify-between items-start bg-gradient-to-r from-emerald-500 to-emerald-600 text-white">
-                    <div>
-                        <h3 className="text-xl font-bold mb-1 font-mono">{asset.name}</h3>
-                        <p className="text-emerald-100 text-sm">{asset.comment}</p>
-                        <div className="flex items-center gap-3 mt-3 text-xs">
-                            <span className="bg-white/20 px-2 py-0.5 rounded">{asset.sourceType}</span>
-                            <span className="bg-white/20 px-2 py-0.5 rounded">行数: {asset.rows}</span>
-                            <span className="bg-white/20 px-2 py-0.5 rounded">{asset.columns.length} 字段</span>
-                        </div>
-                    </div>
-                    <button
-                        onClick={onClose}
-                        className="text-white/80 hover:text-white hover:bg-white/20 rounded p-1 transition-colors"
-                    >
-                        <X size={24} />
-                    </button>
-                </div>
-
-                {/* Tabs */}
-                <div className="border-b border-slate-200 px-6 flex gap-1">
-                    {tabs.map(tab => (
-                        <button
-                            key={tab.key}
-                            onClick={() => setActiveTab(tab.key)}
-                            className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === tab.key
-                                ? 'border-emerald-500 text-emerald-600'
-                                : 'border-transparent text-slate-500 hover:text-slate-700'
-                                }`}
-                        >
-                            {tab.label}
-                        </button>
-                    ))}
-                </div>
-
-                {/* Tab Content */}
-                <div className="flex-1 overflow-y-auto p-6">
-                    {activeTab === 'overview' && <OverviewTab asset={asset} />}
-                    {activeTab === 'schema' && <SchemaTab asset={asset} />}
-                    {activeTab === 'quality' && <QualityTab asset={asset} />}
-                    {activeTab === 'diff' && <DiffTab asset={asset} />}
-                    {activeTab === 'log' && <LogTab asset={asset} />}
-                    {activeTab === 'collaborate' && <CollaborateTab asset={asset} />}
-                    {activeTab === 'source' && <SourceTab asset={asset} />}
-                </div>
-
-                {/* Footer */}
-                <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-between">
-                    <button
-                        onClick={onClose}
-                        className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-200 rounded-lg transition-colors"
-                    >
-                        关闭
-                    </button>
-                    <div className="flex gap-2">
-                        <button className="px-4 py-2 text-sm border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50">
-                            忽略
-                        </button>
-                        <button className="px-4 py-2 text-sm bg-emerald-600 text-white rounded-lg hover:bg-emerald-700">
-                            标记已确认
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-// Tab Components
-const OverviewTab = ({ asset }: { asset: ScanAsset }) => (
-    <div className="space-y-6">
-        <div className="grid grid-cols-2 gap-4">
-            <div className="bg-slate-50 rounded-lg p-4">
-                <p className="text-xs text-slate-500 mb-1">首次发现时间</p>
-                <p className="text-sm font-medium text-slate-700">2024-05-15 10:00</p>
-            </div>
-            <div className="bg-slate-50 rounded-lg p-4">
-                <p className="text-xs text-slate-500 mb-1">上次扫描时间</p>
-                <p className="text-sm font-medium text-slate-700">{asset.updateTime}</p>
-            </div>
-        </div>
-
-        {asset.healthScore && (
-            <div>
-                <h4 className="text-sm font-bold text-slate-700 mb-3">健康分析</h4>
-                <div className="bg-slate-50 rounded-lg p-4 space-y-3">
-                    <div className="flex items-center justify-between">
-                        <span className="text-sm text-slate-600">健康分</span>
-                        <div className="flex items-center gap-2">
-                            <div className={`w-3 h-3 rounded-full ${asset.healthScore >= 80 ? 'bg-green-500' :
-                                asset.healthScore >= 60 ? 'bg-yellow-500' : 'bg-red-500'
-                                }`} />
-                            <span className="text-lg font-bold text-slate-800">{asset.healthScore}</span>
-                        </div>
-                    </div>
-                    <div className="text-xs text-slate-500">
-                        {asset.healthScore >= 80 ? '✓ 表结构完整，文档齐全' : '⚠ 建议完善字段注释'}
-                    </div>
-                </div>
-            </div>
-        )}
-
-        <div>
-            <h4 className="text-sm font-bold text-slate-700 mb-3">AI 语义推断</h4>
-            <div className="bg-purple-50 rounded-lg p-4 space-y-2">
-                <div className="flex justify-between">
-                    <span className="text-sm text-slate-600">推荐业务名称</span>
-                    <span className="text-sm font-medium text-purple-700">{asset.comment}</span>
-                </div>
-                <div className="flex justify-between">
-                    <span className="text-sm text-slate-600">推荐分类</span>
-                    <span className="text-sm font-medium text-purple-700">事实表</span>
-                </div>
-                {asset.semanticTags && (
-                    <div className="flex gap-2 mt-2">
-                        {asset.semanticTags.map(tag => (
-                            <span key={tag} className="text-xs bg-purple-200 text-purple-800 px-2 py-1 rounded">
-                                {tag}
-                            </span>
-                        ))}
-                    </div>
-                )}
-            </div>
-        </div>
-
-        {asset.status === 'changed' && (
-            <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-                <h4 className="text-sm font-bold text-orange-800 mb-2">⚠ 潜在影响分析</h4>
-                <p className="text-sm text-orange-700">关联 3 个下游报表，2 个 API 服务</p>
-            </div>
-        )}
-    </div>
-);
-
-const SchemaTab = ({ asset }: { asset: ScanAsset }) => (
-    <div>
-        <h4 className="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2">
-            <Table size={16} />
-            字段结构 ({asset.columns.length})
-        </h4>
-        <div className="border border-slate-200 rounded-lg overflow-hidden">
-            <table className="w-full text-xs text-left">
-                <thead className="bg-slate-50 text-slate-500 border-b border-slate-200">
-                    <tr>
-                        <th className="px-3 py-2">字段名</th>
-                        <th className="px-3 py-2">类型</th>
-                        <th className="px-3 py-2">注释</th>
-                        <th className="px-3 py-2 text-center">约束</th>
-                        <th className="px-3 py-2 text-center">敏感度</th>
-                    </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                    {asset.columns.map((col, i) => (
-                        <tr key={i} className="hover:bg-slate-50">
-                            <td className="px-3 py-2.5">
-                                <div className="flex items-center gap-1.5 font-mono text-slate-700">
-                                    {col.isPK && (
-                                        <span className="text-amber-500" title="Primary Key">🔑</span>
-                                    )}
-                                    {col.name}
-                                </div>
-                            </td>
-                            <td className="px-3 py-2.5">
-                                <span className="bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-mono">
-                                    {col.type}
-                                </span>
-                            </td>
-                            <td className="px-3 py-2.5 text-slate-600">{col.comment}</td>
-                            <td className="px-3 py-2.5 text-center">
-                                {!col.nullable && (
-                                    <span className="text-red-500 text-xs" title="NOT NULL">NN</span>
-                                )}
-                            </td>
-                            <td className="px-3 py-2.5 text-center">
-                                {col.name.includes('id_card') || col.name.includes('phone') ? (
-                                    <span className="text-xs bg-red-100 text-red-700 px-1.5 py-0.5 rounded">L3</span>
-                                ) : (
-                                    <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded">L1</span>
-                                )}
-                            </td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
-        </div>
-    </div>
-);
-
-const QualityTab = ({ asset }: { asset: ScanAsset }) => (
-    <div className="space-y-6">
-        <div>
-            <h4 className="text-sm font-bold text-slate-700 mb-3">数据样本预览</h4>
-            <div className="bg-slate-50 rounded-lg p-4 text-xs font-mono">
-                <p className="text-slate-500 mb-2">前 5 行数据（脱敏展示）</p>
-                <div className="space-y-1 text-slate-600">
-                    <p>1 | 张** | 3301********1234 | ...</p>
-                    <p>2 | 李** | 3301********5678 | ...</p>
-                    <p>3 | 王** | 3301********9012 | ...</p>
-                </div>
-            </div>
-        </div>
-
-        <div>
-            <h4 className="text-sm font-bold text-slate-700 mb-3">质量指标</h4>
-            <div className="space-y-3">
-                <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                    <span className="text-sm text-slate-600">空值率</span>
-                    <span className="text-sm font-medium text-green-600">2.3%</span>
-                </div>
-                <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                    <span className="text-sm text-slate-600">唯一值数</span>
-                    <span className="text-sm font-medium text-slate-700">1,234,567</span>
-                </div>
-                <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-                    <span className="text-sm text-slate-600">最后更新</span>
-                    <span className="text-sm font-medium text-slate-700">{asset.updateTime}</span>
-                </div>
-            </div>
-        </div>
-    </div>
-);
-
-const DiffTab = ({ asset }: { asset: ScanAsset }) => (
-    <div className="space-y-4">
-        {asset.status === 'changed' ? (
-            <>
-                <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-                    <h4 className="text-sm font-bold text-orange-800 mb-2">变更摘要</h4>
-                    <p className="text-sm text-orange-700">字段 +2 / -1 / 类型变更 1 / 注释变更 3</p>
-                </div>
-
-                <div className="space-y-2">
-                    <div className="border border-green-200 bg-green-50 rounded-lg p-3">
-                        <div className="flex items-center gap-2 mb-1">
-                            <span className="text-xs bg-green-200 text-green-800 px-2 py-0.5 rounded">新增</span>
-                            <span className="text-sm font-mono text-slate-700">email</span>
-                        </div>
-                        <p className="text-xs text-slate-600 ml-14">varchar(100) - 电子邮箱</p>
-                    </div>
-
-                    <div className="border border-red-200 bg-red-50 rounded-lg p-3">
-                        <div className="flex items-center gap-2 mb-1">
-                            <span className="text-xs bg-red-200 text-red-800 px-2 py-0.5 rounded">删除</span>
-                            <span className="text-sm font-mono text-slate-700">old_field</span>
-                        </div>
-                        <p className="text-xs text-red-600 ml-14">影响等级: 高</p>
-                    </div>
-                </div>
-            </>
-        ) : (
-            <div className="text-center py-12 text-slate-400">
-                <CheckCircle size={48} className="mx-auto mb-4 opacity-20" />
-                <p>无变更</p>
-            </div>
-        )}
-    </div>
-);
-
-const LogTab = ({ asset }: { asset: ScanAsset }) => (
-    <div className="space-y-4">
-        {asset.status === 'error' ? (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                <h4 className="text-sm font-bold text-red-800 mb-2">❌ 扫描错误</h4>
-                <p className="text-sm text-red-700 mb-2">错误码: ERR_CONNECTION_REFUSED</p>
-                <p className="text-sm text-red-600">建议: 检查数据源连接配置和网络权限</p>
-            </div>
-        ) : (
-            <div className="space-y-3">
-                <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg">
-                    <CheckCircle size={16} className="text-green-600" />
-                    <span className="text-sm text-slate-700">连接数据源成功</span>
-                    <span className="text-xs text-slate-500 ml-auto">2024-05-21 10:00:01</span>
-                </div>
-                <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg">
-                    <CheckCircle size={16} className="text-green-600" />
-                    <span className="text-sm text-slate-700">拉取元数据完成</span>
-                    <span className="text-xs text-slate-500 ml-auto">2024-05-21 10:00:03</span>
-                </div>
-                <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg">
-                    <CheckCircle size={16} className="text-green-600" />
-                    <span className="text-sm text-slate-700">统计行数完成</span>
-                    <span className="text-xs text-slate-500 ml-auto">2024-05-21 10:00:05</span>
-                </div>
-            </div>
-        )}
-    </div>
-);
-
-const CollaborateTab = ({ asset }: { asset: ScanAsset }) => (
-    <div className="space-y-6">
-        <div>
-            <h4 className="text-sm font-bold text-slate-700 mb-3">评论与讨论</h4>
-            <div className="space-y-3">
-                <div className="bg-slate-50 rounded-lg p-4">
-                    <div className="flex items-start gap-3">
-                        <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 font-bold text-xs">
-                            张
-                        </div>
-                        <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                                <span className="text-sm font-medium text-slate-700">张三</span>
-                                <span className="text-xs text-slate-400">2小时前</span>
-                            </div>
-                            <p className="text-sm text-slate-600">这个表的数据质量看起来不错，建议尽快确认</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="border border-dashed border-slate-300 rounded-lg p-4 text-center text-slate-400 text-sm">
-                    暂无更多评论
-                </div>
-            </div>
-        </div>
-
-        <div>
-            <h4 className="text-sm font-bold text-slate-700 mb-3">操作记录</h4>
-            <div className="space-y-2 text-xs text-slate-600">
-                <div className="flex items-center gap-2 p-2 bg-slate-50 rounded">
-                    <Clock size={12} />
-                    <span>李四 确认了该资产</span>
-                    <span className="text-slate-400 ml-auto">3天前</span>
-                </div>
-            </div>
-        </div>
-    </div>
-);
-
-const SourceTab = ({ asset }: { asset: ScanAsset }) => (
-    <div className="space-y-4">
-        <div className="bg-slate-50 rounded-lg p-4 space-y-3">
-            <div className="flex justify-between">
-                <span className="text-sm text-slate-500">数据源名称</span>
-                <span className="text-sm font-medium text-slate-700">{asset.sourceName}</span>
-            </div>
-            <div className="flex justify-between">
-                <span className="text-sm text-slate-500">数据库类型</span>
-                <span className="text-sm font-medium text-slate-700">{asset.sourceType}</span>
-            </div>
-            <div className="flex justify-between">
-                <span className="text-sm text-slate-500">物理表名</span>
-                <span className="text-sm font-medium text-slate-700 font-mono">{asset.name}</span>
-            </div>
-            <div className="flex justify-between">
-                <span className="text-sm text-slate-500">最后扫描时间</span>
-                <span className="text-sm text-slate-700">{asset.updateTime}</span>
-            </div>
-        </div>
-
-        <div className="flex gap-2">
-            <button className="flex-1 px-4 py-2 text-sm border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50">
-                查看数据源配置
-            </button>
-            <button className="flex-1 px-4 py-2 text-sm border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50">
-                重新扫描
-            </button>
-        </div>
-    </div>
-);
-
-const AssetScanningView = ({ onNavigate }: AssetScanningViewProps) => {
-    const [selectedTables, setSelectedTables] = useState<string[]>([]);
-    const [viewingTable, setViewingTable] = useState<ScanAsset | null>(null);
-    const [isScanning, setIsScanning] = useState(false);
-    const [searchTerm, setSearchTerm] = useState('');
-    const [filterStatus, setFilterStatus] = useState<'all' | ScanAsset['status']>('all');
-    const [filterReviewState, setFilterReviewState] = useState<'all' | ScanAsset['reviewState']>('all');
-    const [selectedSource, setSelectedSource] = useState<string>('all');
-    const [viewMode, setViewMode] = useState<'list' | 'tree'>('list');
-    const [activeTab, setActiveTab] = useState<'all' | 'new' | 'changed' | 'removed' | 'error' | 'watchlist'>('all');
-    const [showScanHistory, setShowScanHistory] = useState(false);
-    const [showAutoScanConfig, setShowAutoScanConfig] = useState(false);
-
-    const dataSources = [
-        { id: 'DS_001', name: '卫健委_前置库_01', type: 'MySQL' },
-        { id: 'DS_002', name: '市人口库_主库', type: 'Oracle' },
-        { id: 'DS_003', name: '政务数据中心', type: 'PostgreSQL' }
-    ];
-
-    const [scanAssets] = useState<ScanAsset[]>([
-        {
-            id: 'TBL_001',
-            name: 't_pop_base_info',
-            comment: '人口基础信息表',
-            rows: '1.2M',
-            updateTime: '2024-05-20 10:00',
-            status: 'synced',
-            reviewState: 'reviewed',
-            sourceId: 'DS_001',
-            sourceName: '卫健委_前置库_01',
-            sourceType: 'MySQL',
-            healthScore: 85,
-            owner: '张三',
-            semanticTags: ['用户', '人口'],
-            columns: [
-                { name: 'id', type: 'bigint', comment: '主键ID', nullable: false, isPK: true },
-                { name: 'name', type: 'varchar(50)', comment: '姓名', nullable: false, isPK: false },
-                { name: 'id_card', type: 'varchar(18)', comment: '身份证号', nullable: false, isPK: false }
-            ]
-        },
-        {
-            id: 'TBL_002',
-            name: 't_med_birth_cert',
-            comment: '出生医学证明记录',
-            rows: '450K',
-            updateTime: '2024-05-19 15:30',
-            status: 'new',
-            reviewState: 'unreviewed',
-            sourceId: 'DS_001',
-            sourceName: '卫健委_前置库_01',
-            sourceType: 'MySQL',
-            healthScore: 72,
-            semanticTags: ['医疗', '证明'],
-            columns: []
-        },
-        {
-            id: 'TBL_003',
-            name: 't_vac_record',
-            comment: '疫苗接种记录',
-            rows: '3.5M',
-            updateTime: '2024-05-21 08:15',
-            status: 'changed',
-            reviewState: 'unreviewed',
-            sourceId: 'DS_001',
-            sourceName: '卫健委_前置库_01',
-            sourceType: 'MySQL',
-            healthScore: 90,
-            owner: '李四',
-            semanticTags: ['医疗', '疫苗'],
-            columns: []
-        },
-        {
-            id: 'TBL_004',
-            name: 't_old_archive',
-            comment: '旧归档表',
-            rows: '0',
-            updateTime: '2024-05-10 10:00',
-            status: 'removed',
-            reviewState: 'ignored',
-            sourceId: 'DS_002',
-            sourceName: '市人口库_主库',
-            sourceType: 'Oracle',
-            columns: []
-        },
-        {
-            id: 'TBL_005',
-            name: 't_failed_connection',
-            comment: '连接失败表',
-            rows: 'N/A',
-            updateTime: '2024-05-21 12:00',
-            status: 'error',
-            reviewState: 'unreviewed',
-            sourceId: 'DS_003',
-            sourceName: '政务数据中心',
-            sourceType: 'PostgreSQL',
-            columns: []
-        }
-    ]);
-
-    const statusConfigs = {
-        new: { color: 'text-blue-700', bgColor: 'bg-blue-100', label: 'New', icon: AlertCircle },
-        changed: { color: 'text-orange-700', bgColor: 'bg-orange-100', label: 'Changed', icon: RefreshCw },
-        synced: { color: 'text-slate-500', bgColor: 'bg-slate-100', label: 'Synced', icon: CheckCircle },
-        removed: { color: 'text-red-700', bgColor: 'bg-red-100', label: 'Removed', icon: XCircle },
-        error: { color: 'text-red-700', bgColor: 'bg-red-100', label: 'Error', icon: AlertCircle }
-    };
-
-    const reviewStateConfigs = {
-        unreviewed: { color: 'text-slate-600', bgColor: 'bg-slate-100', label: '未确认' },
-        reviewed: { color: 'text-green-700', bgColor: 'bg-green-100', label: '已确认' },
-        ignored: { color: 'text-slate-400', bgColor: 'bg-slate-50', label: '已忽略' }
-    };
-
-    const filteredAssets = scanAssets.filter(asset => {
-        const matchesSearch = asset.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            asset.comment.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesStatus = filterStatus === 'all' || asset.status === filterStatus;
-        const matchesSource = selectedSource === 'all' || asset.sourceId === selectedSource;
-        const matchesReviewState = filterReviewState === 'all' || asset.reviewState === filterReviewState;
-        const matchesTab = activeTab === 'all' ||
-            (activeTab === 'watchlist' ? false : asset.status === activeTab);
-        return matchesSearch && matchesStatus && matchesSource && matchesReviewState && matchesTab;
+    // 新建任务表单
+    const [newTask, setNewTask] = useState({
+        scanName: '',
+        type: ScanTaskType.DataSourceInstant,
+        dataSourceId: '',
+        dataSourceType: 'MySQL',
+        scanStrategy: ScanStrategy.Full,
+        cronExpression: '0 0 2 * * ?',
+        status: 'open' as 'open' | 'close',
     });
 
-    const getHealthColor = (score?: number) => {
-        if (!score) return 'bg-slate-200';
-        if (score >= 80) return 'bg-green-500';
-        if (score >= 60) return 'bg-yellow-500';
-        return 'bg-red-500';
+    // 加载数据源
+    useEffect(() => {
+        loadDataSources();
+    }, []);
+
+    // 加载即时扫描任务
+    useEffect(() => {
+        if (activeTab === 'instant') {
+            loadInstantTasks();
+        }
+    }, [activeTab]);
+
+    // 加载定时扫描任务
+    useEffect(() => {
+        if (activeTab === 'scheduled') {
+            loadScheduledTasks();
+        }
+    }, [activeTab]);
+
+    const loadDataSources = async () => {
+        try {
+            const result = await dataSourceService.getDataSources();
+            setDataSources(result);
+        } catch (error) {
+            console.error('Failed to load data sources:', error);
+        }
+    };
+
+    const loadInstantTasks = async () => {
+        setInstantLoading(true);
+        try {
+            const tasks = await scanService.getScanTasks();
+            // 过滤出即时扫描任务（没有 schedule_id 的）
+            const instant = tasks.filter(t => !t.isScheduled);
+            setInstantTasks(instant);
+        } catch (error) {
+            console.error('Failed to load instant scan tasks:', error);
+        } finally {
+            setInstantLoading(false);
+        }
+    };
+
+    const loadScheduledTasks = async () => {
+        setScheduledLoading(true);
+        try {
+            const tasks = await scanService.getScanTasks();
+            // 过滤出定时扫描任务（有 schedule_id 的）
+            const scheduled = tasks.filter(t => t.isScheduled);
+            setScheduledTasks(scheduled);
+        } catch (error) {
+            console.error('Failed to load scheduled scan tasks:', error);
+        } finally {
+            setScheduledLoading(false);
+        }
+    };
+
+    const handleCreateTask = async () => {
+        if (!newTask.scanName || !newTask.dataSourceId) {
+            alert('请填写必填项');
+            return;
+        }
+
+        try {
+            const ds = dataSources.find(d => d.id === newTask.dataSourceId);
+            if (!ds) return;
+
+            await scanService.createScanTask({
+                scanName: newTask.scanName,
+                type: newTask.type,
+                dataSourceId: newTask.dataSourceId,
+                dataSourceType: newTask.dataSourceType,
+                scanStrategy: newTask.scanStrategy,
+                cronExpression: newTask.type === ScanTaskType.DataSourceScheduled ? newTask.cronExpression : undefined,
+                status: newTask.status,
+            });
+
+            setShowCreateModal(false);
+            resetNewTask();
+
+            if (activeTab === 'instant') {
+                loadInstantTasks();
+            } else {
+                loadScheduledTasks();
+            }
+        } catch (error) {
+            console.error('Failed to create scan task:', error);
+            alert('创建扫描任务失败：' + (error as Error).message);
+        }
+    };
+
+    const resetNewTask = () => {
+        setNewTask({
+            scanName: '',
+            type: ScanTaskType.DataSourceInstant,
+            dataSourceId: '',
+            dataSourceType: 'MySQL',
+            scanStrategy: ScanStrategy.Full,
+            cronExpression: '0 0 2 * * ?',
+            status: 'open',
+        });
+    };
+
+    const handleViewDetail = async (task: ScanTask) => {
+        setSelectedTask(task);
+        setShowDetailModal(true);
+        setTableScansLoading(true);
+
+        try {
+            const result = await scanService.getTableScanInfo({ taskId: task.id });
+            setTableScans(result.tables);
+        } catch (error) {
+            console.error('Failed to load table scan info:', error);
+        } finally {
+            setTableScansLoading(false);
+        }
+    };
+
+    const handleViewScheduledDetail = (task: ScanTask) => {
+        const scheduledTask: ScheduledScan = {
+            scheduleId: task.scheduleId!,
+            name: task.name,
+            dataSourceType: task.dataSourceType,
+            scanStrategy: 'full',
+            cronExpression: '0 0 2 * * ?',
+            status: task.taskStatus === 'enable' ? 'open' : 'close',
+            createTime: task.startTime,
+            nextRunTime: undefined,
+        };
+        setSelectedScheduledTask(scheduledTask);
+        setShowScheduledDetailModal(true);
+    };
+
+    const handleViewExecutionHistory = async (task: ScanTask) => {
+        setSelectedTask(task);
+        setShowExecutionHistoryModal(true);
+
+        if (!task.scheduleId) return;
+
+        try {
+            const result = await scanService.getScheduledScanExecutions(task.scheduleId);
+            setExecutionHistory(result.executions);
+        } catch (error) {
+            console.error('Failed to load execution history:', error);
+        }
+    };
+
+    // 辅助函数
+    const getStatusConfig = (status: string) => {
+        switch (status) {
+            case 'success':
+                return { icon: CheckCircle, color: 'text-emerald-600', bgColor: 'bg-emerald-50', borderColor: 'border-emerald-200', label: '成功' };
+            case 'running':
+                return { icon: RefreshCw, color: 'text-blue-600', bgColor: 'bg-blue-50', borderColor: 'border-blue-200', label: '扫描中' };
+            case 'fail':
+                return { icon: XCircle, color: 'text-red-600', bgColor: 'bg-red-50', borderColor: 'border-red-200', label: '失败' };
+            case 'wait':
+                return { icon: Clock, color: 'text-slate-500', bgColor: 'bg-slate-50', borderColor: 'border-slate-200', label: '等待中' };
+            default:
+                return { icon: AlertCircle, color: 'text-orange-600', bgColor: 'bg-orange-50', borderColor: 'border-orange-200', label: '未知' };
+        }
+    };
+
+    const getTaskTypeLabel = (type: string) => {
+        switch (type) {
+            case 'source_instant': return '数据源即时扫描';
+            case 'table_instant': return '表即时扫描';
+            case 'source_scheduled': return '数据源定时扫描';
+            default: return type;
+        }
+    };
+
+    const getDataSourceIcon = (type: string) => {
+        return <Database size={16} className="text-blue-600" />;
     };
 
     return (
@@ -880,403 +240,668 @@ const AssetScanningView = ({ onNavigate }: AssetScanningViewProps) => {
             <div className="flex justify-between items-center">
                 <div>
                     <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-                        <Scan className="text-emerald-500" size={24} />
-                        资产扫描中心
+                        <Layers className="text-emerald-500" size={24} />
+                        资产扫描
                     </h2>
-                    <p className="text-slate-500 mt-1">扫描数据源，发现物理资产，为后续语义分析提供原始数据</p>
+                    <p className="text-slate-500 mt-1">管理数据源元数据扫描任务，定时获取最新资产信息</p>
                 </div>
-                <div className="flex gap-3">
-                    <button
-                        onClick={() => setShowScanHistory(true)}
-                        className="flex items-center gap-2 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors"
-                    >
-                        <History size={16} />
-                        扫描历史
-                    </button>
-                    <button
-                        onClick={() => setShowAutoScanConfig(true)}
-                        className="flex items-center gap-2 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors"
-                    >
-                        <Settings size={16} />
-                        自动扫描配置
-                    </button>
-                    <button
-                        onClick={() => setIsScanning(true)}
-                        disabled={isScanning}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-lg shadow-sm transition-colors ${isScanning
-                            ? 'bg-slate-100 text-slate-400'
-                            : 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-200'
-                            }`}
-                    >
-                        {isScanning ? (
-                            <>
-                                <RefreshCw size={16} className="animate-spin" />
-                                扫描中...
-                            </>
+                <button
+                    onClick={() => { resetNewTask(); setShowCreateModal(true); }}
+                    className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 shadow-sm shadow-emerald-200 transition-colors"
+                >
+                    <Plus size={16} />
+                    新建扫描任务
+                </button>
+            </div>
+
+            {/* Statistics Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <p className="text-xs text-slate-500 uppercase font-medium">总任务数</p>
+                            <h3 className="text-2xl font-bold text-slate-800 mt-1">{instantTasks.length + scheduledTasks.length}</h3>
+                        </div>
+                        <div className="p-2 rounded-lg bg-blue-50 text-blue-600">
+                            <Activity size={20} />
+                        </div>
+                    </div>
+                </div>
+                <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <p className="text-xs text-slate-500 uppercase font-medium">运行中</p>
+                            <h3 className="text-2xl font-bold text-blue-600 mt-1">
+                                {[...instantTasks, ...scheduledTasks].filter(t => t.status === 'running').length}
+                            </h3>
+                        </div>
+                        <div className="p-2 rounded-lg bg-blue-50 text-blue-600">
+                            <RefreshCw size={20} className="animate-spin" />
+                        </div>
+                    </div>
+                </div>
+                <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <p className="text-xs text-slate-500 uppercase font-medium">成功完成</p>
+                            <h3 className="text-2xl font-bold text-emerald-600 mt-1">
+                                {[...instantTasks, ...scheduledTasks].filter(t => t.status === 'success').length}
+                            </h3>
+                        </div>
+                        <div className="p-2 rounded-lg bg-emerald-50 text-emerald-600">
+                            <CheckCircle size={20} />
+                        </div>
+                    </div>
+                </div>
+                <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <p className="text-xs text-slate-500 uppercase font-medium">定时任务</p>
+                            <h3 className="text-2xl font-bold text-purple-600 mt-1">{scheduledTasks.length}</h3>
+                        </div>
+                        <div className="p-2 rounded-lg bg-purple-50 text-purple-600">
+                            <Clock size={20} />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Tabs */}
+            <div className="flex gap-2 p-1 bg-slate-100 rounded-lg">
+                <button
+                    onClick={() => setActiveTab('instant')}
+                    className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${activeTab === 'instant'
+                        ? 'bg-white text-emerald-600 shadow-sm'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200'
+                        }`}
+                >
+                    <Zap size={16} />
+                    即时扫描
+                </button>
+                <button
+                    onClick={() => setActiveTab('scheduled')}
+                    className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${activeTab === 'scheduled'
+                        ? 'bg-white text-emerald-600 shadow-sm'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200'
+                        }`}
+                >
+                    <Calendar size={16} />
+                    定时扫描
+                </button>
+            </div>
+
+            {/* Content */}
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
+                {activeTab === 'instant' && (
+                    <div className="p-6">
+                        {instantLoading ? (
+                            <div className="flex items-center justify-center py-12">
+                                <RefreshCw size={24} className="text-slate-400 animate-spin" />
+                            </div>
+                        ) : instantTasks.length === 0 ? (
+                            <div className="text-center py-12">
+                                <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <Activity size={32} className="text-slate-300" />
+                                </div>
+                                <h3 className="text-lg font-medium text-slate-600 mb-2">暂无即时扫描任务</h3>
+                                <p className="text-sm text-slate-400 mb-4">点击"新建扫描任务"开始创建</p>
+                            </div>
                         ) : (
-                            <>
-                                <Scan size={16} />
-                                开始扫描
-                            </>
-                        )}
-                    </button>
-                </div>
-            </div>
-
-            {/* KPI Summary */}
-            <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
-                {[
-                    { label: '发现表总数', value: scanAssets.length, icon: Table, color: 'blue' },
-                    { label: '新增', value: scanAssets.filter(a => a.status === 'new').length, icon: AlertCircle, color: 'blue' },
-                    { label: '变更', value: scanAssets.filter(a => a.status === 'changed').length, icon: RefreshCw, color: 'orange' },
-                    { label: '缺失', value: scanAssets.filter(a => a.status === 'removed').length, icon: XCircle, color: 'red' },
-                    { label: '失败', value: scanAssets.filter(a => a.status === 'error').length, icon: AlertCircle, color: 'red' },
-                    { label: '已选中', value: selectedTables.length, icon: CheckCircle, color: 'purple' }
-                ].map((kpi, idx) => (
-                    <div key={idx} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                        <div className="flex justify-between items-start">
-                            <div>
-                                <p className="text-xs text-slate-500 uppercase font-medium">{kpi.label}</p>
-                                <h3 className={`text-2xl font-bold text-${kpi.color}-600 mt-1`}>{kpi.value}</h3>
-                            </div>
-                            <div className={`p-2 rounded-lg bg-${kpi.color}-50 text-${kpi.color}-600`}>
-                                <kpi.icon size={20} />
-                            </div>
-                        </div>
-                    </div>
-                ))}
-            </div>
-
-            {/* Filters & View Options */}
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-4">
-                <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-                    <div className="flex items-center gap-4 flex-wrap">
-                        <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                            <input
-                                type="text"
-                                value={searchTerm}
-                                onChange={e => setSearchTerm(e.target.value)}
-                                placeholder="搜索表名或注释..."
-                                className="pl-10 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent w-64"
-                            />
-                        </div>
-                        <select
-                            value={selectedSource}
-                            onChange={e => setSelectedSource(e.target.value)}
-                            className="px-4 py-2 border border-slate-200 rounded-lg text-sm bg-white"
-                        >
-                            <option value="all">所有数据源</option>
-                            {dataSources.map(ds => (
-                                <option key={ds.id} value={ds.id}>{ds.name}</option>
-                            ))}
-                        </select>
-                        <select
-                            value={filterReviewState}
-                            onChange={e => setFilterReviewState(e.target.value as any)}
-                            className="px-4 py-2 border border-slate-200 rounded-lg text-sm bg-white"
-                        >
-                            <option value="all">所有处理状态</option>
-                            <option value="unreviewed">未确认</option>
-                            <option value="reviewed">已确认</option>
-                            <option value="ignored">已忽略</option>
-                        </select>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <div className="flex items-center bg-slate-100 rounded-lg p-1">
-                            <button
-                                onClick={() => setViewMode('list')}
-                                className={`px-3 py-1.5 rounded-md transition-all ${viewMode === 'list' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500'
-                                    }`}
-                            >
-                                <ListIcon size={16} />
-                            </button>
-                            <button
-                                onClick={() => setViewMode('tree')}
-                                className={`px-3 py-1.5 rounded-md transition-all ${viewMode === 'tree' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500'
-                                    }`}
-                            >
-                                <Grid size={16} />
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Tabs */}
-                <div className="flex items-center gap-2 border-t border-slate-100 pt-4">
-                    {([
-                        { key: 'all', label: '全部', count: scanAssets.length },
-                        { key: 'new', label: '新增', count: scanAssets.filter(a => a.status === 'new').length },
-                        { key: 'changed', label: '变更', count: scanAssets.filter(a => a.status === 'changed').length },
-                        { key: 'removed', label: '缺失', count: scanAssets.filter(a => a.status === 'removed').length },
-                        { key: 'error', label: '失败', count: scanAssets.filter(a => a.status === 'error').length },
-                        { key: 'watchlist', label: '关注', count: 0 }
-                    ] as const).map(tab => (
-                        <button
-                            key={tab.key}
-                            onClick={() => setActiveTab(tab.key)}
-                            className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all flex items-center gap-2 ${activeTab === tab.key
-                                ? 'bg-blue-50 text-blue-600'
-                                : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
-                                }`}
-                        >
-                            {tab.key === 'watchlist' && <Star size={14} />}
-                            {tab.label}
-                            <span className="text-xs bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded">
-                                {tab.count}
-                            </span>
-                        </button>
-                    ))}
-                </div>
-            </div>
-
-            {/* Results Section */}
-            <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
-                <div className="px-6 py-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
-                    <h3 className="font-bold text-slate-800">扫描结果</h3>
-                    <span className="text-xs text-slate-500">显示 {filteredAssets.length} 个表</span>
-                </div>
-
-                {/* List View - Table */}
-                {viewMode === 'list' && (
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-left">
-                            <thead className="bg-slate-50 border-b border-slate-100">
-                                <tr>
-                                    <th className="px-6 py-3 w-10">
-                                        <input type="checkbox" className="rounded border-slate-300" />
-                                    </th>
-                                    <th className="px-6 py-3 text-slate-600 font-medium">物理表名</th>
-                                    <th className="px-6 py-3 text-slate-600 font-medium">中文注释</th>
-                                    <th className="px-6 py-3 text-slate-600 font-medium">数据源</th>
-                                    <th className="px-6 py-3 text-slate-600 font-medium">行数</th>
-                                    <th className="px-6 py-3 text-slate-600 font-medium">语义画像</th>
-                                    <th className="px-6 py-3 text-slate-600 font-medium">健康分</th>
-                                    <th className="px-6 py-3 text-slate-600 font-medium">责任人</th>
-                                    <th className="px-6 py-3 text-slate-600 font-medium">状态</th>
-                                    <th className="px-6 py-3 text-slate-600 font-medium">处理进度</th>
-                                    <th className="px-6 py-3 text-right text-slate-600 font-medium">操作</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                                {filteredAssets.map(asset => {
-                                    const statusConfig = statusConfigs[asset.status];
-                                    const reviewConfig = reviewStateConfigs[asset.reviewState];
-                                    const StatusIcon = statusConfig.icon;
-
+                            <div className="space-y-3">
+                                {instantTasks.map(task => {
+                                    const statusConfig = getStatusConfig(task.status);
                                     return (
-                                        <tr key={asset.id} className="hover:bg-slate-50 transition-colors">
-                                            <td className="px-6 py-4">
-                                                <input type="checkbox" className="rounded border-slate-300" />
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <div className="flex items-center gap-2">
-                                                    <Database size={14} className="text-slate-400" />
-                                                    <span className="font-mono font-medium text-slate-700">{asset.name}</span>
+                                        <div
+                                            key={task.id}
+                                            className="p-4 border border-slate-200 rounded-lg hover:border-emerald-300 hover:bg-emerald-50/30 transition-all"
+                                        >
+                                            <div className="flex items-start gap-4">
+                                                <div className="p-2 rounded-lg bg-slate-100">
+                                                    {getDataSourceIcon(task.dataSourceType)}
                                                 </div>
-                                            </td>
-                                            <td className="px-6 py-4 text-slate-600">{asset.comment}</td>
-                                            <td className="px-6 py-4">
-                                                <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded">
-                                                    {asset.sourceName}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4 text-slate-500 font-mono">{asset.rows}</td>
-                                            <td className="px-6 py-4">
-                                                <div className="flex gap-1">
-                                                    {asset.semanticTags?.map(tag => (
-                                                        <span key={tag} className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded">
-                                                            {tag}
+                                                <div className="flex-1">
+                                                    <div className="flex items-center gap-3 mb-2">
+                                                        <h4 className="font-semibold text-slate-800">{task.name}</h4>
+                                                        <span className={`flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${statusConfig.bgColor} ${statusConfig.borderColor} ${statusConfig.color}`}>
+                                                            <statusConfig.icon size={12} />
+                                                            {statusConfig.label}
                                                         </span>
-                                                    ))}
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                {asset.healthScore && (
-                                                    <div className="flex items-center gap-2">
-                                                        <div className={`w-2 h-2 rounded-full ${getHealthColor(asset.healthScore)}`} />
-                                                        <span className="font-medium">{asset.healthScore}</span>
+                                                        <span className="text-xs text-slate-400">{getTaskTypeLabel(task.type)}</span>
                                                     </div>
-                                                )}
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <span className="text-slate-600">{asset.owner || '-'}</span>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${statusConfig.bgColor} ${statusConfig.color}`}>
-                                                    <StatusIcon size={12} />
-                                                    {statusConfig.label}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${reviewConfig.bgColor} ${reviewConfig.color}`}>
-                                                    {reviewConfig.label}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4 text-right">
-                                                <button
-                                                    onClick={() => setViewingTable(asset)}
-                                                    className="text-blue-600 hover:text-blue-800 text-xs font-medium flex items-center gap-1 ml-auto"
-                                                >
-                                                    详情
-                                                    <ChevronRight size={14} />
-                                                </button>
-                                            </td>
-                                        </tr>
+                                                    <div className="flex items-center gap-6 text-sm text-slate-500">
+                                                        <span className="flex items-center gap-1">
+                                                            <Database size={14} />
+                                                            {task.dataSourceType}
+                                                        </span>
+                                                        <span className="flex items-center gap-1">
+                                                            <User size={14} />
+                                                            {task.createUser}
+                                                        </span>
+                                                        <span className="flex items-center gap-1">
+                                                            <Clock size={14} />
+                                                            {task.startTime}
+                                                        </span>
+                                                        {task.processInfo && (
+                                                            <span className="flex items-center gap-1">
+                                                                <Layers size={14} />
+                                                                {task.processInfo.tableCount} 表
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    {task.resultInfo && task.status === 'fail' && (
+                                                        <div className="mt-2 p-2 bg-red-50 border border-red-100 rounded text-xs text-red-600">
+                                                            失败信息: {task.resultInfo.errorStack}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="flex gap-2">
+                                                    <button
+                                                        onClick={() => handleViewDetail(task)}
+                                                        className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                                        title="查看详情"
+                                                    >
+                                                        <Eye size={16} />
+                                                    </button>
+                                                    <button className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded transition-colors" title="重新扫描">
+                                                        <RefreshCw size={16} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
                                     );
                                 })}
-                            </tbody>
-                        </table>
+                            </div>
+                        )}
                     </div>
                 )}
 
-                {/* Tree/Card View */}
-                {viewMode === 'tree' && (
+                {activeTab === 'scheduled' && (
                     <div className="p-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {filteredAssets.map(asset => {
-                                const statusConfig = statusConfigs[asset.status];
-                                const reviewConfig = reviewStateConfigs[asset.reviewState];
-                                const StatusIcon = statusConfig.icon;
-
-                                return (
-                                    <div
-                                        key={asset.id}
-                                        className="border border-slate-200 rounded-lg p-4 hover:shadow-lg hover:border-emerald-300 transition-all cursor-pointer group"
-                                        onClick={() => setViewingTable(asset)}
-                                    >
-                                        {/* Card Header */}
-                                        <div className="flex items-start justify-between mb-3">
-                                            <div className="flex-1">
-                                                <div className="flex items-center gap-2 mb-1">
-                                                    <Database size={16} className="text-slate-400" />
-                                                    <h4 className="font-mono font-medium text-slate-800 text-sm truncate">
-                                                        {asset.name}
-                                                    </h4>
+                        {scheduledLoading ? (
+                            <div className="flex items-center justify-center py-12">
+                                <RefreshCw size={24} className="text-slate-400 animate-spin" />
+                            </div>
+                        ) : scheduledTasks.length === 0 ? (
+                            <div className="text-center py-12">
+                                <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <Calendar size={32} className="text-slate-300" />
+                                </div>
+                                <h3 className="text-lg font-medium text-slate-600 mb-2">暂无定时扫描任务</h3>
+                                <p className="text-sm text-slate-400 mb-4">点击"新建扫描任务"开始创建</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-3">
+                                {scheduledTasks.map(task => {
+                                    const statusConfig = getStatusConfig(task.status);
+                                    const taskStatusEnabled = task.taskStatus === 'enable';
+                                    return (
+                                        <div
+                                            key={task.id}
+                                            className="p-4 border border-slate-200 rounded-lg hover:border-purple-300 hover:bg-purple-50/30 transition-all"
+                                        >
+                                            <div className="flex items-start gap-4">
+                                                <div className="p-2 rounded-lg bg-purple-100">
+                                                    <Calendar size={20} className="text-purple-600" />
                                                 </div>
-                                                <p className="text-xs text-slate-600 line-clamp-2">{asset.comment}</p>
-                                            </div>
-                                            <input
-                                                type="checkbox"
-                                                className="rounded border-slate-300 mt-1"
-                                                onClick={(e) => e.stopPropagation()}
-                                            />
-                                        </div>
-
-                                        {/* Meta Info */}
-                                        <div className="space-y-2 mb-3">
-                                            <div className="flex items-center justify-between text-xs">
-                                                <span className="text-slate-500">数据源</span>
-                                                <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded">
-                                                    {asset.sourceType}
-                                                </span>
-                                            </div>
-                                            <div className="flex items-center justify-between text-xs">
-                                                <span className="text-slate-500">行数</span>
-                                                <span className="font-mono font-medium text-slate-700">{asset.rows}</span>
-                                            </div>
-                                            {asset.healthScore && (
-                                                <div className="flex items-center justify-between text-xs">
-                                                    <span className="text-slate-500">健康分</span>
-                                                    <div className="flex items-center gap-1.5">
-                                                        <div className={`w-2 h-2 rounded-full ${getHealthColor(asset.healthScore)}`} />
-                                                        <span className="font-medium text-slate-700">{asset.healthScore}</span>
+                                                <div className="flex-1">
+                                                    <div className="flex items-center gap-3 mb-2">
+                                                        <h4 className="font-semibold text-slate-800">{task.name}</h4>
+                                                        <span className={`flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${statusConfig.bgColor} ${statusConfig.borderColor} ${statusConfig.color}`}>
+                                                            <statusConfig.icon size={12} />
+                                                            {statusConfig.label}
+                                                        </span>
+                                                        <span className={`flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${taskStatusEnabled ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' : 'bg-slate-100 text-slate-500 border border-slate-200'}`}>
+                                                            {taskStatusEnabled ? <Play size={12} /> : <Pause size={12} />}
+                                                            {taskStatusEnabled ? '已启用' : '已暂停'}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex items-center gap-6 text-sm text-slate-500">
+                                                        <span className="flex items-center gap-1">
+                                                            <Database size={14} />
+                                                            {task.dataSourceType}
+                                                        </span>
+                                                        <span className="flex items-center gap-1">
+                                                            <Clock size={14} />
+                                                            {task.startTime}
+                                                        </span>
                                                     </div>
                                                 </div>
-                                            )}
-                                            {asset.owner && (
-                                                <div className="flex items-center justify-between text-xs">
-                                                    <span className="text-slate-500">责任人</span>
-                                                    <span className="text-slate-700">{asset.owner}</span>
+                                                <div className="flex gap-2">
+                                                    <button
+                                                        onClick={() => handleViewScheduledDetail(task)}
+                                                        className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                                        title="查看配置"
+                                                    >
+                                                        <Settings size={16} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleViewExecutionHistory(task)}
+                                                        className="p-2 text-slate-400 hover:text-purple-600 hover:bg-purple-50 rounded transition-colors"
+                                                        title="执行历史"
+                                                    >
+                                                        <List size={16} />
+                                                    </button>
+                                                    <button className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded transition-colors" title="立即执行">
+                                                        <Zap size={16} />
+                                                    </button>
+                                                    <button className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors" title="删除">
+                                                        <Trash2 size={16} />
+                                                    </button>
                                                 </div>
-                                            )}
-                                        </div>
-
-                                        {/* Semantic Tags */}
-                                        {asset.semanticTags && asset.semanticTags.length > 0 && (
-                                            <div className="flex flex-wrap gap-1 mb-3">
-                                                {asset.semanticTags.map(tag => (
-                                                    <span key={tag} className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded">
-                                                        {tag}
-                                                    </span>
-                                                ))}
                                             </div>
-                                        )}
-
-                                        {/* Status Badges */}
-                                        <div className="flex items-center justify-between pt-3 border-t border-slate-100">
-                                            <span className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs font-medium ${statusConfig.bgColor} ${statusConfig.color}`}>
-                                                <StatusIcon size={12} />
-                                                {statusConfig.label}
-                                            </span>
-                                            <span className={`inline-flex px-2 py-1 rounded text-xs font-medium ${reviewConfig.bgColor} ${reviewConfig.color}`}>
-                                                {reviewConfig.label}
-                                            </span>
                                         </div>
-
-                                        {/* Hover Action */}
-                                        <div className="mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <button className="w-full text-center text-xs text-emerald-600 font-medium py-1">
-                                                查看详情 →
-                                            </button>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-                )}
-
-                {filteredAssets.length === 0 && (
-                    <div className="p-12 text-center text-slate-400">
-                        <Database size={48} className="mx-auto mb-4 opacity-20" />
-                        <p>没有匹配的表</p>
-                        <p className="text-xs mt-1">尝试调整筛选条件或执行新的扫描</p>
+                                    );
+                                })}
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
 
-            {/* Batch Actions Bar - shown when items selected */}
-            {selectedTables.length > 0 && (
-                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-white border border-slate-200 rounded-xl shadow-2xl p-4 flex items-center gap-4 animate-slide-up">
-                    <span className="text-sm font-medium text-slate-700">已选 {selectedTables.length} 个表</span>
-                    <div className="h-6 w-px bg-slate-200" />
-                    <div className="flex gap-2">
-                        <button className="px-3 py-1.5 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700">
-                            标记已确认
-                        </button>
-                        <button className="px-3 py-1.5 text-sm border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 flex items-center gap-1">
-                            <Users size={14} />
-                            分配责任人
-                        </button>
-                        <button className="px-3 py-1.5 text-sm border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 flex items-center gap-1">
-                            <Tag size={14} />
-                            打标
-                        </button>
-                        <button className="px-3 py-1.5 text-sm border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50">
-                            导出
-                        </button>
+            {/* Create Scan Task Modal */}
+            {showCreateModal && (
+                <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[85vh]">
+                        <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
+                            <div>
+                                <h3 className="font-bold text-lg text-slate-800">新建扫描任务</h3>
+                                <p className="text-xs text-slate-500 mt-1">配置扫描类型、数据源及扫描策略</p>
+                            </div>
+                            <button
+                                onClick={() => { setShowCreateModal(false); resetNewTask(); }}
+                                className="text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded p-1"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <div className="p-6 space-y-4 overflow-y-auto custom-scrollbar flex-1">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">
+                                    扫描任务名称 <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    placeholder="例如：生产库每日扫描"
+                                    value={newTask.scanName}
+                                    onChange={e => setNewTask({ ...newTask, scanName: e.target.value })}
+                                    className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">
+                                    扫描类型 <span className="text-red-500">*</span>
+                                </label>
+                                <div className="grid grid-cols-3 gap-3">
+                                    {[
+                                        { id: ScanTaskType.DataSourceInstant, label: '数据源即时扫描', desc: '扫描整个数据源的所有表' },
+                                        { id: ScanTaskType.TableInstant, label: '表即时扫描', desc: '扫描选定的表' },
+                                        { id: ScanTaskType.DataSourceScheduled, label: '数据源定时扫描', desc: '按计划定时扫描数据源' },
+                                    ].map(type => (
+                                        <button
+                                            key={type.id}
+                                            onClick={() => setNewTask({ ...newTask, type: type.id })}
+                                            className={`p-3 rounded-lg border-2 text-left transition-all ${newTask.type === type.id
+                                                ? 'border-emerald-500 bg-emerald-50'
+                                                : 'border-slate-200 hover:border-slate-300'
+                                                }`}
+                                        >
+                                            <div className="font-medium text-sm text-slate-700 mb-1">{type.label}</div>
+                                            <div className="text-xs text-slate-500">{type.desc}</div>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">
+                                    数据源 <span className="text-red-500">*</span>
+                                </label>
+                                <select
+                                    value={newTask.dataSourceId}
+                                    onChange={e => {
+                                        const ds = dataSources.find(d => d.id === e.target.value);
+                                        setNewTask({
+                                            ...newTask,
+                                            dataSourceId: e.target.value,
+                                            dataSourceType: ds?.type || 'MySQL',
+                                        });
+                                    }}
+                                    className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white text-sm"
+                                >
+                                    <option value="">选择数据源...</option>
+                                    {dataSources.map(ds => (
+                                        <option key={ds.id} value={ds.id}>{ds.name} ({ds.type})</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">扫描策略</label>
+                                <div className="grid grid-cols-2 gap-3">
+                                    {[
+                                        { id: ScanStrategy.Full, label: '全量扫描', desc: '扫描所有表和字段' },
+                                        { id: ScanStrategy.Incremental, label: '增量扫描', desc: '仅扫描变更部分' },
+                                    ].map(strategy => (
+                                        <button
+                                            key={strategy.id}
+                                            onClick={() => setNewTask({ ...newTask, scanStrategy: strategy.id })}
+                                            className={`p-3 rounded-lg border-2 text-left transition-all ${newTask.scanStrategy === strategy.id
+                                                ? 'border-emerald-500 bg-emerald-50'
+                                                : 'border-slate-200 hover:border-slate-300'
+                                                }`}
+                                        >
+                                            <div className="font-medium text-sm text-slate-700 mb-1">{strategy.label}</div>
+                                            <div className="text-xs text-slate-500">{strategy.desc}</div>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {newTask.type === ScanTaskType.DataSourceScheduled && (
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">
+                                        Cron 表达式 <span className="text-red-500">*</span>
+                                    </label>
+                                    <div className="relative">
+                                        <input
+                                            type="text"
+                                            placeholder="0 0 2 * * ?"
+                                            value={newTask.cronExpression}
+                                            onChange={e => setNewTask({ ...newTask, cronExpression: e.target.value })}
+                                            className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono text-sm pr-20"
+                                        />
+                                        <button className="absolute right-2 top-1.5 px-2 py-1 text-xs bg-slate-100 hover:bg-slate-200 rounded text-slate-600">
+                                            生成
+                                        </button>
+                                    </div>
+                                    <p className="text-xs text-slate-500 mt-1">例如：每天凌晨2点执行</p>
+                                </div>
+                            )}
+
+                            {newTask.type === ScanTaskType.DataSourceScheduled && (
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">任务状态</label>
+                                    <div className="flex bg-slate-100 p-1 rounded-md">
+                                        {[
+                                            { id: 'open' as const, label: '启用' },
+                                            { id: 'close' as const, label: '暂停' },
+                                        ].map(status => (
+                                            <button
+                                                key={status.id}
+                                                onClick={() => setNewTask({ ...newTask, status: status.id })}
+                                                className={`flex-1 py-1.5 text-xs font-medium rounded transition-all ${newTask.status === status.id
+                                                    ? 'bg-white text-emerald-600 shadow-sm'
+                                                    : 'text-slate-500 hover:text-slate-700'
+                                                    }`}
+                                            >
+                                                {status.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3 shrink-0">
+                            <button
+                                onClick={() => { setShowCreateModal(false); resetNewTask(); }}
+                                className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-200 rounded-md transition-colors"
+                            >
+                                取消
+                            </button>
+                            <button
+                                onClick={handleCreateTask}
+                                disabled={!newTask.scanName || !newTask.dataSourceId}
+                                className={`px-4 py-2 text-sm text-white rounded-md transition-colors shadow-sm ${!newTask.scanName || !newTask.dataSourceId
+                                    ? 'bg-emerald-400 cursor-not-allowed'
+                                    : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200'
+                                    }`}
+                            >
+                                创建任务
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
 
+            {/* Task Detail Modal */}
+            {showDetailModal && selectedTask && (
+                <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[85vh]">
+                        <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
+                            <div>
+                                <h3 className="font-bold text-lg text-slate-800">扫描任务详情</h3>
+                                <p className="text-xs text-slate-500 mt-1">{selectedTask.name}</p>
+                            </div>
+                            <button
+                                onClick={() => setShowDetailModal(false)}
+                                className="text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded p-1"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
 
-            {/* Scan History Modal */}
-            {showScanHistory && (
-                <ScanHistoryModal onClose={() => setShowScanHistory(false)} />
+                        <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
+                            <div className="grid grid-cols-2 gap-4 mb-6">
+                                <div className="bg-slate-50 p-3 rounded-lg">
+                                    <div className="text-xs text-slate-500 mb-1">数据源类型</div>
+                                    <div className="text-sm font-medium text-slate-700">{selectedTask.dataSourceType}</div>
+                                </div>
+                                <div className="bg-slate-50 p-3 rounded-lg">
+                                    <div className="text-xs text-slate-500 mb-1">创建用户</div>
+                                    <div className="text-sm font-medium text-slate-700">{selectedTask.createUser}</div>
+                                </div>
+                                <div className="bg-slate-50 p-3 rounded-lg">
+                                    <div className="text-xs text-slate-500 mb-1">开始时间</div>
+                                    <div className="text-sm font-medium text-slate-700">{selectedTask.startTime}</div>
+                                </div>
+                                <div className="bg-slate-50 p-3 rounded-lg">
+                                    <div className="text-xs text-slate-500 mb-1">任务状态</div>
+                                    <div className="text-sm font-medium text-slate-700">{getTaskTypeLabel(selectedTask.type)}</div>
+                                </div>
+                            </div>
+
+                            {selectedTask.processInfo && (
+                                <div className="bg-blue-50 p-4 rounded-lg mb-6">
+                                    <h4 className="text-sm font-medium text-blue-800 mb-2">扫描进度</h4>
+                                    <div className="grid grid-cols-3 gap-4">
+                                        <div>
+                                            <div className="text-xs text-blue-600">表总数</div>
+                                            <div className="text-lg font-bold text-blue-800">{selectedTask.processInfo.tableCount}</div>
+                                        </div>
+                                        <div>
+                                            <div className="text-xs text-blue-600">成功</div>
+                                            <div className="text-lg font-bold text-emerald-600">{selectedTask.processInfo.successCount}</div>
+                                        </div>
+                                        <div>
+                                            <div className="text-xs text-blue-600">失败</div>
+                                            <div className="text-lg font-bold text-red-600">{selectedTask.processInfo.failCount}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            <h4 className="font-semibold text-slate-800 mb-3">表扫描详情</h4>
+                            {tableScansLoading ? (
+                                <div className="flex items-center justify-center py-8">
+                                    <RefreshCw size={24} className="text-slate-400 animate-spin" />
+                                </div>
+                            ) : tableScans.length === 0 ? (
+                                <div className="text-center py-8 text-slate-400">暂无表扫描信息</div>
+                            ) : (
+                                <div className="border border-slate-200 rounded-lg overflow-hidden">
+                                    <table className="w-full text-sm">
+                                        <thead className="bg-slate-50 border-b border-slate-200">
+                                            <tr>
+                                                <th className="px-4 py-2 text-left font-medium text-slate-600">表名</th>
+                                                <th className="px-4 py-2 text-left font-medium text-slate-600">数据库类型</th>
+                                                <th className="px-4 py-2 text-left font-medium text-slate-600">状态</th>
+                                                <th className="px-4 py-2 text-left font-medium text-slate-600">行数</th>
+                                                <th className="px-4 py-2 text-left font-medium text-slate-600">扫描时间</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {tableScans.map(table => {
+                                                const statusConfig = getStatusConfig(table.status);
+                                                return (
+                                                    <tr key={table.tableId} className="border-b border-slate-100 hover:bg-slate-50">
+                                                        <td className="px-4 py-2 font-medium text-slate-700">{table.tableName}</td>
+                                                        <td className="px-4 py-2 text-slate-600">{table.dbType}</td>
+                                                        <td className="px-4 py-2">
+                                                            <span className={`flex items-center gap-1 ${statusConfig.color}`}>
+                                                                <statusConfig.icon size={14} />
+                                                                {statusConfig.label}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-4 py-2 text-slate-600">{table.rowCount || '-'}</td>
+                                                        <td className="px-4 py-2 text-slate-600">{table.scanTime || '-'}</td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
             )}
 
-            {/* Auto-Scan Config Modal */}
-            {showAutoScanConfig && (
-                <AutoScanConfigModal onClose={() => setShowAutoScanConfig(false)} />
+            {/* Scheduled Task Detail Modal */}
+            {showScheduledDetailModal && selectedScheduledTask && (
+                <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col">
+                        <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
+                            <div>
+                                <h3 className="font-bold text-lg text-slate-800">定时任务配置</h3>
+                                <p className="text-xs text-slate-500 mt-1">{selectedScheduledTask.name}</p>
+                            </div>
+                            <button
+                                onClick={() => setShowScheduledDetailModal(false)}
+                                className="text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded p-1"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <div className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">任务名称</label>
+                                <input
+                                    type="text"
+                                    value={selectedScheduledTask.name}
+                                    disabled
+                                    className="w-full px-3 py-2 border border-slate-200 rounded-md bg-slate-50 text-slate-500 text-sm"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Cron 表达式</label>
+                                <input
+                                    type="text"
+                                    value={selectedScheduledTask.cronExpression}
+                                    disabled
+                                    className="w-full px-3 py-2 border border-slate-200 rounded-md bg-slate-50 text-slate-500 font-mono text-sm"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">扫描策略</label>
+                                <select
+                                    value={selectedScheduledTask.scanStrategy}
+                                    disabled
+                                    className="w-full px-3 py-2 border border-slate-200 rounded-md bg-slate-50 text-slate-500 text-sm"
+                                >
+                                    <option value="full">全量扫描</option>
+                                    <option value="incremental">增量扫描</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-2">任务状态</label>
+                                <div className="flex bg-slate-100 p-1 rounded-md">
+                                    {[
+                                        { id: 'open' as const, label: '启用' },
+                                        { id: 'close' as const, label: '暂停' },
+                                    ].map(status => (
+                                        <button
+                                            key={status.id}
+                                            disabled
+                                            className={`flex-1 py-1.5 text-xs font-medium rounded transition-all ${selectedScheduledTask.status === status.id
+                                                ? 'bg-white text-emerald-600 shadow-sm'
+                                                : 'text-slate-500'
+                                                }`}
+                                        >
+                                            {status.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             )}
 
-            {/* Detail Drawer - Complete Implementation */}
-            {viewingTable && (
-                <DetailDrawer
-                    asset={viewingTable}
-                    onClose={() => setViewingTable(null)}
-                />
+            {/* Execution History Modal */}
+            {showExecutionHistoryModal && selectedTask && (
+                <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[80vh]">
+                        <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
+                            <div>
+                                <h3 className="font-bold text-lg text-slate-800">执行历史</h3>
+                                <p className="text-xs text-slate-500 mt-1">{selectedTask.name}</p>
+                            </div>
+                            <button
+                                onClick={() => setShowExecutionHistoryModal(false)}
+                                className="text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded p-1"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto custom-scrollbar">
+                            {executionHistory.length === 0 ? (
+                                <div className="text-center py-8 text-slate-400">暂无执行历史</div>
+                            ) : (
+                                <div className="border border-slate-200">
+                                    {executionHistory.map(exec => {
+                                        const statusConfig = getStatusConfig(exec.status);
+                                        return (
+                                            <div key={exec.executionId} className="px-6 py-4 border-b border-slate-100 hover:bg-slate-50">
+                                                <div className="flex items-center gap-4">
+                                                    <div className={`p-2 rounded-lg ${statusConfig.bgColor} ${statusConfig.borderColor}`}>
+                                                        <statusConfig.icon size={20} className={statusConfig.color} />
+                                                    </div>
+                                                    <div className="flex-1">
+                                                        <div className="flex items-center gap-3 mb-1">
+                                                            <span className="font-medium text-slate-800">执行 #{exec.executionId.slice(0, 8)}</span>
+                                                            <span className={`text-xs px-2 py-0.5 rounded font-medium ${statusConfig.bgColor} ${statusConfig.borderColor} ${statusConfig.color}`}>
+                                                                {statusConfig.label}
+                                                            </span>
+                                                        </div>
+                                                        <div className="flex items-center gap-6 text-sm text-slate-500">
+                                                            <span className="flex items-center gap-1">
+                                                                <Clock size={14} />
+                                                                {exec.executeTime}
+                                                            </span>
+                                                            <span>扫描 {exec.tableCount} 表</span>
+                                                            <span>成功 {exec.successCount} 个</span>
+                                                            {exec.failCount > 0 && (
+                                                                <span className="text-red-600">失败 {exec.failCount} 个</span>
+                                                            )}
+                                                            {exec.duration && (
+                                                                <span>耗时 {exec.duration}s</span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );

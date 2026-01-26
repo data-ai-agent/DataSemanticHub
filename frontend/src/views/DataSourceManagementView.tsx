@@ -1,35 +1,6 @@
-import { useState } from 'react';
-import { Plus, Database, Edit, Trash2, Zap, X, CheckCircle, RefreshCw, Server, User, Building2, Tag, ChevronDown, Shield, Scan, Key, Settings, ShieldCheck, MoreHorizontal, FileText, List, Activity } from 'lucide-react';
-
-
-interface DataSource {
-    id: string;
-    name: string;
-    type: string;
-    host: string;
-    port: number;
-    dbName: string;
-    status: 'connected' | 'scanning' | 'disconnected' | 'error';
-    lastScan: string;
-    tableCount: number;
-    desc: string;
-    username?: string;
-    // New Governance Fields
-    system?: string; // Information System Name e.g. "CRM"
-    env?: 'prod' | 'test' | 'dev';
-    owner?: string; // Owner Name
-    schemaName?: string; // Database Schema (e.g. for Oracle/PG)
-    // P1: Governance Fields
-    scanPolicy?: {
-        frequency: 'daily' | 'weekly' | 'manual';
-        scopeRegex?: string; // Table whitelist regex
-        alertReceivers?: string[]; // User IDs
-    };
-    auth?: {
-        type: 'password' | 'secret';
-        secretId?: string;
-    };
-}
+import { useState, useEffect } from 'react';
+import { Plus, Database, Edit, Trash2, Zap, X, CheckCircle, RefreshCw, Server, User, Building2, Tag, ChevronDown, Shield, Key, Settings, ShieldCheck, MoreHorizontal, FileText, List, Activity } from 'lucide-react';
+import { dataSourceService, type DataSource } from '../services/dataSourceService';
 
 const MOCK_SYSTEMS = ['营销中心(CRM)', '供应链系统(ERP)', '人口基础库', '政务服务平台', '数据仓库'];
 const MOCK_OWNERS = ['张三 (Data Owner)', '李四 (System Owner)', '王五 (DevOps)'];
@@ -38,7 +9,6 @@ const DataSourceManagementView = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingDS, setEditingDS] = useState<DataSource | null>(null);
     const [testingId, setTestingId] = useState<string | null>(null);
-    const [activeTab, setActiveTab] = useState<'basic' | 'scan'>('basic');
     const [activeDropdownId, setActiveDropdownId] = useState<string | null>(null);
     const [newDS, setNewDS] = useState<Partial<DataSource> & { password?: string }>({
         name: '',
@@ -51,67 +21,29 @@ const DataSourceManagementView = () => {
         system: '',
         env: 'prod',
         owner: '',
-        schemaName: '',
-        scanPolicy: { frequency: 'daily', scopeRegex: '.*', alertReceivers: [] },
-        auth: { type: 'password', secretId: '' }
+        schemaName: ''
     });
 
-    // 模拟数据源
-    const [dataSources, setDataSources] = useState<DataSource[]>([
-        {
-            id: 'DS_001',
-            name: '卫健委_前置库_01',
-            type: 'MySQL',
-            host: '192.168.10.55',
-            port: 3306,
-            dbName: 'hosp_pre_db',
-            status: 'connected',
-            lastScan: '2024-05-20 14:00',
-            tableCount: 142,
-            desc: '医院端数据同步前置库',
-            system: '政务服务平台',
-            env: 'prod',
-            owner: '张三 (Data Owner)',
-            scanPolicy: { frequency: 'daily', scopeRegex: 'host_.*', alertReceivers: ['张三'] },
-            auth: { type: 'password' }
-        },
-        {
-            id: 'DS_002',
-            name: '市人口库_主库',
-            type: 'Oracle',
-            host: '10.2.5.101',
-            port: 1521,
-            dbName: 'orcl_pop_master',
-            status: 'connected',
-            lastScan: '2024-05-19 09:30',
-            tableCount: 89,
-            desc: '全市全员人口基础信息库',
-            system: '人口基础库',
-            env: 'prod',
-            owner: '李四 (System Owner)',
-            schemaName: 'CENSUS_CORE',
-            scanPolicy: { frequency: 'weekly', scopeRegex: '.*', alertReceivers: ['李四'] },
-            auth: { type: 'secret', secretId: 'SEC_ORCL_001' }
-        },
-        {
-            id: 'DS_003',
-            name: '政务数据中心',
-            type: 'PostgreSQL',
-            host: '10.2.6.50',
-            port: 5432,
-            dbName: 'gov_data_center',
-            status: 'disconnected',
-            lastScan: 'Never',
-            tableCount: 0,
-            desc: '政务数据共享交换平台',
-            system: '数据仓库',
-            env: 'test',
-            owner: '王五 (DevOps)',
-            schemaName: 'public',
-            scanPolicy: { frequency: 'manual', scopeRegex: '', alertReceivers: [] },
-            auth: { type: 'password' }
+    // 加载数据源列表
+    const [dataSources, setDataSources] = useState<DataSource[]>([]);
+    const [loading, setLoading] = useState(false);
+
+    // 组件挂载时加载数据源
+    useEffect(() => {
+        loadDataSources();
+    }, []);
+
+    const loadDataSources = async () => {
+        setLoading(true);
+        try {
+            const result = await dataSourceService.getDataSources();
+            setDataSources(result);
+        } catch (error) {
+            console.error('Failed to load data sources:', error);
+        } finally {
+            setLoading(false);
         }
-    ]);
+    };
 
     const typeConfigs: Record<string, { color: string; bgColor: string; defaultPort: number }> = {
         MySQL: { color: 'text-blue-700', bgColor: 'bg-blue-100', defaultPort: 3306 },
@@ -127,55 +59,91 @@ const DataSourceManagementView = () => {
         Kafka: { color: 'text-slate-700', bgColor: 'bg-slate-100', defaultPort: 9092 }
     };
 
-    const handleCreate = () => {
+    const handleCreate = async () => {
         if (!newDS.name || !newDS.host) return;
-        const newDataSource: DataSource = {
-            id: `DS_${Date.now()}`,
-            name: newDS.name!,
-            type: newDS.type!,
-            host: newDS.host!,
-            port: newDS.port || 3306,
-            dbName: newDS.dbName!,
-            status: 'disconnected',
-            lastScan: 'Never',
-            tableCount: 0,
-            desc: '新建数据源',
-            username: newDS.username,
-            system: newDS.system,
-            env: newDS.env as any,
-            owner: newDS.owner,
-            schemaName: newDS.schemaName,
-            scanPolicy: newDS.scanPolicy,
-            auth: newDS.auth
-        };
-        setDataSources([...dataSources, newDataSource]);
-        setIsModalOpen(false);
-        resetForm();
+
+        try {
+            const result = await dataSourceService.createDataSource({
+                name: newDS.name!,
+                type: newDS.type!,
+                host: newDS.host!,
+                port: newDS.port || 3306,
+                dbName: newDS.dbName!,
+                username: newDS.username,
+                password: newDS.password,
+                schemaName: newDS.schemaName,
+                desc: newDS.desc || '新建数据源',
+                // 治理字段 - 不发送后端
+                system: newDS.system,
+                env: newDS.env,
+                owner: newDS.owner
+            });
+            setDataSources([...dataSources, result]);
+            setIsModalOpen(false);
+            resetForm();
+        } catch (error) {
+            console.error('Failed to create data source:', error);
+            alert('创建数据源失败：' + (error as Error).message);
+        }
     };
 
     const resetForm = () => {
         setNewDS({
-            name: '', type: 'MySQL', host: '', port: 3306, dbName: '', username: '', password: '', system: '', env: 'prod', owner: '', schemaName: '',
-            scanPolicy: { frequency: 'daily', scopeRegex: '.*', alertReceivers: [] },
-            auth: { type: 'password', secretId: '' }
+            name: '', type: 'MySQL', host: '', port: 3306, dbName: '', username: '', password: '', system: '', env: 'prod', owner: '', schemaName: ''
         });
         setEditingDS(null);
-        setActiveTab('basic');
     };
 
-    const handleTestConnection = (dsId: string) => {
+    const handleTestConnection = async (dsId: string) => {
         setTestingId(dsId);
-        setTimeout(() => {
-            setDataSources(prev => prev.map(ds =>
-                ds.id === dsId ? { ...ds, status: 'connected' as const } : ds
-            ));
+        const ds = dataSources.find(d => d.id === dsId);
+        if (!ds) {
             setTestingId(null);
-        }, 1500);
+            return;
+        }
+
+        try {
+            const result = await dataSourceService.testConnection({
+                name: ds.name,
+                type: ds.type,
+                host: ds.host,
+                port: ds.port,
+                dbName: ds.dbName,
+                username: ds.username,
+                password: '',
+                schemaName: ds.schemaName
+            });
+
+            if (result.success) {
+                setDataSources(prev => prev.map(d =>
+                    d.id === dsId ? { ...d, status: 'connected' as const } : d
+                ));
+            } else {
+                setDataSources(prev => prev.map(d =>
+                    d.id === dsId ? { ...d, status: 'error' as const } : d
+                ));
+                alert('连接测试失败：' + result.message);
+            }
+        } catch (error) {
+            console.error('Failed to test connection:', error);
+            setDataSources(prev => prev.map(d =>
+                d.id === dsId ? { ...d, status: 'error' as const } : d
+            ));
+            alert('连接测试失败：' + (error as Error).message);
+        } finally {
+            setTestingId(null);
+        }
     };
 
-    const handleDelete = (dsId: string) => {
+    const handleDelete = async (dsId: string) => {
         if (confirm('确定要删除此数据源吗？')) {
-            setDataSources(prev => prev.filter(ds => ds.id !== dsId));
+            try {
+                await dataSourceService.deleteDataSource(dsId);
+                setDataSources(prev => prev.filter(ds => ds.id !== dsId));
+            } catch (error) {
+                console.error('Failed to delete data source:', error);
+                alert('删除数据源失败：' + (error as Error).message);
+            }
         }
     };
 
@@ -197,27 +165,41 @@ const DataSourceManagementView = () => {
         setIsModalOpen(true);
     };
 
-    const handleUpdate = () => {
+    const handleUpdate = async () => {
         if (!editingDS || !newDS.name || !newDS.host) return;
-        setDataSources(prev => prev.map(ds =>
-            ds.id === editingDS.id
-                ? {
-                    ...ds,
-                    name: newDS.name!,
-                    type: newDS.type!,
-                    host: newDS.host!,
-                    port: newDS.port || 3306,
-                    dbName: newDS.dbName!,
-                    username: newDS.username,
-                    system: newDS.system,
-                    env: newDS.env as any,
-                    owner: newDS.owner,
-                    schemaName: newDS.schemaName
-                }
-                : ds
-        ));
-        setIsModalOpen(false);
-        resetForm();
+
+        try {
+            // 如果密码为空，不发送密码字段（避免覆盖原有密码）
+            const updateData: any = {
+                name: newDS.name!,
+                type: newDS.type!,
+                host: newDS.host!,
+                port: newDS.port || 3306,
+                dbName: newDS.dbName!,
+                username: newDS.username,
+                schemaName: newDS.schemaName,
+                desc: newDS.desc,
+                // 治理字段 - 不发送后端
+                system: newDS.system,
+                env: newDS.env,
+                owner: newDS.owner,
+            };
+
+            // 只有在密码有值时才发送
+            if (newDS.password) {
+                updateData.password = newDS.password;
+            }
+
+            const result = await dataSourceService.updateDataSource(editingDS.id, updateData);
+            setDataSources(prev => prev.map(ds =>
+                ds.id === editingDS.id ? result : ds
+            ));
+            setIsModalOpen(false);
+            resetForm();
+        } catch (error) {
+            console.error('Failed to update data source:', error);
+            alert('更新数据源失败：' + (error as Error).message);
+        }
     };
 
     const handleTypeChange = (type: string) => {
@@ -500,7 +482,7 @@ const DataSourceManagementView = () => {
                                 <h3 className="font-bold text-lg text-slate-800">
                                     {editingDS ? '编辑数据源' : '新建数据源连接'}
                                 </h3>
-                                <p className="text-xs text-slate-500 mt-1">配置连接信息、扫描策略及安全凭据</p>
+                                <p className="text-xs text-slate-500 mt-1">配置数据源连接信息</p>
                             </div>
                             <button
                                 onClick={() => { setIsModalOpen(false); resetForm(); }}
@@ -510,30 +492,9 @@ const DataSourceManagementView = () => {
                             </button>
                         </div>
 
-                        {/* Tabs Header */}
-                        <div className="px-6 border-b border-slate-100 flex gap-6">
-                            {[
-                                { id: 'basic', label: '基础连接', icon: Settings },
-                                { id: 'scan', label: '扫描策略', icon: Scan }
-                            ].map(tab => (
-                                <button
-                                    key={tab.id}
-                                    onClick={() => setActiveTab(tab.id as any)}
-                                    className={`py-3 text-sm font-medium flex items-center gap-2 border-b-2 transition-colors ${activeTab === tab.id
-                                        ? 'border-blue-600 text-blue-600'
-                                        : 'border-transparent text-slate-500 hover:text-slate-700'
-                                        }`}
-                                >
-                                    <tab.icon size={16} />
-                                    {tab.label}
-                                </button>
-                            ))}
-                        </div>
-
                         <div className="p-6 space-y-4 overflow-y-auto custom-scrollbar flex-1">
-                            {/* Tab 1: Basic Connection */}
-                            {activeTab === 'basic' && (
-                                <div className="space-y-4">
+                            {/* Connection Form */}
+                            <div className="space-y-4">
                                     {/* Business Context Group */}
                                     <div className="bg-slate-50 p-4 rounded-lg border border-slate-100 space-y-4 mb-2">
                                         <div className="flex items-center gap-2 mb-2 pb-2 border-b border-slate-200/60">
@@ -728,87 +689,8 @@ const DataSourceManagementView = () => {
                                         </div>
                                     </div>
                                 </div>
-                            )}
 
-                            {/* Tab 2: Scan Policy */}
-                            {activeTab === 'scan' && (
-                                <div className="space-y-6">
-                                    <div className="bg-blue-50 p-4 rounded-lg flex items-start gap-3 border border-blue-100">
-                                        <RefreshCw className="text-blue-600 mt-0.5" size={18} />
-                                        <div>
-                                            <h4 className="text-sm font-bold text-blue-800">关于扫描策略</h4>
-                                            <p className="text-xs text-blue-600 mt-1">
-                                                定期扫描元数据可以保持资产目录的即时性。建议配置表白名单以减少不必要的系统负载。
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-2">扫描频率</label>
-                                        <div className="grid grid-cols-3 gap-3">
-                                            {[
-                                                { id: 'daily', label: '每天 (Daily)' },
-                                                { id: 'weekly', label: '每周 (Weekly)' },
-                                                { id: 'manual', label: '手动触发 (Manual)' }
-                                            ].map(opt => (
-                                                <button
-                                                    key={opt.id}
-                                                    onClick={() => setNewDS({ ...newDS, scanPolicy: { ...newDS.scanPolicy!, frequency: opt.id as any } })}
-                                                    className={`py-2 px-3 text-sm font-medium rounded-lg border transition-all ${newDS.scanPolicy?.frequency === opt.id
-                                                        ? 'bg-blue-50 border-blue-500 text-blue-700 ring-1 ring-blue-500'
-                                                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                                                        }`}
-                                                >
-                                                    {opt.label}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-1">
-                                            扫描范围 (白名单正则)
-                                        </label>
-                                        <span className="text-xs text-slate-500 block mb-2">
-                                            输入正则表达式以匹配 Schema 或 表名。例如: <code>^hr_.*</code> 或 <code>.*_prod$</code>
-                                        </span>
-                                        <input
-                                            type="text"
-                                            placeholder=".*"
-                                            value={newDS.scanPolicy?.scopeRegex}
-                                            onChange={e => setNewDS({ ...newDS, scanPolicy: { ...newDS.scanPolicy!, scopeRegex: e.target.value } })}
-                                            className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-2">
-                                            失败告警接收人
-                                        </label>
-                                        <div className="border border-slate-200 rounded-lg p-3 max-h-40 overflow-y-auto bg-slate-50">
-                                            {MOCK_OWNERS.map(owner => (
-                                                <label key={owner} className="flex items-center gap-2 p-2 hover:bg-white rounded cursor-pointer transition-colors">
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={newDS.scanPolicy?.alertReceivers?.includes(owner)}
-                                                        onChange={e => {
-                                                            const current = newDS.scanPolicy?.alertReceivers || [];
-                                                            const updated = e.target.checked
-                                                                ? [...current, owner]
-                                                                : current.filter(o => o !== owner);
-                                                            setNewDS({ ...newDS, scanPolicy: { ...newDS.scanPolicy!, alertReceivers: updated } });
-                                                        }}
-                                                        className="rounded border-slate-400 text-blue-600 focus:ring-blue-500"
-                                                    />
-                                                    <span className="text-sm text-slate-700">{owner}</span>
-                                                </label>
-                                            ))}
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Tab 3: Security - REMOVED as per user request */}
+                            {/* Scan Policy Tab - REMOVED as per user request */}
                         </div>
 
                         <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3 shrink-0">

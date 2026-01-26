@@ -21,6 +21,12 @@ export default defineConfig({
                 rewrite: (path) => path.replace(/^\/api\/v1\/agent/, '/api/v1')
             },
 
+            // Data Connection Service 代理
+            '/api/data-connection': {
+                target: 'http://localhost:8892',
+                changeOrigin: true,
+            },
+
             // 向后兼容：直接访问 /api/v1/user/login 这种旧式请求（如果不走 Gateway 前缀）
             // 注意：这应该放在具体路径之后
             '/api': {
