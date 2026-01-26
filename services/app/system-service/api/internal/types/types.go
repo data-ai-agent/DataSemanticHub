@@ -63,6 +63,7 @@ type Menu struct {
 	ExternalUrl   string   `json:"external_url,optional"`
 	OpenMode      string   `json:"open_mode,optional"` // new/iframe/same
 	PermissionKey string   `json:"permission_key,optional"`
+	Icon          string   `json:"icon,optional"` // 图标名称（如 Layout, Database）
 	Visible       bool     `json:"visible"`
 	Enabled       bool     `json:"enabled"`
 	Order         int      `json:"order"`

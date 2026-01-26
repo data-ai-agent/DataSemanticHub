@@ -135,6 +135,9 @@ func (l *GetMenuLogic) convertMenuToType(menu *menus.Menu) types.Menu {
 	if menu.PermissionKey != nil {
 		menuType.PermissionKey = *menu.PermissionKey
 	}
+	if menu.Icon != nil {
+		menuType.Icon = *menu.Icon
+	}
 	if menu.CreatedBy != nil {
 		menuType.CreatedBy = *menu.CreatedBy
 	}

@@ -111,7 +111,7 @@ const buildHeaders = (hasBody: boolean) => {
     if (hasBody) {
         headers['Content-Type'] = 'application/json';
     }
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('auth_token');
     if (token) {
         headers['Authorization'] = `Bearer ${token}`;
     }

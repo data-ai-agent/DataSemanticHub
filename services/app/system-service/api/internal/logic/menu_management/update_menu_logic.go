@@ -140,6 +140,15 @@ func (l *UpdateMenuLogic) UpdateMenu(req *types.UpdateMenuReq) (resp *types.Upda
 	if req.PermissionKey != "" {
 		existingMenu.PermissionKey = &req.PermissionKey
 	}
+	// 处理图标字段：如果传入空字符串，清空图标；如果传入非空字符串，更新图标
+	if req.Icon != "" {
+		existingMenu.Icon = &req.Icon
+	} else if req.Icon == "" && existingMenu.Icon != nil {
+		// 如果前端明确传入空字符串（通过检查 req 中是否包含 icon 字段），清空图标
+		// 注意：由于 Go 的零值特性，无法区分"未提供"和"空字符串"
+		// 这里采用策略：如果 req.Icon 为空且现有图标不为空，则清空（前端需要明确传递空字符串）
+		existingMenu.Icon = nil
+	}
 	// 布尔值和整数直接更新（即使为 false 或 0）
 	existingMenu.Visible = req.Visible
 	existingMenu.Enabled = req.Enabled
@@ -313,6 +322,9 @@ func (l *UpdateMenuLogic) menuToMap(menu *menus.Menu) map[string]interface{} {
 	if menu.PermissionKey != nil {
 		m["permission_key"] = *menu.PermissionKey
 	}
+	if menu.Icon != nil {
+		m["icon"] = *menu.Icon
+	}
 	return m
 }
 
@@ -362,6 +374,9 @@ func (l *UpdateMenuLogic) convertMenuToType(menu *menus.Menu) types.Menu {
 	}
 	if menu.PermissionKey != nil {
 		menuType.PermissionKey = *menu.PermissionKey
+	}
+	if menu.Icon != nil {
+		menuType.Icon = *menu.Icon
 	}
 	if menu.CreatedBy != nil {
 		menuType.CreatedBy = *menu.CreatedBy

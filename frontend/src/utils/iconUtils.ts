@@ -1,0 +1,141 @@
+import {
+    Layout, Database, GitMerge, Server, Layers,
+    Search, FileText, Activity, Cpu, Link,
+    RefreshCw, ChevronRight, Shield, CheckSquare,
+    Plus, Upload, FileCheck, TrendingUp, MoreHorizontal, X, AlertTriangle, User, Users, Clock, MessageCircle, Send,
+    Book, Tag, CheckCircle, ArrowRight, Sparkles, Box, Edit, XCircle, ZoomIn, ZoomOut, Eye, Share2, Network, GitBranch, Table, Globe, ChevronDown, Check,
+    ScanText, Verified, Lock, History, Bookmark, LayoutGrid, Building2, UserCog, PanelLeftClose, Grip, Settings,
+    BarChart3, PieChart, FileBarChart, LineChart, TrendingDown, Home, Menu, Save, Download, Trash2,
+    Archive, Star, Heart, ThumbsUp, Flag, Award, Trophy, Zap, Power, Battery, Wifi, Bluetooth, Radio, Tv, Monitor,
+    Smartphone, Tablet, Laptop, Printer, Key, Unlock, EyeOff, ShieldCheck, ShieldAlert, Info, HelpCircle,
+    AlertCircle, CheckCircle2, Minus, Calendar, Bell, Mail, Phone, MapPin, Camera, Image, Video, Music, File, FolderOpen
+} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
+
+// 图标名称到组件的映射
+const ICON_NAME_MAP: Record<string, LucideIcon> = {
+    'Layout': Layout,
+    'Database': Database,
+    'GitMerge': GitMerge,
+    'Server': Server,
+    'Layers': Layers,
+    'Search': Search,
+    'FileText': FileText,
+    'Activity': Activity,
+    'Cpu': Cpu,
+    'Link': Link,
+    'RefreshCw': RefreshCw,
+    'ChevronRight': ChevronRight,
+    'Shield': Shield,
+    'CheckSquare': CheckSquare,
+    'Plus': Plus,
+    'Upload': Upload,
+    'FileCheck': FileCheck,
+    'TrendingUp': TrendingUp,
+    'MoreHorizontal': MoreHorizontal,
+    'X': X,
+    'AlertTriangle': AlertTriangle,
+    'User': User,
+    'Users': Users,
+    'Clock': Clock,
+    'MessageCircle': MessageCircle,
+    'Send': Send,
+    'Book': Book,
+    'Tag': Tag,
+    'CheckCircle': CheckCircle,
+    'ArrowRight': ArrowRight,
+    'Sparkles': Sparkles,
+    'Box': Box,
+    'Edit': Edit,
+    'XCircle': XCircle,
+    'ZoomIn': ZoomIn,
+    'ZoomOut': ZoomOut,
+    'Eye': Eye,
+    'Share2': Share2,
+    'Network': Network,
+    'GitBranch': GitBranch,
+    'Table': Table,
+    'Globe': Globe,
+    'ChevronDown': ChevronDown,
+    'Check': Check,
+    'ScanText': ScanText,
+    'Verified': Verified,
+    'Lock': Lock,
+    'History': History,
+    'Bookmark': Bookmark,
+    'LayoutGrid': LayoutGrid,
+    'Building2': Building2,
+    'UserCog': UserCog,
+    'PanelLeftClose': PanelLeftClose,
+    'Grip': Grip,
+    'Settings': Settings,
+    'BarChart3': BarChart3,
+    'PieChart': PieChart,
+    'FileBarChart': FileBarChart,
+    'LineChart': LineChart,
+    'TrendingDown': TrendingDown,
+    'Home': Home,
+    'Menu': Menu,
+    'Save': Save,
+    'Download': Download,
+    'Trash2': Trash2,
+    'Archive': Archive,
+    'Star': Star,
+    'Heart': Heart,
+    'ThumbsUp': ThumbsUp,
+    'Flag': Flag,
+    'Award': Award,
+    'Trophy': Trophy,
+    'Zap': Zap,
+    'Power': Power,
+    'Battery': Battery,
+    'Wifi': Wifi,
+    'Bluetooth': Bluetooth,
+    'Radio': Radio,
+    'Tv': Tv,
+    'Monitor': Monitor,
+    'Smartphone': Smartphone,
+    'Tablet': Tablet,
+    'Laptop': Laptop,
+    'Printer': Printer,
+    'Key': Key,
+    'Unlock': Unlock,
+    'EyeOff': EyeOff,
+    'ShieldCheck': ShieldCheck,
+    'ShieldAlert': ShieldAlert,
+    'Info': Info,
+    'HelpCircle': HelpCircle,
+    'AlertCircle': AlertCircle,
+    'CheckCircle2': CheckCircle2,
+    'Minus': Minus,
+    'Calendar': Calendar,
+    'Bell': Bell,
+    'Mail': Mail,
+    'Phone': Phone,
+    'MapPin': MapPin,
+    'Camera': Camera,
+    'Image': Image,
+    'Video': Video,
+    'Music': Music,
+    'File': File,
+    'FolderOpen': FolderOpen,
+};
+
+/**
+ * 根据图标名称获取图标组件
+ * @param iconName 图标名称（如 'Layout', 'Database'）
+ * @param defaultIcon 默认图标（如果找不到时使用）
+ * @returns 图标组件
+ */
+export function getIconByName(iconName?: string, defaultIcon: LucideIcon = LayoutGrid): LucideIcon {
+    if (!iconName) {
+        return defaultIcon;
+    }
+    const icon = ICON_NAME_MAP[iconName];
+    // 确保返回的是一个有效的组件（可能是函数或对象类型的组件），否则返回默认图标
+    if (!icon) {
+        return defaultIcon;
+    }
+    return icon;
+}
+

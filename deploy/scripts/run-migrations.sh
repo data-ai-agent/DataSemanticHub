@@ -77,6 +77,14 @@ echo -e "${GREEN}DataSemanticHub - Migration Runner${NC}"
 echo -e "${GREEN}=====================================${NC}"
 echo ""
 
+# Save command-line environment variables (they have higher priority)
+SAVED_DB_HOST="${DB_HOST:-}"
+SAVED_DB_PORT="${DB_PORT:-}"
+SAVED_DB_NAME="${DB_NAME:-}"
+SAVED_DB_USER="${DB_USER:-}"
+SAVED_DB_PASSWORD="${DB_PASSWORD:-}"
+SAVED_DB_TYPE="${DB_TYPE:-}"
+
 if [ -f "$ENV_FILE" ]; then
     # Load environment variables from file
     set -o allexport
@@ -86,7 +94,13 @@ else
     echo -e "${YELLOW}Notice: env file not found at ${ENV_FILE}. Using environment variables.${NC}"
 fi
 
-
+# Restore command-line environment variables (they override .env file)
+if [[ -n "$SAVED_DB_HOST" ]]; then DB_HOST="$SAVED_DB_HOST"; fi
+if [[ -n "$SAVED_DB_PORT" ]]; then DB_PORT="$SAVED_DB_PORT"; fi
+if [[ -n "$SAVED_DB_NAME" ]]; then DB_NAME="$SAVED_DB_NAME"; fi
+if [[ -n "$SAVED_DB_USER" ]]; then DB_USER="$SAVED_DB_USER"; fi
+if [[ -n "$SAVED_DB_PASSWORD" ]]; then DB_PASSWORD="$SAVED_DB_PASSWORD"; fi
+if [[ -n "$SAVED_DB_TYPE" ]]; then DB_TYPE="$SAVED_DB_TYPE"; fi
 
 DB_HOST="${DB_HOST:-localhost}"
 DB_PORT="${DB_PORT:-3306}"

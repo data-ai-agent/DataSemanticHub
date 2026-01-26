@@ -22,10 +22,13 @@ import {
     Copy,
     Check,
     RefreshCw,
-    Loader2
+    Loader2,
+    GripVertical
 } from 'lucide-react';
 import { useToast } from '../components/ui/Toast';
-import { menuService, MenuItem, MenuType, MenuStatus, PermissionItem, GetMenuStatsResp, convertMenuToMenuItem } from '../services/menuService';
+import { menuService, MenuItem, MenuStatus, PermissionItem, GetMenuStatsResp, convertMenuToMenuItem } from '../services/menuService';
+import { IconSelector } from '../components/menu/IconSelector';
+import { getIconByName } from '../utils/iconUtils';
 
 const formatDate = () => new Date().toISOString().split('T')[0];
 const groups = ['语义治理', '语义资产管理', '数据连接', '数据服务', '平台管理'];
@@ -38,7 +41,7 @@ const MenuManagementView = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState<'all' | MenuStatus>('all');
     const [groupFilter, setGroupFilter] = useState('all');
-    const [typeFilter, setTypeFilter] = useState<'all' | MenuType>('all');
+    const [typeFilter, setTypeFilter] = useState<'all' | MenuItem['type']>('all');
     const [modalOpen, setModalOpen] = useState(false);
     const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
     const [draftMenu, setDraftMenu] = useState<MenuItem | null>(null);
@@ -50,6 +53,10 @@ const MenuManagementView = () => {
     const [permissions, setPermissions] = useState<PermissionItem[]>([]);
     const [isPermissionLoading, setIsPermissionLoading] = useState(false);
     const [menuStats, setMenuStats] = useState<GetMenuStatsResp | null>(null);
+
+    // 拖拽排序相关状态
+    const [draggedMenuId, setDraggedMenuId] = useState<string | null>(null);
+    const [dragOverMenuId, setDragOverMenuId] = useState<string | null>(null);
 
     // Fetch menus on mount
     useEffect(() => {
@@ -109,6 +116,114 @@ const MenuManagementView = () => {
             next.add(menuId);
         }
         setExpandedMenuIds(next);
+    };
+
+    // 拖拽排序处理函数
+    const handleDragStart = (e: React.DragEvent, menuId: string) => {
+        setDraggedMenuId(menuId);
+        e.dataTransfer.setData('text/plain', menuId);
+        e.dataTransfer.effectAllowed = 'move';
+        // 设置拖拽时的视觉效果
+        if (e.dataTransfer) {
+            e.dataTransfer.dropEffect = 'move';
+        }
+    };
+
+    const handleDragEnd = () => {
+        setDraggedMenuId(null);
+        setDragOverMenuId(null);
+    };
+
+    const handleDragOver = (e: React.DragEvent, menuId: string) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.dataTransfer) {
+            e.dataTransfer.dropEffect = 'move';
+        }
+        if (draggedMenuId && draggedMenuId !== menuId) {
+            setDragOverMenuId(menuId);
+        }
+    };
+
+    const handleDragLeave = (e: React.DragEvent) => {
+        // 只有当离开当前元素时才清除 dragOver 状态
+        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+        const x = e.clientX;
+        const y = e.clientY;
+        if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+            setDragOverMenuId(null);
+        }
+    };
+
+    const handleDrop = async (e: React.DragEvent, targetMenuId: string) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setDragOverMenuId(null);
+
+        const sourceMenuId = draggedMenuId;
+        if (!sourceMenuId || sourceMenuId === targetMenuId) {
+            setDraggedMenuId(null);
+            return;
+        }
+
+        // 查找源菜单和目标菜单
+        const sourceMenu = menus.find(m => m.id === sourceMenuId);
+        const targetMenu = menus.find(m => m.id === targetMenuId);
+
+        if (!sourceMenu || !targetMenu) {
+            setDraggedMenuId(null);
+            return;
+        }
+
+        // 只支持同级菜单的排序（相同 parentId）
+        // 注意：null 和 undefined 视为相同（都是根级菜单）
+        const sourceParentId = sourceMenu.parentId || null;
+        const targetParentId = targetMenu.parentId || null;
+
+        if (sourceParentId !== targetParentId) {
+            toast.error('暂不支持跨层级移动，只能在同一层级内调整顺序');
+            setDraggedMenuId(null);
+            return;
+        }
+
+        // 获取同级菜单并按 order 排序
+        const siblings = menus
+            .filter(m => {
+                const mParentId = m.parentId || null;
+                return mParentId === sourceParentId;
+            })
+            .sort((a, b) => a.order - b.order);
+
+        const sourceIndex = siblings.findIndex(m => m.id === sourceMenuId);
+        const targetIndex = siblings.findIndex(m => m.id === targetMenuId);
+
+        if (sourceIndex === -1 || targetIndex === -1) {
+            setDraggedMenuId(null);
+            return;
+        }
+
+        // 计算新的顺序
+        const newSiblings = [...siblings];
+        const [moved] = newSiblings.splice(sourceIndex, 1);
+        newSiblings.splice(targetIndex, 0, moved);
+
+        // 构建批量更新请求
+        const updates = newSiblings.map((menu, index) => ({
+            id: menu.id,
+            order: index + 1
+        }));
+
+        try {
+            await menuService.reorderMenus({ updates });
+            toast.success('菜单顺序已更新');
+            // 刷新菜单列表
+            await fetchMenus();
+        } catch (error: any) {
+            console.error('Reorder menus error:', error);
+            toast.error(error.message || '更新菜单顺序失败');
+        } finally {
+            setDraggedMenuId(null);
+        }
     };
 
     // Flattened tree for rendering
@@ -237,7 +352,7 @@ const MenuManagementView = () => {
 
         try {
             if (modalMode === 'create') {
-                const newMenu = await menuService.createMenu(draftMenu);
+                const newMenu = await menuService.createMenu(draftMenu) as MenuItem;
                 setMenus(prev => [newMenu, ...prev]);
                 setActiveMenuId(newMenu.id);
             } else {
@@ -378,14 +493,52 @@ const MenuManagementView = () => {
                         {filteredMenus.map(({ item, level, hasChildren }) => {
                             const isActive = item.id === activeMenuId;
                             const riskLevel = getMenuRisk(item);
+                            const isDragging = draggedMenuId === item.id;
+                            const isDragOver = dragOverMenuId === item.id;
+
                             return (
                                 <div
                                     key={item.id}
-                                    className={`group flex items-center gap-2 rounded-lg p-2 text-sm cursor-pointer transition-colors ${isActive ? 'bg-indigo-50' : 'hover:bg-slate-50'
+                                    draggable={!item.builtIn}
+                                    onDragStart={(e) => {
+                                        if (!item.builtIn) {
+                                            handleDragStart(e, item.id);
+                                        }
+                                    }}
+                                    onDragEnd={handleDragEnd}
+                                    onDragOver={(e) => {
+                                        if (draggedMenuId && draggedMenuId !== item.id && !item.builtIn) {
+                                            handleDragOver(e, item.id);
+                                        }
+                                    }}
+                                    onDragLeave={handleDragLeave}
+                                    onDrop={(e) => {
+                                        if (!item.builtIn) {
+                                            handleDrop(e, item.id);
+                                        }
+                                    }}
+                                    className={`group flex items-center gap-2 rounded-lg p-2 text-sm transition-all ${isActive ? 'bg-indigo-50' : 'hover:bg-slate-50'
+                                        } ${isDragging ? 'opacity-40 cursor-grabbing' : 'cursor-pointer'
+                                        } ${isDragOver ? 'ring-2 ring-indigo-400 bg-indigo-50 border-2 border-indigo-300' : ''
+                                        } ${item.builtIn ? 'cursor-default' : ''
                                         }`}
                                     style={{ paddingLeft: level * 16 + 8 }}
                                     onClick={() => setActiveMenuId(item.id)}
                                 >
+                                    {/* 拖拽手柄 - 只在非内置菜单时显示 */}
+                                    {!item.builtIn && (
+                                        <div
+                                            className="p-0.5 rounded hover:bg-slate-100 cursor-grab active:cursor-grabbing text-slate-400 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                            onMouseDown={(e) => {
+                                                e.stopPropagation();
+                                            }}
+                                            title="拖拽排序"
+                                        >
+                                            <GripVertical size={12} />
+                                        </div>
+                                    )}
+
+                                    {/* 展开/收起按钮 */}
                                     <div
                                         className={`p-0.5 rounded hover:bg-black/5 cursor-pointer text-slate-400 shrink-0 ${hasChildren ? 'visible' : 'invisible'}`}
                                         onClick={(e) => {
@@ -398,10 +551,11 @@ const MenuManagementView = () => {
 
                                     <div className="flex-1 min-w-0 flex items-center justify-between gap-2">
                                         <div className="flex items-center gap-2 min-w-0">
-                                            {/* Type Icon */}
-                                            {item.type === '目录' && <Folder size={14} className="text-amber-400 shrink-0" />}
-                                            {item.type === '页面' && <FileText size={14} className="text-slate-400 shrink-0" />}
-                                            {item.type === '外链' && <Link2 size={14} className="text-blue-400 shrink-0" />}
+                                            {/* Menu Icon */}
+                                            {(() => {
+                                                const IconComponent = getIconByName(item.icon, LayoutGrid);
+                                                return <IconComponent size={14} className="text-slate-500 shrink-0" />;
+                                            })()}
 
                                             <span className={`truncate font-medium ${isActive ? 'text-indigo-700' : 'text-slate-700'}`}>
                                                 {item.name}
@@ -442,6 +596,12 @@ const MenuManagementView = () => {
                             <div className="px-6 py-5 border-b border-slate-100 flex items-start justify-between bg-slate-50/30">
                                 <div>
                                     <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 flex items-center justify-center border border-slate-200 rounded-lg bg-white">
+                                            {(() => {
+                                                const IconComponent = getIconByName(activeMenu.icon, LayoutGrid);
+                                                return <IconComponent size={18} className="text-slate-600" />;
+                                            })()}
+                                        </div>
                                         <h3 className="text-xl font-bold text-slate-800">{activeMenu.name}</h3>
                                         <span className={`px-2 py-0.5 rounded text-xs border ${activeMenu.type === '目录' ? 'bg-amber-50 text-amber-600 border-amber-100' :
                                             activeMenu.type === '外链' ? 'bg-blue-50 text-blue-600 border-blue-100' :
@@ -495,6 +655,7 @@ const MenuManagementView = () => {
                                     <div className="grid grid-cols-3 gap-6">
                                         {[
                                             { label: '菜单编码', value: activeMenu.code },
+                                            { label: '菜单图标', value: activeMenu.icon || 'Layout', color: 'text-indigo-600' },
                                             { label: '菜单分组', value: activeMenu.group },
                                             { label: '排序权重', value: activeMenu.order },
                                             { label: '父级节点', value: activeMenu.parentId ? menus.find(m => m.id === activeMenu.parentId)?.name : '顶级菜单' },
@@ -620,7 +781,7 @@ const MenuManagementView = () => {
                                         <label className="text-xs font-semibold text-slate-700">菜单类型 <span className="text-rose-500">*</span></label>
                                         <select
                                             value={draftMenu.type}
-                                            onChange={(e) => setDraftMenu({ ...draftMenu, type: e.target.value as MenuType })}
+                                            onChange={(e) => setDraftMenu({ ...draftMenu, type: e.target.value as MenuItem['type'] })}
                                             className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 outline-none"
                                         >
                                             <option value="目录">目录 (Folder)</option>
@@ -655,6 +816,13 @@ const MenuManagementView = () => {
                                             onChange={(e) => setDraftMenu({ ...draftMenu, code: e.target.value })}
                                             className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 outline-none font-mono"
                                             placeholder="system_settings"
+                                        />
+                                    </div>
+                                    <div className="col-span-2">
+                                        <IconSelector
+                                            value={draftMenu.icon || 'Layout'}
+                                            onChange={(iconName) => setDraftMenu({ ...draftMenu, icon: iconName })}
+                                            label="菜单图标"
                                         />
                                     </div>
                                 </div>

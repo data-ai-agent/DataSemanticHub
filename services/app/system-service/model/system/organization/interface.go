@@ -15,7 +15,7 @@ type SysOrganization struct {
 	LeaderId  string  `gorm:"size:36"`
 	Type      int8    `gorm:"not null;default:2"`
 	Status    int8    `gorm:"not null;default:1"`
-	Desc      string  `gorm:"size:255"`
+	Desc      string  `gorm:"column:description;size:255"`
 	CreatedAt string  `gorm:"autoCreateTime"`
 	UpdatedAt string  `gorm:"autoUpdateTime"`
 	DeletedAt *string `gorm:"index;size:3"` // DATETIME(3) for GORM soft delete

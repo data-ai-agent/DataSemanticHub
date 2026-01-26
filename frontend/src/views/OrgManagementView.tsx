@@ -42,6 +42,7 @@ import {
     AddUserAuxDeptReq,
     RemoveUserAuxDeptReq
 } from '../services/organizationService';
+import { userManagementService, User } from '../services/userManagement';
 import { useEffect } from 'react';
 
 type OrgStatus = '启用' | '停用';
@@ -52,6 +53,7 @@ type Department = {
     code: string;
     parentId: string | null;
     manager: string;
+    leaderId?: string; // 负责人ID
     members: number;
     status: OrgStatus;
     region: string;
@@ -102,8 +104,9 @@ const mapNodeToDepartment = (node: OrgTreeNode): Department => {
         id: node.id,
         name: node.name,
         code: node.code,
-        parentId: node.parentId || null,
+        parentId: (node.parentId === '0' || !node.parentId) ? null : node.parentId,
         manager: node.leaderName || '-',
+        leaderId: node.leaderId || undefined,
         members: 0, // Not returned by tree API yet
         status: node.status === 1 ? '启用' : '停用',
         region: '集团', // Default
@@ -183,6 +186,15 @@ const OrgManagementView = () => {
     const [memberSearch, setMemberSearch] = useState('');
     const [memberRoleFilter, setMemberRoleFilter] = useState('all');
     const [selectedMembers, setSelectedMembers] = useState<Set<string>>(new Set());
+
+    // User Selection Modal State
+    const [showUserSelectModal, setShowUserSelectModal] = useState(false);
+    const [userList, setUserList] = useState<User[]>([]);
+    const [userListLoading, setUserListLoading] = useState(false);
+    const [userSearchTerm, setUserSearchTerm] = useState('');
+    const [userPage, setUserPage] = useState(1);
+    const [userTotal, setUserTotal] = useState(0);
+    const userPageSize = 20;
 
     // Member Form State
     const [memberForm, setMemberForm] = useState({
@@ -415,6 +427,7 @@ const OrgManagementView = () => {
                 code: detail.code,
                 parentId: detail.parentId,
                 manager: detail.leaderName,
+                leaderId: detail.leaderId || undefined,
                 members: 0, // Still not in detail
                 status: detail.status === 1 ? '启用' : '停用',
                 region: '集团',
@@ -548,6 +561,7 @@ const OrgManagementView = () => {
             code: '',
             parentId: activeDeptId || null,
             manager: '',
+            leaderId: undefined,
             members: 0,
             status: '启用',
             region: '华东',
@@ -576,6 +590,8 @@ const OrgManagementView = () => {
                     ...dept,
                     description: detail.desc,
                     parentId: detail.parentId,
+                    manager: detail.leaderName || dept.manager,
+                    leaderId: detail.leaderId || dept.leaderId,
                     // functions? 
                 };
             } catch (e) {
@@ -612,6 +628,7 @@ const OrgManagementView = () => {
                     code: draftDept.code,
                     type: draftDept.type === 'organization' ? 1 : 2,
                     desc: draftDept.description || draftDept.responsibilities,
+                    leaderId: draftDept.leaderId,
                     // sortOrder: 0
                 };
                 await organizationService.createOrg(req);
@@ -626,7 +643,9 @@ const OrgManagementView = () => {
                     code: draftDept.code,
                     desc: draftDept.description || draftDept.responsibilities,
                     status: draftDept.status === '启用' ? 1 : 0,
-                    sortOrder: draftDept.order
+                    sortOrder: draftDept.order,
+                    // 如果 leaderId 是 undefined，传递空字符串以支持清空负责人
+                    leaderId: draftDept.leaderId || ''
                 };
                 await organizationService.updateOrg(draftDept.id, req);
                 toast.success('组织更新成功');
@@ -655,10 +674,50 @@ const OrgManagementView = () => {
         setDraftDept(prev => prev ? ({ ...prev, code: mockPinyin }) : null);
     };
 
-    // Helper for Manager Selection (Mock)
-    const handleSelectManager = () => {
-        // Just set a mock user for now
-        setDraftDept(prev => prev ? ({ ...prev, manager: '王宁' }) : null);
+    // Fetch Users for Selection
+    const fetchUsers = async (page: number = 1, keyword: string = '') => {
+        setUserListLoading(true);
+        try {
+            const response = await userManagementService.listUsers({
+                page,
+                page_size: userPageSize,
+                keyword: keyword.trim() || undefined,
+            });
+            setUserList(response.users);
+            setUserTotal(response.total);
+        } catch (error: any) {
+            console.error(error);
+            toast.error(error.message || '获取用户列表失败');
+        } finally {
+            setUserListLoading(false);
+        }
+    };
+
+    // Open User Selection Modal
+    const openUserSelectModal = () => {
+        setShowUserSelectModal(true);
+        setUserSearchTerm('');
+        setUserPage(1);
+        fetchUsers(1, '');
+    };
+
+    // Handle User Selection
+    const handleSelectUser = (user: User) => {
+        setDraftDept(prev => prev ? ({
+            ...prev,
+            manager: user.name,
+            leaderId: user.id
+        }) : null);
+        setShowUserSelectModal(false);
+    };
+
+    // Clear Manager
+    const handleClearManager = () => {
+        setDraftDept(prev => prev ? ({
+            ...prev,
+            manager: '',
+            leaderId: undefined
+        }) : null);
     };
 
     const toggleFunction = (func: string) => {
@@ -1227,14 +1286,21 @@ const OrgManagementView = () => {
                                                                 <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-bold">
                                                                     {draftDept.manager.charAt(0)}
                                                                 </div>
-                                                                {draftDept.manager}
+                                                                <span className="flex-1">{draftDept.manager}</span>
+                                                                <button
+                                                                    onClick={handleClearManager}
+                                                                    className="text-slate-400 hover:text-slate-600 p-1"
+                                                                    title="清除负责人"
+                                                                >
+                                                                    <X size={14} />
+                                                                </button>
                                                             </>
                                                         ) : (
                                                             <span className="text-slate-400">未指定</span>
                                                         )}
                                                     </div>
                                                     <button
-                                                        onClick={() => toast.info('打开用户选择弹窗（待实现）')}
+                                                        onClick={openUserSelectModal}
                                                         className="px-3 py-2 bg-indigo-50 text-indigo-600 rounded-lg text-xs hover:bg-indigo-100"
                                                     >
                                                         选择
@@ -1521,6 +1587,140 @@ const OrgManagementView = () => {
                     </div>
                 )
             }
+
+            {/* User Selection Modal */}
+            {showUserSelectModal && (
+                <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 flex items-center justify-center p-4">
+                    <div className="w-full max-w-2xl bg-white rounded-xl shadow-2xl flex flex-col max-h-[80vh]">
+                        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+                            <h3 className="text-lg font-bold text-slate-800">选择负责人</h3>
+                            <button
+                                onClick={() => setShowUserSelectModal(false)}
+                                className="text-slate-400 hover:text-slate-600"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <div className="p-6 overflow-y-auto flex flex-col gap-4">
+                            {/* Search */}
+                            <div className="flex gap-2">
+                                <div className="relative flex-1">
+                                    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                    <input
+                                        type="text"
+                                        placeholder="搜索用户姓名、邮箱或手机号..."
+                                        value={userSearchTerm}
+                                        onChange={(e) => {
+                                            setUserSearchTerm(e.target.value);
+                                        }}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                                setUserPage(1);
+                                                fetchUsers(1, userSearchTerm);
+                                            }
+                                        }}
+                                        className="w-full pl-10 pr-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:border-indigo-500"
+                                    />
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        setUserPage(1);
+                                        fetchUsers(1, userSearchTerm);
+                                    }}
+                                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 whitespace-nowrap"
+                                >
+                                    搜索
+                                </button>
+                            </div>
+
+                            {/* User List */}
+                            <div className="flex-1 overflow-y-auto min-h-[300px]">
+                                {userListLoading ? (
+                                    <div className="flex items-center justify-center py-12">
+                                        <Loader2 size={24} className="animate-spin text-indigo-600" />
+                                        <span className="ml-2 text-sm text-slate-500">加载中...</span>
+                                    </div>
+                                ) : userList.length > 0 ? (
+                                    <div className="space-y-2">
+                                        {userList.map((user) => (
+                                            <div
+                                                key={user.id}
+                                                onClick={() => handleSelectUser(user)}
+                                                className="flex items-center gap-3 p-3 rounded-lg border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50 cursor-pointer transition-colors"
+                                            >
+                                                <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-sm font-bold">
+                                                    {user.name.charAt(0)}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="font-medium text-slate-800">{user.name}</div>
+                                                    <div className="text-xs text-slate-500 truncate">
+                                                        {user.email}
+                                                        {user.phone && ` • ${user.phone}`}
+                                                    </div>
+                                                </div>
+                                                <ChevronRight size={16} className="text-slate-400" />
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center py-12 text-slate-400">
+                                        <Users size={32} className="mb-2" />
+                                        <p className="text-sm">暂无用户数据</p>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Pagination */}
+                            {userTotal > 0 && (
+                                <div className="flex items-center justify-between pt-4 border-t border-slate-200">
+                                    <div className="text-sm text-slate-500">
+                                        共 {userTotal} 个用户，第 {userPage} / {Math.ceil(userTotal / userPageSize)} 页
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={() => {
+                                                if (userPage > 1) {
+                                                    const newPage = userPage - 1;
+                                                    setUserPage(newPage);
+                                                    fetchUsers(newPage, userSearchTerm);
+                                                }
+                                            }}
+                                            disabled={userPage <= 1}
+                                            className="px-3 py-1.5 text-sm border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            上一页
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                if (userPage < Math.ceil(userTotal / userPageSize)) {
+                                                    const newPage = userPage + 1;
+                                                    setUserPage(newPage);
+                                                    fetchUsers(newPage, userSearchTerm);
+                                                }
+                                            }}
+                                            disabled={userPage >= Math.ceil(userTotal / userPageSize)}
+                                            className="px-3 py-1.5 text-sm border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            下一页
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="flex items-center justify-end gap-3 border-t border-slate-200 px-6 py-4">
+                            <button
+                                type="button"
+                                onClick={() => setShowUserSelectModal(false)}
+                                className="rounded-lg border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:text-slate-800"
+                            >
+                                取消
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div >
     );
 };
