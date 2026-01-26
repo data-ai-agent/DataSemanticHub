@@ -34,5 +34,17 @@ export default defineConfig({
                 changeOrigin: true,
             }
         }
+    },
+    build: {
+        rollupOptions: {
+            output: {
+                manualChunks: {
+                    'react-vendor': ['react', 'react-dom'],
+                    'ui-vendor': ['lucide-react'],
+                    'antv-vendor': ['@antv/gpt-vis'],
+                    'editor-vendor': ['@tiptap/react', '@tiptap/starter-kit', '@tiptap/extension-mention']
+                }
+            }
+        }
     }
 })
