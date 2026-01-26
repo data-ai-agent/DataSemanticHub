@@ -1,5 +1,5 @@
 server:
-  port: 8098
+  port: ${SERVER_PORT:8892}
   max-http-header-size: 512KB
   tomcat:
     accept-count: 1000
@@ -29,9 +29,9 @@ spring:
       datasource:
         default:
           driver-class-name: org.mariadb.jdbc.Driver
-          url: jdbc:mariadb://10.4.110.188:3330/adp?useUnicode=true&useSSL=false&characterEncoding=utf8mb4&serverTimezone=GMT%2B8
-          username: root
-          password: eisoo.com123
+          url: jdbc:mariadb://${DB_HOST:mariadb}:${DB_PORT:3306}/${DB_NAME:datasemantichub}?useUnicode=true&useSSL=false&characterEncoding=utf8mb4&serverTimezone=GMT%2B8
+          username: ${DB_USER:root}
+          password: ${DB_PASSWORD:Change_Me_Please_123!}
           #          driver-class-name: dm.jdbc.driver.DmDriver
           #          url: jdbc:dm://192.168.173.16:5236?schema=adp
           #          username: SYSDBA
@@ -85,13 +85,13 @@ olk:
 #service相关配置
 services:
   is-local: true
-  vega-calculate-coordinator: http://10.4.110.188:8090
-  hydra-admin: http://10.4.110.188:4445
-  user-management-private: http://10.4.110.188:30980
-  authorization-private: http://10.4.110.188:30920
-  efast-public: http://10.4.110.188:9124
-  efast-private: http://10.4.110.188:9123
-  vega-gateway: http://localhost:8099
+  vega-calculate-coordinator: ${VEGA_CALC_COORDINATOR:http://localhost:8090}
+  hydra-admin: ${HYDRA_ADMIN:http://localhost:4445}
+  user-management-private: ${USER_MANAGEMENT_PRIVATE:http://localhost:30980}
+  authorization-private: ${AUTHORIZATION_PRIVATE:http://localhost:30920}
+  efast-public: ${EFAST_PUBLIC:http://localhost:9124}
+  efast-private: ${EFAST_PRIVATE:http://localhost:9123}
+  vega-gateway: ${VEGA_GATEWAY:http://localhost:8999}
 
 
   #anyrobot:
@@ -116,15 +116,11 @@ http:
     read-timeout: 15000      # 读超时时间（毫秒）
 
 mq:
-  mqHost: 10.4.110.188
-  mqPort: 31000
-  mqLookupdHost: proton-mq-nsq-nsqlookupd.resource
-  mqLookupdPort: 4160
+  mqHost: ${MQ_HOST:kafka}
+  mqPort: ${MQ_PORT:9092}
+  mqLookupdHost: ${MQ_LOOKUPD_HOST:proton-mq-nsq-nsqlookupd.resource}
+  mqLookupdPort: ${MQ_LOOKUPD_PORT:4160}
   mqType: kafka
-  auth:
-    username: anyrobot
-    password: eisoo.com123
-    mechanism: PLAIN
 metadata:
   scanUrl: http://localhost:8888/api/metadata-manage/v1/task/fillMetaDataByVirtual/%s
 scan:

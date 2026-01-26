@@ -18,7 +18,7 @@ import java.util.Map;
 @Setter
 @Getter
 public class AnyRobotLogAppender extends UnsynchronizedAppenderBase<ILoggingEvent> {
-    final Logger logger = LoggerFactory.getLogger(this.getClass()); //生成日志实例
+    final Logger logger = LoggerFactory.getLogger(AnyRobotLogAppender.class); // 生成日志实例
     Layout<ILoggingEvent> layout;
 
     // 输出的URL
@@ -54,7 +54,7 @@ public class AnyRobotLogAppender extends UnsynchronizedAppenderBase<ILoggingEven
     }
 
     private void initArSender() {
-        SamplerLogConfig.setLevel(Level.DEBUG);
+        SamplerLogConfig.setLevel(cn.aishu.telemetry.log.config.Level.DEBUG);
         SamplerLogConfig.setSender(HttpSender.create(endpointUrl));
     }
 
