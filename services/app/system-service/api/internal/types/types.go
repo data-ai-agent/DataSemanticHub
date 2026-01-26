@@ -12,6 +12,12 @@ type AuditLog struct {
 	Timestamp  string                 `json:"timestamp"`
 }
 
+type AuditSummary struct {
+	LastOperatorId   string `json:"last_operator_id,optional"`
+	LastOperatorName string `json:"last_operator_name,optional"`
+	LastOperationAt  string `json:"last_operation_at,optional"`
+}
+
 type DeptUser struct {
 	UserId    string `json:"userId"`
 	UserName  string `json:"userName"`
@@ -30,6 +36,10 @@ type IdsReq struct {
 	Ids []int64 `json:"ids"`
 }
 
+type ImpactInfo struct {
+	ChildrenCount int `json:"children_count"` // 子菜单数量
+}
+
 type ImportError struct {
 	Row    int    `json:"row"`
 	Field  string `json:"field"`
@@ -40,9 +50,59 @@ type KeywordInfo struct {
 	Keyword string `form:"keyword,optional"` // 关键字查询
 }
 
+type Menu struct {
+	Id            string   `json:"id"` // UUID v7
+	Name          string   `json:"name"`
+	Code          string   `json:"code"`
+	Type          string   `json:"type"` // directory/page/external/button
+	GroupId       string   `json:"group_id,optional"`
+	ParentId      string   `json:"parent_id,optional"`
+	Path          string   `json:"path,optional"`
+	RouteName     string   `json:"route_name,optional"`
+	ComponentKey  string   `json:"component_key,optional"`
+	ExternalUrl   string   `json:"external_url,optional"`
+	OpenMode      string   `json:"open_mode,optional"` // new/iframe/same
+	PermissionKey string   `json:"permission_key,optional"`
+	Visible       bool     `json:"visible"`
+	Enabled       bool     `json:"enabled"`
+	Order         int      `json:"order"`
+	ShowInNav     bool     `json:"show_in_nav"`
+	Cacheable     bool     `json:"cacheable"`
+	ChildrenCount int      `json:"children_count"`      // 子节点数量
+	RiskFlags     []string `json:"risk_flags,optional"` // 风险标记：UNBOUND_PERMISSION/ROUTE_CONFLICT/ORDER_CONFLICT
+	CreatedAt     string   `json:"created_at"`
+	CreatedBy     string   `json:"created_by,optional"`
+	UpdatedAt     string   `json:"updated_at"`
+	UpdatedBy     string   `json:"updated_by,optional"`
+	Children      []Menu   `json:"children,optional"` // 子菜单（树形结构）
+}
+
+type MenuAuditLog struct {
+	Id            string                 `json:"id"`
+	MenuId        string                 `json:"menu_id"`
+	OperationType string                 `json:"operation_type"`
+	OperatorId    string                 `json:"operator_id,optional"`
+	OperatorName  string                 `json:"operator_name,optional"`
+	ChangedFields []string               `json:"changed_fields,optional"` // 变更字段列表
+	OldValue      map[string]interface{} `json:"old_value,optional"`      // 旧值（JSON）
+	NewValue      map[string]interface{} `json:"new_value,optional"`      // 新值（JSON）
+	Remark        string                 `json:"remark,optional"`
+	CreatedAt     string                 `json:"created_at"`
+}
+
+type MenuOperationError struct {
+	Id     string `json:"id"`
+	Reason string `json:"reason"`
+}
+
 type OperationError struct {
 	UserId string `json:"user_id"`
 	Reason string `json:"reason"`
+}
+
+type OrderUpdate struct {
+	Id    string `json:"id" validate:"required"` // UUID v7
+	Order int    `json:"order" validate:"required,min=0"`
 }
 
 type OrgDetail struct {
@@ -94,6 +154,14 @@ type PageInfoWithKeyword struct {
 type PageResp struct {
 	Entries    interface{} `json:"entries"`     // 数据列表
 	TotalCount int64       `json:"total_count"` // 总记录数
+}
+
+type RiskItem struct {
+	MenuId      string `json:"menu_id"`
+	MenuName    string `json:"menu_name"`
+	MenuCode    string `json:"menu_code"`
+	RiskType    string `json:"risk_type"` // UNBOUND_PERMISSION/ROUTE_CONFLICT/ORDER_CONFLICT
+	Description string `json:"description"`
 }
 
 type RoleBinding struct {

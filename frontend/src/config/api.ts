@@ -109,11 +109,21 @@ export const API_ENDPOINTS = {
         FORGOT_PASSWORD: getApiPath('SYSTEM', '/user/forgot-password'),
 
         // 菜单管理
+        MENUS_TREE: getApiPath('SYSTEM', '/menus/tree'),
         MENUS_LIST: getApiPath('SYSTEM', '/menus'),
         MENU_CREATE: getApiPath('SYSTEM', '/menus'),
         MENU_DETAIL: (id: string) => getApiPath('SYSTEM', `/menus/${id}`),
+        MENU_UPDATE: (id: string) => getApiPath('SYSTEM', `/menus/${id}`),
+        MENU_DELETE: (id: string) => getApiPath('SYSTEM', `/menus/${id}`),
+        MENU_TOGGLE_ENABLED: (id: string) => getApiPath('SYSTEM', `/menus/${id}/enabled`),
+        MENU_TOGGLE_VISIBLE: (id: string) => getApiPath('SYSTEM', `/menus/${id}/visible`),
+        MENU_MOVE: (id: string) => getApiPath('SYSTEM', `/menus/${id}/move`),
         MENU_REORDER: getApiPath('SYSTEM', '/menus/reorder'),
-        MENU_PERMISSIONS: getApiPath('SYSTEM', '/permissions'), // 获取权限列表
+        MENU_BIND_PERMISSION: (id: string) => getApiPath('SYSTEM', `/menus/${id}/bind-permission`),
+        MENU_AUDITS: (id: string) => getApiPath('SYSTEM', `/menus/${id}/audits`),
+        MENU_INSPECTION: getApiPath('SYSTEM', '/menus/inspection'),
+        MENU_STATS: getApiPath('SYSTEM', '/menus/stats'),
+        MENU_PERMISSIONS: getApiPath('SYSTEM', '/permissions'), // 获取权限列表（预留）
     },
 
     // Agent Service 端点

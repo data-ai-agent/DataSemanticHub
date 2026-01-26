@@ -1,0 +1,307 @@
+syntax = "v1"
+
+info(
+    title: "菜单管理 API"
+    desc: "菜单管理模块：菜单树查询、详情、创建、更新、删除、排序移动、启用/隐藏、权限绑定、审计日志、风险巡检、KPI统计"
+    version: "v1"
+)
+
+import "../base.api"
+
+type (
+    // === 菜单树查询 ===
+    GetMenuTreeReq {
+        Keyword        string `form:"keyword,optional"`         // 搜索关键词（name/code/path/permission_key）
+        Enabled        bool   `form:"enabled,optional"`        // 是否启用
+        Visible        bool   `form:"visible,optional"`        // 是否可见
+        PermissionBind string `form:"permission_bind,optional"` // 权限绑定状态：bound/unbound
+        Type           string `form:"type,optional"`          // 类型：directory/page/external/button
+        GroupId        string `form:"group_id,optional"`       // 分组ID
+    }
+    
+    Menu {
+        Id            string   `json:"id"`                      // UUID v7
+        Name          string   `json:"name"`
+        Code          string   `json:"code"`
+        Type          string   `json:"type"`                   // directory/page/external/button
+        GroupId       string   `json:"group_id,optional"`
+        ParentId      string   `json:"parent_id,optional"`
+        Path          string   `json:"path,optional"`
+        RouteName     string   `json:"route_name,optional"`
+        ComponentKey  string   `json:"component_key,optional"`
+        ExternalUrl   string   `json:"external_url,optional"`
+        OpenMode      string   `json:"open_mode,optional"`     // new/iframe/same
+        PermissionKey string   `json:"permission_key,optional"`
+        Visible       bool     `json:"visible"`
+        Enabled       bool     `json:"enabled"`
+        Order         int      `json:"order"`
+        ShowInNav     bool     `json:"show_in_nav"`
+        Cacheable     bool     `json:"cacheable"`
+        ChildrenCount int      `json:"children_count"`         // 子节点数量
+        RiskFlags     []string `json:"risk_flags,optional"`   // 风险标记：UNBOUND_PERMISSION/ROUTE_CONFLICT/ORDER_CONFLICT
+        CreatedAt     string   `json:"created_at"`
+        CreatedBy     string   `json:"created_by,optional"`
+        UpdatedAt     string   `json:"updated_at"`
+        UpdatedBy     string   `json:"updated_by,optional"`
+        Children      []Menu   `json:"children,optional"`      // 子菜单（树形结构）
+    }
+    
+    GetMenuTreeResp {
+        Menus []Menu `json:"menus"`
+    }
+    
+    // === 菜单详情 ===
+    GetMenuReq {
+        Id string `path:"id"` // UUID v7
+    }
+    
+    GetMenuResp {
+        Menu      Menu            `json:"menu"`
+        AuditSummary AuditSummary `json:"audit_summary,optional"` // 最近一次操作摘要
+    }
+    
+    AuditSummary {
+        LastOperatorId   string `json:"last_operator_id,optional"`
+        LastOperatorName string `json:"last_operator_name,optional"`
+        LastOperationAt  string `json:"last_operation_at,optional"`
+    }
+    
+    // === 创建菜单 ===
+    CreateMenuReq {
+        Name          string `json:"name" validate:"required,min=1,max=128"`
+        Code          string `json:"code" validate:"required,min=1,max=128"`
+        Type          string `json:"type" validate:"required,oneof=directory page external button"`
+        GroupId       string `json:"group_id,optional"`
+        ParentId      string `json:"parent_id,optional"`
+        Path          string `json:"path,optional"`                    // page/directory 使用
+        RouteName     string `json:"route_name,optional"`
+        ComponentKey  string `json:"component_key,optional"`
+        ExternalUrl   string `json:"external_url,optional"`           // external 类型必填
+        OpenMode      string `json:"open_mode,optional"`               // external 类型必填：new/iframe/same
+        PermissionKey string `json:"permission_key,optional"`
+        Visible       bool   `json:"visible,optional"`
+        Enabled       bool   `json:"enabled,optional"`
+        Order         int    `json:"order,optional"`                    // 默认插入同级末尾
+        ShowInNav     bool   `json:"show_in_nav,optional"`
+        Cacheable     bool   `json:"cacheable,optional"`
+        CreatePermission bool `json:"create_permission,optional"`      // 是否创建新权限（需权限服务联动）
+        PermissionName    string `json:"permission_name,optional"`      // 新权限名称（create_permission=true时必填）
+    }
+    
+    CreateMenuResp {
+        Menu Menu `json:"menu"`
+    }
+    
+    // === 更新菜单 ===
+    UpdateMenuReq {
+        Id            string `path:"id"` // UUID v7
+        Name          string `json:"name,optional" validate:"omitempty,min=1,max=128"`
+        Code          string `json:"code,optional" validate:"omitempty,min=1,max=128"`
+        Type          string `json:"type,optional" validate:"omitempty,oneof=directory page external button"`
+        GroupId       string `json:"group_id,optional"`
+        ParentId      string `json:"parent_id,optional"`
+        Path          string `json:"path,optional"`
+        RouteName     string `json:"route_name,optional"`
+        ComponentKey  string `json:"component_key,optional"`
+        ExternalUrl   string `json:"external_url,optional"`
+        OpenMode      string `json:"open_mode,optional"`
+        PermissionKey string `json:"permission_key,optional"`
+        Visible       bool   `json:"visible,optional"`
+        Enabled       bool   `json:"enabled,optional"`
+        Order         int    `json:"order,optional"`
+        ShowInNav     bool   `json:"show_in_nav,optional"`
+        Cacheable     bool   `json:"cacheable,optional"`
+    }
+    
+    UpdateMenuResp {
+        Menu Menu `json:"menu"`
+    }
+    
+    // === 删除菜单 ===
+    DeleteMenuReq {
+        Id      string `path:"id"` // UUID v7
+        Cascade bool   `form:"cascade,optional"` // 是否级联删除（默认false）
+    }
+    
+    DeleteMenuResp {
+        ImpactInfo ImpactInfo `json:"impact_info,optional"` // 影响面信息
+    }
+    
+    ImpactInfo {
+        ChildrenCount int `json:"children_count"` // 子菜单数量
+    }
+    
+    // === 启用/禁用菜单 ===
+    ToggleMenuEnabledReq {
+        Id     string `path:"id"` // UUID v7
+        Enabled bool  `json:"enabled" validate:"required"`
+    }
+    
+    ToggleMenuEnabledResp {
+        Menu Menu `json:"menu"`
+    }
+    
+    // === 显示/隐藏菜单 ===
+    ToggleMenuVisibleReq {
+        Id      string `path:"id"` // UUID v7
+        Visible bool   `json:"visible" validate:"required"`
+    }
+    
+    ToggleMenuVisibleResp {
+        Menu Menu `json:"menu"`
+    }
+    
+    // === 移动菜单 ===
+    MoveMenuReq {
+        Id          string  `path:"id"` // UUID v7
+        NewParentId string  `json:"new_parent_id,optional"` // 新父级ID（空表示移到根节点）
+        NewOrder    int     `json:"new_order" validate:"required,min=0"` // 新位置（同级排序）
+    }
+    
+    MoveMenuResp {
+        Menu Menu `json:"menu"`
+    }
+    
+    // === 批量排序 ===
+    ReorderMenusReq {
+        Updates []OrderUpdate `json:"updates" validate:"required,min=1"`
+    }
+    
+    OrderUpdate {
+        Id    string `json:"id" validate:"required"` // UUID v7
+        Order int    `json:"order" validate:"required,min=0"`
+    }
+    
+    ReorderMenusResp {
+        SuccessCount int              `json:"success_count"`
+        FailedCount  int              `json:"failed_count"`
+        Errors       []OperationError `json:"errors,optional"`
+    }
+    
+    OperationError {
+        Id     string `json:"id"`
+        Reason string `json:"reason"`
+    }
+    
+    // === 绑定权限 ===
+    BindPermissionReq {
+        Id              string `path:"id"` // UUID v7
+        PermissionKey   string `json:"permission_key,optional"` // 已有权限标识
+        CreatePermission bool  `json:"create_permission,optional"` // 是否创建新权限
+        PermissionName    string `json:"permission_name,optional"`  // 新权限名称
+    }
+    
+    BindPermissionResp {
+        Menu Menu `json:"menu"`
+    }
+    
+    // === 风险巡检 ===
+    GetMenuInspectionResp {
+        Risks []RiskItem `json:"risks"`
+    }
+    
+    RiskItem {
+        MenuId      string   `json:"menu_id"`
+        MenuName    string   `json:"menu_name"`
+        MenuCode    string   `json:"menu_code"`
+        RiskType    string   `json:"risk_type"`    // UNBOUND_PERMISSION/ROUTE_CONFLICT/ORDER_CONFLICT
+        Description  string   `json:"description"`
+    }
+    
+    // === KPI统计 ===
+    GetMenuStatsResp {
+        Total            int64 `json:"total"`             // 总菜单数
+        Enabled          int64 `json:"enabled"`           // 启用菜单数
+        Hidden           int64 `json:"hidden"`            // 隐藏菜单数
+        UnboundPermission int64 `json:"unbound_permission"` // 未绑定权限菜单数（高风险）
+    }
+    
+    // === 审计日志查询 ===
+    GetMenuAuditsReq {
+        Id          string `path:"id"` // UUID v7
+        Page        int    `form:"page,default=1" validate:"min=1"`
+        PageSize    int    `form:"page_size,default=10" validate:"min=1,max=100"`
+        OperationType string `form:"operation_type,optional"` // 操作类型筛选
+        OperatorId   string `form:"operator_id,optional"`     // 操作人ID筛选
+        StartTime   string `form:"start_time,optional"`       // 开始时间
+        EndTime     string `form:"end_time,optional"`          // 结束时间
+    }
+    
+    MenuAuditLog {
+        Id            string   `json:"id"`
+        MenuId        string   `json:"menu_id"`
+        OperationType string   `json:"operation_type"`
+        OperatorId    string   `json:"operator_id,optional"`
+        OperatorName  string   `json:"operator_name,optional"`
+        ChangedFields []string `json:"changed_fields,optional"` // 变更字段列表
+        OldValue      map[string]interface{} `json:"old_value,optional"` // 旧值（JSON）
+        NewValue      map[string]interface{} `json:"new_value,optional"` // 新值（JSON）
+        Remark        string   `json:"remark,optional"`
+        CreatedAt     string   `json:"created_at"`
+    }
+    
+    GetMenuAuditsResp {
+        Total    int64          `json:"total"`
+        Page     int            `json:"page"`
+        PageSize int            `json:"page_size"`
+        Logs     []MenuAuditLog `json:"logs"`
+    }
+)
+
+@server(
+    prefix: /api/v1/system
+    group: menu_management
+)
+service system-service-api {
+    // === 菜单树查询 ===
+    @handler GetMenuTree
+    get /menus/tree (GetMenuTreeReq) returns (GetMenuTreeResp)
+    
+    // === 菜单详情 ===
+    @handler GetMenu
+    get /menus/:id (GetMenuReq) returns (GetMenuResp)
+    
+    // === 创建菜单 ===
+    @handler CreateMenu
+    post /menus (CreateMenuReq) returns (CreateMenuResp)
+    
+    // === 更新菜单 ===
+    @handler UpdateMenu
+    put /menus/:id (UpdateMenuReq) returns (UpdateMenuResp)
+    
+    // === 删除菜单 ===
+    @handler DeleteMenu
+    delete /menus/:id (DeleteMenuReq) returns (DeleteMenuResp)
+    
+    // === 启用/禁用菜单 ===
+    @handler ToggleMenuEnabled
+    patch /menus/:id/enabled (ToggleMenuEnabledReq) returns (ToggleMenuEnabledResp)
+    
+    // === 显示/隐藏菜单 ===
+    @handler ToggleMenuVisible
+    patch /menus/:id/visible (ToggleMenuVisibleReq) returns (ToggleMenuVisibleResp)
+    
+    // === 移动菜单 ===
+    @handler MoveMenu
+    patch /menus/:id/move (MoveMenuReq) returns (MoveMenuResp)
+    
+    // === 批量排序 ===
+    @handler ReorderMenus
+    patch /menus/reorder (ReorderMenusReq) returns (ReorderMenusResp)
+    
+    // === 绑定权限 ===
+    @handler BindPermission
+    post /menus/:id/bind-permission (BindPermissionReq) returns (BindPermissionResp)
+    
+    // === 风险巡检 ===
+    @handler GetMenuInspection
+    get /menus/inspection returns (GetMenuInspectionResp)
+    
+    // === KPI统计 ===
+    @handler GetMenuStats
+    get /menus/stats returns (GetMenuStatsResp)
+    
+    // === 审计日志查询 ===
+    @handler GetMenuAudits
+    get /menus/:id/audits (GetMenuAuditsReq) returns (GetMenuAuditsResp)
+}

@@ -4,11 +4,9 @@
 *.dll
 *.so
 *.dylib
+*.test
 /bin/
 /tmp/
-
-# Test binary, built with `go test -c`
-*.test
 
 # Output of the go coverage tool
 *.out
@@ -31,6 +29,7 @@ vendor/
 # OS specific files
 .DS_Store
 Thumbs.db
+*.tmp
 
 # Environment files
 .env

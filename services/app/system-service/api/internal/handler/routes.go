@@ -6,6 +6,7 @@ package handler
 import (
 	"net/http"
 
+	menu_management "github.com/DataSemanticHub/services/app/system-service/api/internal/handler/menu_management"
 	organization "github.com/DataSemanticHub/services/app/system-service/api/internal/handler/organization"
 	user "github.com/DataSemanticHub/services/app/system-service/api/internal/handler/user"
 	user_management "github.com/DataSemanticHub/services/app/system-service/api/internal/handler/user_management"
@@ -25,6 +26,77 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 			},
 		},
 		rest.WithPrefix("/api/v1"),
+	)
+
+	server.AddRoutes(
+		[]rest.Route{
+			{
+				Method:  http.MethodPost,
+				Path:    "/menus",
+				Handler: menu_management.CreateMenuHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodGet,
+				Path:    "/menus/:id",
+				Handler: menu_management.GetMenuHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodPut,
+				Path:    "/menus/:id",
+				Handler: menu_management.UpdateMenuHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodDelete,
+				Path:    "/menus/:id",
+				Handler: menu_management.DeleteMenuHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodGet,
+				Path:    "/menus/:id/audits",
+				Handler: menu_management.GetMenuAuditsHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodPost,
+				Path:    "/menus/:id/bind-permission",
+				Handler: menu_management.BindPermissionHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodPatch,
+				Path:    "/menus/:id/enabled",
+				Handler: menu_management.ToggleMenuEnabledHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodPatch,
+				Path:    "/menus/:id/move",
+				Handler: menu_management.MoveMenuHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodPatch,
+				Path:    "/menus/:id/visible",
+				Handler: menu_management.ToggleMenuVisibleHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodGet,
+				Path:    "/menus/inspection",
+				Handler: menu_management.GetMenuInspectionHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodPatch,
+				Path:    "/menus/reorder",
+				Handler: menu_management.ReorderMenusHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodGet,
+				Path:    "/menus/stats",
+				Handler: menu_management.GetMenuStatsHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodGet,
+				Path:    "/menus/tree",
+				Handler: menu_management.GetMenuTreeHandler(serverCtx),
+			},
+		},
+		rest.WithPrefix("/api/v1/system"),
 	)
 
 	server.AddRoutes(
@@ -118,24 +190,6 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 	server.AddRoutes(
 		[]rest.Route{
 			{
-				// 用户登录
-				Method:  http.MethodPost,
-				Path:    "/user/login",
-				Handler: user_public.LoginHandler(serverCtx),
-			},
-			{
-				// 用户注册
-				Method:  http.MethodPost,
-				Path:    "/user/register",
-				Handler: user_public.RegisterHandler(serverCtx),
-			},
-		},
-		rest.WithPrefix("/api/v1"),
-	)
-
-	server.AddRoutes(
-		[]rest.Route{
-			{
 				// 获取统计数据
 				Method:  http.MethodGet,
 				Path:    "/statistics",
@@ -204,5 +258,23 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 		},
 		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
 		rest.WithPrefix("/api/v1/user_management"),
+	)
+
+	server.AddRoutes(
+		[]rest.Route{
+			{
+				// 用户登录
+				Method:  http.MethodPost,
+				Path:    "/user/login",
+				Handler: user_public.LoginHandler(serverCtx),
+			},
+			{
+				// 用户注册
+				Method:  http.MethodPost,
+				Path:    "/user/register",
+				Handler: user_public.RegisterHandler(serverCtx),
+			},
+		},
+		rest.WithPrefix("/api/v1"),
 	)
 }

@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/DataSemanticHub/services/app/system-service/api/internal/contextkeys"
 	"github.com/DataSemanticHub/services/app/system-service/api/internal/errorx"
 	"github.com/DataSemanticHub/services/app/system-service/api/internal/svc"
 	"github.com/DataSemanticHub/services/app/system-service/api/internal/types"
@@ -101,7 +102,7 @@ func (l *CreateUserLogic) CreateUser(req *types.CreateUserReq) (resp *types.Crea
 
 	// 8. 获取当前操作人信息（从 context 中获取，如果可用）
 	var createdBy *string
-	if operatorIDValue := l.ctx.Value("user_id"); operatorIDValue != nil {
+	if operatorIDValue := l.ctx.Value(contextkeys.UserIDKey); operatorIDValue != nil {
 		if operatorIDStr, ok := operatorIDValue.(string); ok {
 			createdBy = &operatorIDStr
 		}

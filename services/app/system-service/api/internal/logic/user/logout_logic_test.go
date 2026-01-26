@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/DataSemanticHub/services/app/system-service/api/internal/config"
+	"github.com/DataSemanticHub/services/app/system-service/api/internal/contextkeys"
 	"github.com/DataSemanticHub/services/app/system-service/api/internal/svc"
 
 	"github.com/google/uuid"
@@ -40,7 +41,7 @@ func TestLogout_ValidToken_ReturnsSuccess(t *testing.T) {
 
 	// 准备测试数据
 	userID, _ := uuid.NewV7()
-	ctx := context.WithValue(context.Background(), "user_id", userID.String())
+	ctx := context.WithValue(context.Background(), contextkeys.UserIDKey, userID.String())
 	logic.ctx = ctx
 
 	// 执行退出登录
@@ -75,7 +76,7 @@ func TestLogout_ExpiredToken_ReturnsError(t *testing.T) {
 	logic, _ := setupLogoutTestLogic(mockModel)
 
 	// 创建带 nil user_id 的 context（模拟 Token 过期）
-	logic.ctx = context.WithValue(context.Background(), "user_id", nil)
+	logic.ctx = context.WithValue(context.Background(), contextkeys.UserIDKey, nil)
 
 	// 执行退出登录
 	resp, err := logic.Logout()
@@ -92,7 +93,7 @@ func TestLogout_InvalidUserIDType_ReturnsError(t *testing.T) {
 	logic, _ := setupLogoutTestLogic(mockModel)
 
 	// 创建带无效类型 user_id 的 context
-	logic.ctx = context.WithValue(context.Background(), "user_id", 12345)
+	logic.ctx = context.WithValue(context.Background(), contextkeys.UserIDKey, 12345)
 
 	// 执行退出登录
 	resp, err := logic.Logout()

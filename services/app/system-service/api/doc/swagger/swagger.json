@@ -40,6 +40,3908 @@
         }
       }
     },
+    "/api/v1/system/menus": {
+      "post": {
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "schemes": [
+          "https"
+        ],
+        "summary": "CreateMenu",
+        "operationId": "menuManagementCreateMenu",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "required": [
+                "name",
+                "code",
+                "type"
+              ],
+              "properties": {
+                "cacheable": {
+                  "type": "boolean"
+                },
+                "code": {
+                  "type": "string"
+                },
+                "component_key": {
+                  "type": "string"
+                },
+                "create_permission": {
+                  "description": "是否创建新权限（需权限服务联动）",
+                  "type": "boolean"
+                },
+                "enabled": {
+                  "type": "boolean"
+                },
+                "external_url": {
+                  "description": "external 类型必填",
+                  "type": "string"
+                },
+                "group_id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "open_mode": {
+                  "description": "external 类型必填：new/iframe/same",
+                  "type": "string"
+                },
+                "order": {
+                  "description": "默认插入同级末尾",
+                  "type": "integer"
+                },
+                "parent_id": {
+                  "type": "string"
+                },
+                "path": {
+                  "description": "page/directory 使用",
+                  "type": "string"
+                },
+                "permission_key": {
+                  "type": "string"
+                },
+                "permission_name": {
+                  "description": "新权限名称（create_permission=true时必填）",
+                  "type": "string"
+                },
+                "route_name": {
+                  "type": "string"
+                },
+                "show_in_nav": {
+                  "type": "boolean"
+                },
+                "type": {
+                  "type": "string"
+                },
+                "visible": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "menu": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "name",
+                    "code",
+                    "type",
+                    "visible",
+                    "enabled",
+                    "order",
+                    "show_in_nav",
+                    "cacheable",
+                    "children_count",
+                    "created_at",
+                    "updated_at"
+                  ],
+                  "properties": {
+                    "cacheable": {
+                      "type": "boolean"
+                    },
+                    "children": {
+                      "description": "子菜单（树形结构）",
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "id",
+                          "name",
+                          "code",
+                          "type",
+                          "visible",
+                          "enabled",
+                          "order",
+                          "show_in_nav",
+                          "cacheable",
+                          "children_count",
+                          "created_at",
+                          "updated_at"
+                        ],
+                        "properties": {
+                          "cacheable": {
+                            "type": "boolean"
+                          },
+                          "children": {
+                            "description": "子菜单（树形结构）",
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "required": [
+                                "id",
+                                "name",
+                                "code",
+                                "type",
+                                "visible",
+                                "enabled",
+                                "order",
+                                "show_in_nav",
+                                "cacheable",
+                                "children_count",
+                                "created_at",
+                                "updated_at"
+                              ],
+                              "properties": {
+                                "cacheable": {
+                                  "type": "boolean"
+                                },
+                                "children": {
+                                  "description": "子菜单（树形结构）",
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "required": [
+                                      "id",
+                                      "name",
+                                      "code",
+                                      "type",
+                                      "visible",
+                                      "enabled",
+                                      "order",
+                                      "show_in_nav",
+                                      "cacheable",
+                                      "children_count",
+                                      "created_at",
+                                      "updated_at"
+                                    ],
+                                    "properties": {
+                                      "cacheable": {
+                                        "type": "boolean"
+                                      },
+                                      "children": {
+                                        "description": "子菜单（树形结构）",
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object"
+                                        }
+                                      },
+                                      "children_count": {
+                                        "description": "子节点数量",
+                                        "type": "integer"
+                                      },
+                                      "code": {
+                                        "type": "string"
+                                      },
+                                      "component_key": {
+                                        "type": "string"
+                                      },
+                                      "created_at": {
+                                        "type": "string"
+                                      },
+                                      "created_by": {
+                                        "type": "string"
+                                      },
+                                      "enabled": {
+                                        "type": "boolean"
+                                      },
+                                      "external_url": {
+                                        "type": "string"
+                                      },
+                                      "group_id": {
+                                        "type": "string"
+                                      },
+                                      "id": {
+                                        "description": "UUID v7",
+                                        "type": "string"
+                                      },
+                                      "name": {
+                                        "type": "string"
+                                      },
+                                      "open_mode": {
+                                        "description": "new/iframe/same",
+                                        "type": "string"
+                                      },
+                                      "order": {
+                                        "type": "integer"
+                                      },
+                                      "parent_id": {
+                                        "type": "string"
+                                      },
+                                      "path": {
+                                        "type": "string"
+                                      },
+                                      "permission_key": {
+                                        "type": "string"
+                                      },
+                                      "risk_flags": {
+                                        "description": "风险标记：UNBOUND_PERMISSION/ROUTE_CONFLICT/ORDER_CONFLICT",
+                                        "type": "array",
+                                        "items": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "route_name": {
+                                        "type": "string"
+                                      },
+                                      "show_in_nav": {
+                                        "type": "boolean"
+                                      },
+                                      "type": {
+                                        "description": "directory/page/external/button",
+                                        "type": "string"
+                                      },
+                                      "updated_at": {
+                                        "type": "string"
+                                      },
+                                      "updated_by": {
+                                        "type": "string"
+                                      },
+                                      "visible": {
+                                        "type": "boolean"
+                                      }
+                                    }
+                                  }
+                                },
+                                "children_count": {
+                                  "description": "子节点数量",
+                                  "type": "integer"
+                                },
+                                "code": {
+                                  "type": "string"
+                                },
+                                "component_key": {
+                                  "type": "string"
+                                },
+                                "created_at": {
+                                  "type": "string"
+                                },
+                                "created_by": {
+                                  "type": "string"
+                                },
+                                "enabled": {
+                                  "type": "boolean"
+                                },
+                                "external_url": {
+                                  "type": "string"
+                                },
+                                "group_id": {
+                                  "type": "string"
+                                },
+                                "id": {
+                                  "description": "UUID v7",
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string"
+                                },
+                                "open_mode": {
+                                  "description": "new/iframe/same",
+                                  "type": "string"
+                                },
+                                "order": {
+                                  "type": "integer"
+                                },
+                                "parent_id": {
+                                  "type": "string"
+                                },
+                                "path": {
+                                  "type": "string"
+                                },
+                                "permission_key": {
+                                  "type": "string"
+                                },
+                                "risk_flags": {
+                                  "description": "风险标记：UNBOUND_PERMISSION/ROUTE_CONFLICT/ORDER_CONFLICT",
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                },
+                                "route_name": {
+                                  "type": "string"
+                                },
+                                "show_in_nav": {
+                                  "type": "boolean"
+                                },
+                                "type": {
+                                  "description": "directory/page/external/button",
+                                  "type": "string"
+                                },
+                                "updated_at": {
+                                  "type": "string"
+                                },
+                                "updated_by": {
+                                  "type": "string"
+                                },
+                                "visible": {
+                                  "type": "boolean"
+                                }
+                              }
+                            }
+                          },
+                          "children_count": {
+                            "description": "子节点数量",
+                            "type": "integer"
+                          },
+                          "code": {
+                            "type": "string"
+                          },
+                          "component_key": {
+                            "type": "string"
+                          },
+                          "created_at": {
+                            "type": "string"
+                          },
+                          "created_by": {
+                            "type": "string"
+                          },
+                          "enabled": {
+                            "type": "boolean"
+                          },
+                          "external_url": {
+                            "type": "string"
+                          },
+                          "group_id": {
+                            "type": "string"
+                          },
+                          "id": {
+                            "description": "UUID v7",
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "open_mode": {
+                            "description": "new/iframe/same",
+                            "type": "string"
+                          },
+                          "order": {
+                            "type": "integer"
+                          },
+                          "parent_id": {
+                            "type": "string"
+                          },
+                          "path": {
+                            "type": "string"
+                          },
+                          "permission_key": {
+                            "type": "string"
+                          },
+                          "risk_flags": {
+                            "description": "风险标记：UNBOUND_PERMISSION/ROUTE_CONFLICT/ORDER_CONFLICT",
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "route_name": {
+                            "type": "string"
+                          },
+                          "show_in_nav": {
+                            "type": "boolean"
+                          },
+                          "type": {
+                            "description": "directory/page/external/button",
+                            "type": "string"
+                          },
+                          "updated_at": {
+                            "type": "string"
+                          },
+                          "updated_by": {
+                            "type": "string"
+                          },
+                          "visible": {
+                            "type": "boolean"
+                          }
+                        }
+                      }
+                    },
+                    "children_count": {
+                      "description": "子节点数量",
+                      "type": "integer"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "component_key": {
+                      "type": "string"
+                    },
+                    "created_at": {
+                      "type": "string"
+                    },
+                    "created_by": {
+                      "type": "string"
+                    },
+                    "enabled": {
+                      "type": "boolean"
+                    },
+                    "external_url": {
+                      "type": "string"
+                    },
+                    "group_id": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "description": "UUID v7",
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "open_mode": {
+                      "description": "new/iframe/same",
+                      "type": "string"
+                    },
+                    "order": {
+                      "type": "integer"
+                    },
+                    "parent_id": {
+                      "type": "string"
+                    },
+                    "path": {
+                      "type": "string"
+                    },
+                    "permission_key": {
+                      "type": "string"
+                    },
+                    "risk_flags": {
+                      "description": "风险标记：UNBOUND_PERMISSION/ROUTE_CONFLICT/ORDER_CONFLICT",
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "route_name": {
+                      "type": "string"
+                    },
+                    "show_in_nav": {
+                      "type": "boolean"
+                    },
+                    "type": {
+                      "description": "directory/page/external/button",
+                      "type": "string"
+                    },
+                    "updated_at": {
+                      "type": "string"
+                    },
+                    "updated_by": {
+                      "type": "string"
+                    },
+                    "visible": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system/menus/inspection": {
+      "get": {
+        "produces": [
+          "application/json"
+        ],
+        "schemes": [
+          "https"
+        ],
+        "summary": "GetMenuInspection",
+        "operationId": "menuManagementGetMenuInspection",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "risks": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "menu_id",
+                      "menu_name",
+                      "menu_code",
+                      "risk_type",
+                      "description"
+                    ],
+                    "properties": {
+                      "description": {
+                        "type": "string"
+                      },
+                      "menu_code": {
+                        "type": "string"
+                      },
+                      "menu_id": {
+                        "type": "string"
+                      },
+                      "menu_name": {
+                        "type": "string"
+                      },
+                      "risk_type": {
+                        "description": "UNBOUND_PERMISSION/ROUTE_CONFLICT/ORDER_CONFLICT",
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system/menus/reorder": {
+      "patch": {
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "schemes": [
+          "https"
+        ],
+        "summary": "ReorderMenus",
+        "operationId": "menuManagementReorderMenus",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "required": [
+                "updates"
+              ],
+              "properties": {
+                "updates": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "id",
+                      "order"
+                    ],
+                    "properties": {
+                      "id": {
+                        "description": "UUID v7",
+                        "type": "string"
+                      },
+                      "order": {
+                        "type": "integer"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "errors": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "id",
+                      "reason"
+                    ],
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "reason": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "failed_count": {
+                  "type": "integer"
+                },
+                "success_count": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system/menus/stats": {
+      "get": {
+        "produces": [
+          "application/json"
+        ],
+        "schemes": [
+          "https"
+        ],
+        "summary": "GetMenuStats",
+        "operationId": "menuManagementGetMenuStats",
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "enabled": {
+                  "description": "启用菜单数",
+                  "type": "integer"
+                },
+                "hidden": {
+                  "description": "隐藏菜单数",
+                  "type": "integer"
+                },
+                "total": {
+                  "description": "总菜单数",
+                  "type": "integer"
+                },
+                "unbound_permission": {
+                  "description": "未绑定权限菜单数（高风险）",
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system/menus/tree": {
+      "get": {
+        "produces": [
+          "application/json"
+        ],
+        "schemes": [
+          "https"
+        ],
+        "summary": "GetMenuTree",
+        "operationId": "menuManagementGetMenuTree",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "搜索关键词（name/code/path/permission_key）",
+            "name": "keyword",
+            "in": "query",
+            "allowEmptyValue": true
+          },
+          {
+            "type": "boolean",
+            "description": "是否启用",
+            "name": "enabled",
+            "in": "query",
+            "allowEmptyValue": true
+          },
+          {
+            "type": "boolean",
+            "description": "是否可见",
+            "name": "visible",
+            "in": "query",
+            "allowEmptyValue": true
+          },
+          {
+            "type": "string",
+            "description": "权限绑定状态：bound/unbound",
+            "name": "permission_bind",
+            "in": "query",
+            "allowEmptyValue": true
+          },
+          {
+            "type": "string",
+            "description": "类型：directory/page/external/button",
+            "name": "type",
+            "in": "query",
+            "allowEmptyValue": true
+          },
+          {
+            "type": "string",
+            "description": "分组ID",
+            "name": "group_id",
+            "in": "query",
+            "allowEmptyValue": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "menus": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "id",
+                      "name",
+                      "code",
+                      "type",
+                      "visible",
+                      "enabled",
+                      "order",
+                      "show_in_nav",
+                      "cacheable",
+                      "children_count",
+                      "created_at",
+                      "updated_at"
+                    ],
+                    "properties": {
+                      "cacheable": {
+                        "type": "boolean"
+                      },
+                      "children": {
+                        "description": "子菜单（树形结构）",
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "required": [
+                            "id",
+                            "name",
+                            "code",
+                            "type",
+                            "visible",
+                            "enabled",
+                            "order",
+                            "show_in_nav",
+                            "cacheable",
+                            "children_count",
+                            "created_at",
+                            "updated_at"
+                          ],
+                          "properties": {
+                            "cacheable": {
+                              "type": "boolean"
+                            },
+                            "children": {
+                              "description": "子菜单（树形结构）",
+                              "type": "array",
+                              "items": {
+                                "type": "object"
+                              }
+                            },
+                            "children_count": {
+                              "description": "子节点数量",
+                              "type": "integer"
+                            },
+                            "code": {
+                              "type": "string"
+                            },
+                            "component_key": {
+                              "type": "string"
+                            },
+                            "created_at": {
+                              "type": "string"
+                            },
+                            "created_by": {
+                              "type": "string"
+                            },
+                            "enabled": {
+                              "type": "boolean"
+                            },
+                            "external_url": {
+                              "type": "string"
+                            },
+                            "group_id": {
+                              "type": "string"
+                            },
+                            "id": {
+                              "description": "UUID v7",
+                              "type": "string"
+                            },
+                            "name": {
+                              "type": "string"
+                            },
+                            "open_mode": {
+                              "description": "new/iframe/same",
+                              "type": "string"
+                            },
+                            "order": {
+                              "type": "integer"
+                            },
+                            "parent_id": {
+                              "type": "string"
+                            },
+                            "path": {
+                              "type": "string"
+                            },
+                            "permission_key": {
+                              "type": "string"
+                            },
+                            "risk_flags": {
+                              "description": "风险标记：UNBOUND_PERMISSION/ROUTE_CONFLICT/ORDER_CONFLICT",
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "route_name": {
+                              "type": "string"
+                            },
+                            "show_in_nav": {
+                              "type": "boolean"
+                            },
+                            "type": {
+                              "description": "directory/page/external/button",
+                              "type": "string"
+                            },
+                            "updated_at": {
+                              "type": "string"
+                            },
+                            "updated_by": {
+                              "type": "string"
+                            },
+                            "visible": {
+                              "type": "boolean"
+                            }
+                          }
+                        }
+                      },
+                      "children_count": {
+                        "description": "子节点数量",
+                        "type": "integer"
+                      },
+                      "code": {
+                        "type": "string"
+                      },
+                      "component_key": {
+                        "type": "string"
+                      },
+                      "created_at": {
+                        "type": "string"
+                      },
+                      "created_by": {
+                        "type": "string"
+                      },
+                      "enabled": {
+                        "type": "boolean"
+                      },
+                      "external_url": {
+                        "type": "string"
+                      },
+                      "group_id": {
+                        "type": "string"
+                      },
+                      "id": {
+                        "description": "UUID v7",
+                        "type": "string"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "open_mode": {
+                        "description": "new/iframe/same",
+                        "type": "string"
+                      },
+                      "order": {
+                        "type": "integer"
+                      },
+                      "parent_id": {
+                        "type": "string"
+                      },
+                      "path": {
+                        "type": "string"
+                      },
+                      "permission_key": {
+                        "type": "string"
+                      },
+                      "risk_flags": {
+                        "description": "风险标记：UNBOUND_PERMISSION/ROUTE_CONFLICT/ORDER_CONFLICT",
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "route_name": {
+                        "type": "string"
+                      },
+                      "show_in_nav": {
+                        "type": "boolean"
+                      },
+                      "type": {
+                        "description": "directory/page/external/button",
+                        "type": "string"
+                      },
+                      "updated_at": {
+                        "type": "string"
+                      },
+                      "updated_by": {
+                        "type": "string"
+                      },
+                      "visible": {
+                        "type": "boolean"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system/menus/{id}": {
+      "get": {
+        "produces": [
+          "application/json"
+        ],
+        "schemes": [
+          "https"
+        ],
+        "summary": "GetMenu",
+        "operationId": "menuManagementGetMenu",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "UUID v7",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "audit_summary": {
+                  "description": "最近一次操作摘要",
+                  "type": "object",
+                  "properties": {
+                    "last_operation_at": {
+                      "type": "string"
+                    },
+                    "last_operator_id": {
+                      "type": "string"
+                    },
+                    "last_operator_name": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "menu": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "name",
+                    "code",
+                    "type",
+                    "visible",
+                    "enabled",
+                    "order",
+                    "show_in_nav",
+                    "cacheable",
+                    "children_count",
+                    "created_at",
+                    "updated_at"
+                  ],
+                  "properties": {
+                    "cacheable": {
+                      "type": "boolean"
+                    },
+                    "children": {
+                      "description": "子菜单（树形结构）",
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "id",
+                          "name",
+                          "code",
+                          "type",
+                          "visible",
+                          "enabled",
+                          "order",
+                          "show_in_nav",
+                          "cacheable",
+                          "children_count",
+                          "created_at",
+                          "updated_at"
+                        ],
+                        "properties": {
+                          "cacheable": {
+                            "type": "boolean"
+                          },
+                          "children": {
+                            "description": "子菜单（树形结构）",
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "required": [
+                                "id",
+                                "name",
+                                "code",
+                                "type",
+                                "visible",
+                                "enabled",
+                                "order",
+                                "show_in_nav",
+                                "cacheable",
+                                "children_count",
+                                "created_at",
+                                "updated_at"
+                              ],
+                              "properties": {
+                                "cacheable": {
+                                  "type": "boolean"
+                                },
+                                "children": {
+                                  "description": "子菜单（树形结构）",
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "required": [
+                                      "id",
+                                      "name",
+                                      "code",
+                                      "type",
+                                      "visible",
+                                      "enabled",
+                                      "order",
+                                      "show_in_nav",
+                                      "cacheable",
+                                      "children_count",
+                                      "created_at",
+                                      "updated_at"
+                                    ],
+                                    "properties": {
+                                      "cacheable": {
+                                        "type": "boolean"
+                                      },
+                                      "children": {
+                                        "description": "子菜单（树形结构）",
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object"
+                                        }
+                                      },
+                                      "children_count": {
+                                        "description": "子节点数量",
+                                        "type": "integer"
+                                      },
+                                      "code": {
+                                        "type": "string"
+                                      },
+                                      "component_key": {
+                                        "type": "string"
+                                      },
+                                      "created_at": {
+                                        "type": "string"
+                                      },
+                                      "created_by": {
+                                        "type": "string"
+                                      },
+                                      "enabled": {
+                                        "type": "boolean"
+                                      },
+                                      "external_url": {
+                                        "type": "string"
+                                      },
+                                      "group_id": {
+                                        "type": "string"
+                                      },
+                                      "id": {
+                                        "description": "UUID v7",
+                                        "type": "string"
+                                      },
+                                      "name": {
+                                        "type": "string"
+                                      },
+                                      "open_mode": {
+                                        "description": "new/iframe/same",
+                                        "type": "string"
+                                      },
+                                      "order": {
+                                        "type": "integer"
+                                      },
+                                      "parent_id": {
+                                        "type": "string"
+                                      },
+                                      "path": {
+                                        "type": "string"
+                                      },
+                                      "permission_key": {
+                                        "type": "string"
+                                      },
+                                      "risk_flags": {
+                                        "description": "风险标记：UNBOUND_PERMISSION/ROUTE_CONFLICT/ORDER_CONFLICT",
+                                        "type": "array",
+                                        "items": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "route_name": {
+                                        "type": "string"
+                                      },
+                                      "show_in_nav": {
+                                        "type": "boolean"
+                                      },
+                                      "type": {
+                                        "description": "directory/page/external/button",
+                                        "type": "string"
+                                      },
+                                      "updated_at": {
+                                        "type": "string"
+                                      },
+                                      "updated_by": {
+                                        "type": "string"
+                                      },
+                                      "visible": {
+                                        "type": "boolean"
+                                      }
+                                    }
+                                  }
+                                },
+                                "children_count": {
+                                  "description": "子节点数量",
+                                  "type": "integer"
+                                },
+                                "code": {
+                                  "type": "string"
+                                },
+                                "component_key": {
+                                  "type": "string"
+                                },
+                                "created_at": {
+                                  "type": "string"
+                                },
+                                "created_by": {
+                                  "type": "string"
+                                },
+                                "enabled": {
+                                  "type": "boolean"
+                                },
+                                "external_url": {
+                                  "type": "string"
+                                },
+                                "group_id": {
+                                  "type": "string"
+                                },
+                                "id": {
+                                  "description": "UUID v7",
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string"
+                                },
+                                "open_mode": {
+                                  "description": "new/iframe/same",
+                                  "type": "string"
+                                },
+                                "order": {
+                                  "type": "integer"
+                                },
+                                "parent_id": {
+                                  "type": "string"
+                                },
+                                "path": {
+                                  "type": "string"
+                                },
+                                "permission_key": {
+                                  "type": "string"
+                                },
+                                "risk_flags": {
+                                  "description": "风险标记：UNBOUND_PERMISSION/ROUTE_CONFLICT/ORDER_CONFLICT",
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                },
+                                "route_name": {
+                                  "type": "string"
+                                },
+                                "show_in_nav": {
+                                  "type": "boolean"
+                                },
+                                "type": {
+                                  "description": "directory/page/external/button",
+                                  "type": "string"
+                                },
+                                "updated_at": {
+                                  "type": "string"
+                                },
+                                "updated_by": {
+                                  "type": "string"
+                                },
+                                "visible": {
+                                  "type": "boolean"
+                                }
+                              }
+                            }
+                          },
+                          "children_count": {
+                            "description": "子节点数量",
+                            "type": "integer"
+                          },
+                          "code": {
+                            "type": "string"
+                          },
+                          "component_key": {
+                            "type": "string"
+                          },
+                          "created_at": {
+                            "type": "string"
+                          },
+                          "created_by": {
+                            "type": "string"
+                          },
+                          "enabled": {
+                            "type": "boolean"
+                          },
+                          "external_url": {
+                            "type": "string"
+                          },
+                          "group_id": {
+                            "type": "string"
+                          },
+                          "id": {
+                            "description": "UUID v7",
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "open_mode": {
+                            "description": "new/iframe/same",
+                            "type": "string"
+                          },
+                          "order": {
+                            "type": "integer"
+                          },
+                          "parent_id": {
+                            "type": "string"
+                          },
+                          "path": {
+                            "type": "string"
+                          },
+                          "permission_key": {
+                            "type": "string"
+                          },
+                          "risk_flags": {
+                            "description": "风险标记：UNBOUND_PERMISSION/ROUTE_CONFLICT/ORDER_CONFLICT",
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "route_name": {
+                            "type": "string"
+                          },
+                          "show_in_nav": {
+                            "type": "boolean"
+                          },
+                          "type": {
+                            "description": "directory/page/external/button",
+                            "type": "string"
+                          },
+                          "updated_at": {
+                            "type": "string"
+                          },
+                          "updated_by": {
+                            "type": "string"
+                          },
+                          "visible": {
+                            "type": "boolean"
+                          }
+                        }
+                      }
+                    },
+                    "children_count": {
+                      "description": "子节点数量",
+                      "type": "integer"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "component_key": {
+                      "type": "string"
+                    },
+                    "created_at": {
+                      "type": "string"
+                    },
+                    "created_by": {
+                      "type": "string"
+                    },
+                    "enabled": {
+                      "type": "boolean"
+                    },
+                    "external_url": {
+                      "type": "string"
+                    },
+                    "group_id": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "description": "UUID v7",
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "open_mode": {
+                      "description": "new/iframe/same",
+                      "type": "string"
+                    },
+                    "order": {
+                      "type": "integer"
+                    },
+                    "parent_id": {
+                      "type": "string"
+                    },
+                    "path": {
+                      "type": "string"
+                    },
+                    "permission_key": {
+                      "type": "string"
+                    },
+                    "risk_flags": {
+                      "description": "风险标记：UNBOUND_PERMISSION/ROUTE_CONFLICT/ORDER_CONFLICT",
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "route_name": {
+                      "type": "string"
+                    },
+                    "show_in_nav": {
+                      "type": "boolean"
+                    },
+                    "type": {
+                      "description": "directory/page/external/button",
+                      "type": "string"
+                    },
+                    "updated_at": {
+                      "type": "string"
+                    },
+                    "updated_by": {
+                      "type": "string"
+                    },
+                    "visible": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "schemes": [
+          "https"
+        ],
+        "summary": "UpdateMenu",
+        "operationId": "menuManagementUpdateMenu",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "UUID v7",
+            "name": "id",
+            "in": "path",
+            "required": true
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "cacheable": {
+                  "type": "boolean"
+                },
+                "code": {
+                  "type": "string"
+                },
+                "component_key": {
+                  "type": "string"
+                },
+                "enabled": {
+                  "type": "boolean"
+                },
+                "external_url": {
+                  "type": "string"
+                },
+                "group_id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "open_mode": {
+                  "type": "string"
+                },
+                "order": {
+                  "type": "integer"
+                },
+                "parent_id": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "string"
+                },
+                "permission_key": {
+                  "type": "string"
+                },
+                "route_name": {
+                  "type": "string"
+                },
+                "show_in_nav": {
+                  "type": "boolean"
+                },
+                "type": {
+                  "type": "string"
+                },
+                "visible": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "menu": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "name",
+                    "code",
+                    "type",
+                    "visible",
+                    "enabled",
+                    "order",
+                    "show_in_nav",
+                    "cacheable",
+                    "children_count",
+                    "created_at",
+                    "updated_at"
+                  ],
+                  "properties": {
+                    "cacheable": {
+                      "type": "boolean"
+                    },
+                    "children": {
+                      "description": "子菜单（树形结构）",
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "id",
+                          "name",
+                          "code",
+                          "type",
+                          "visible",
+                          "enabled",
+                          "order",
+                          "show_in_nav",
+                          "cacheable",
+                          "children_count",
+                          "created_at",
+                          "updated_at"
+                        ],
+                        "properties": {
+                          "cacheable": {
+                            "type": "boolean"
+                          },
+                          "children": {
+                            "description": "子菜单（树形结构）",
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "required": [
+                                "id",
+                                "name",
+                                "code",
+                                "type",
+                                "visible",
+                                "enabled",
+                                "order",
+                                "show_in_nav",
+                                "cacheable",
+                                "children_count",
+                                "created_at",
+                                "updated_at"
+                              ],
+                              "properties": {
+                                "cacheable": {
+                                  "type": "boolean"
+                                },
+                                "children": {
+                                  "description": "子菜单（树形结构）",
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "required": [
+                                      "id",
+                                      "name",
+                                      "code",
+                                      "type",
+                                      "visible",
+                                      "enabled",
+                                      "order",
+                                      "show_in_nav",
+                                      "cacheable",
+                                      "children_count",
+                                      "created_at",
+                                      "updated_at"
+                                    ],
+                                    "properties": {
+                                      "cacheable": {
+                                        "type": "boolean"
+                                      },
+                                      "children": {
+                                        "description": "子菜单（树形结构）",
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object"
+                                        }
+                                      },
+                                      "children_count": {
+                                        "description": "子节点数量",
+                                        "type": "integer"
+                                      },
+                                      "code": {
+                                        "type": "string"
+                                      },
+                                      "component_key": {
+                                        "type": "string"
+                                      },
+                                      "created_at": {
+                                        "type": "string"
+                                      },
+                                      "created_by": {
+                                        "type": "string"
+                                      },
+                                      "enabled": {
+                                        "type": "boolean"
+                                      },
+                                      "external_url": {
+                                        "type": "string"
+                                      },
+                                      "group_id": {
+                                        "type": "string"
+                                      },
+                                      "id": {
+                                        "description": "UUID v7",
+                                        "type": "string"
+                                      },
+                                      "name": {
+                                        "type": "string"
+                                      },
+                                      "open_mode": {
+                                        "description": "new/iframe/same",
+                                        "type": "string"
+                                      },
+                                      "order": {
+                                        "type": "integer"
+                                      },
+                                      "parent_id": {
+                                        "type": "string"
+                                      },
+                                      "path": {
+                                        "type": "string"
+                                      },
+                                      "permission_key": {
+                                        "type": "string"
+                                      },
+                                      "risk_flags": {
+                                        "description": "风险标记：UNBOUND_PERMISSION/ROUTE_CONFLICT/ORDER_CONFLICT",
+                                        "type": "array",
+                                        "items": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "route_name": {
+                                        "type": "string"
+                                      },
+                                      "show_in_nav": {
+                                        "type": "boolean"
+                                      },
+                                      "type": {
+                                        "description": "directory/page/external/button",
+                                        "type": "string"
+                                      },
+                                      "updated_at": {
+                                        "type": "string"
+                                      },
+                                      "updated_by": {
+                                        "type": "string"
+                                      },
+                                      "visible": {
+                                        "type": "boolean"
+                                      }
+                                    }
+                                  }
+                                },
+                                "children_count": {
+                                  "description": "子节点数量",
+                                  "type": "integer"
+                                },
+                                "code": {
+                                  "type": "string"
+                                },
+                                "component_key": {
+                                  "type": "string"
+                                },
+                                "created_at": {
+                                  "type": "string"
+                                },
+                                "created_by": {
+                                  "type": "string"
+                                },
+                                "enabled": {
+                                  "type": "boolean"
+                                },
+                                "external_url": {
+                                  "type": "string"
+                                },
+                                "group_id": {
+                                  "type": "string"
+                                },
+                                "id": {
+                                  "description": "UUID v7",
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string"
+                                },
+                                "open_mode": {
+                                  "description": "new/iframe/same",
+                                  "type": "string"
+                                },
+                                "order": {
+                                  "type": "integer"
+                                },
+                                "parent_id": {
+                                  "type": "string"
+                                },
+                                "path": {
+                                  "type": "string"
+                                },
+                                "permission_key": {
+                                  "type": "string"
+                                },
+                                "risk_flags": {
+                                  "description": "风险标记：UNBOUND_PERMISSION/ROUTE_CONFLICT/ORDER_CONFLICT",
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                },
+                                "route_name": {
+                                  "type": "string"
+                                },
+                                "show_in_nav": {
+                                  "type": "boolean"
+                                },
+                                "type": {
+                                  "description": "directory/page/external/button",
+                                  "type": "string"
+                                },
+                                "updated_at": {
+                                  "type": "string"
+                                },
+                                "updated_by": {
+                                  "type": "string"
+                                },
+                                "visible": {
+                                  "type": "boolean"
+                                }
+                              }
+                            }
+                          },
+                          "children_count": {
+                            "description": "子节点数量",
+                            "type": "integer"
+                          },
+                          "code": {
+                            "type": "string"
+                          },
+                          "component_key": {
+                            "type": "string"
+                          },
+                          "created_at": {
+                            "type": "string"
+                          },
+                          "created_by": {
+                            "type": "string"
+                          },
+                          "enabled": {
+                            "type": "boolean"
+                          },
+                          "external_url": {
+                            "type": "string"
+                          },
+                          "group_id": {
+                            "type": "string"
+                          },
+                          "id": {
+                            "description": "UUID v7",
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "open_mode": {
+                            "description": "new/iframe/same",
+                            "type": "string"
+                          },
+                          "order": {
+                            "type": "integer"
+                          },
+                          "parent_id": {
+                            "type": "string"
+                          },
+                          "path": {
+                            "type": "string"
+                          },
+                          "permission_key": {
+                            "type": "string"
+                          },
+                          "risk_flags": {
+                            "description": "风险标记：UNBOUND_PERMISSION/ROUTE_CONFLICT/ORDER_CONFLICT",
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "route_name": {
+                            "type": "string"
+                          },
+                          "show_in_nav": {
+                            "type": "boolean"
+                          },
+                          "type": {
+                            "description": "directory/page/external/button",
+                            "type": "string"
+                          },
+                          "updated_at": {
+                            "type": "string"
+                          },
+                          "updated_by": {
+                            "type": "string"
+                          },
+                          "visible": {
+                            "type": "boolean"
+                          }
+                        }
+                      }
+                    },
+                    "children_count": {
+                      "description": "子节点数量",
+                      "type": "integer"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "component_key": {
+                      "type": "string"
+                    },
+                    "created_at": {
+                      "type": "string"
+                    },
+                    "created_by": {
+                      "type": "string"
+                    },
+                    "enabled": {
+                      "type": "boolean"
+                    },
+                    "external_url": {
+                      "type": "string"
+                    },
+                    "group_id": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "description": "UUID v7",
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "open_mode": {
+                      "description": "new/iframe/same",
+                      "type": "string"
+                    },
+                    "order": {
+                      "type": "integer"
+                    },
+                    "parent_id": {
+                      "type": "string"
+                    },
+                    "path": {
+                      "type": "string"
+                    },
+                    "permission_key": {
+                      "type": "string"
+                    },
+                    "risk_flags": {
+                      "description": "风险标记：UNBOUND_PERMISSION/ROUTE_CONFLICT/ORDER_CONFLICT",
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "route_name": {
+                      "type": "string"
+                    },
+                    "show_in_nav": {
+                      "type": "boolean"
+                    },
+                    "type": {
+                      "description": "directory/page/external/button",
+                      "type": "string"
+                    },
+                    "updated_at": {
+                      "type": "string"
+                    },
+                    "updated_by": {
+                      "type": "string"
+                    },
+                    "visible": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "consumes": [
+          "application/x-www-form-urlencoded"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "schemes": [
+          "https"
+        ],
+        "summary": "DeleteMenu",
+        "operationId": "menuManagementDeleteMenu",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "UUID v7",
+            "name": "id",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "boolean",
+            "description": "是否级联删除（默认false）",
+            "name": "cascade",
+            "in": "formData",
+            "allowEmptyValue": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "impact_info": {
+                  "description": "影响面信息",
+                  "type": "object",
+                  "required": [
+                    "children_count"
+                  ],
+                  "properties": {
+                    "children_count": {
+                      "description": "子菜单数量",
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system/menus/{id}/audits": {
+      "get": {
+        "produces": [
+          "application/json"
+        ],
+        "schemes": [
+          "https"
+        ],
+        "summary": "GetMenuAudits",
+        "operationId": "menuManagementGetMenuAudits",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "UUID v7",
+            "name": "id",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "integer",
+            "default": 1,
+            "name": "page",
+            "in": "query",
+            "required": true
+          },
+          {
+            "type": "integer",
+            "default": 10,
+            "name": "page_size",
+            "in": "query",
+            "required": true
+          },
+          {
+            "type": "string",
+            "description": "操作类型筛选",
+            "name": "operation_type",
+            "in": "query",
+            "allowEmptyValue": true
+          },
+          {
+            "type": "string",
+            "description": "操作人ID筛选",
+            "name": "operator_id",
+            "in": "query",
+            "allowEmptyValue": true
+          },
+          {
+            "type": "string",
+            "description": "开始时间",
+            "name": "start_time",
+            "in": "query",
+            "allowEmptyValue": true
+          },
+          {
+            "type": "string",
+            "description": "结束时间",
+            "name": "end_time",
+            "in": "query",
+            "allowEmptyValue": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "logs": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "id",
+                      "menu_id",
+                      "operation_type",
+                      "created_at"
+                    ],
+                    "properties": {
+                      "changed_fields": {
+                        "description": "变更字段列表",
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "created_at": {
+                        "type": "string"
+                      },
+                      "id": {
+                        "type": "string"
+                      },
+                      "menu_id": {
+                        "type": "string"
+                      },
+                      "new_value": {
+                        "description": "新值（JSON）",
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      "old_value": {
+                        "description": "旧值（JSON）",
+                        "type": "object",
+                        "additionalProperties": {}
+                      },
+                      "operation_type": {
+                        "type": "string"
+                      },
+                      "operator_id": {
+                        "type": "string"
+                      },
+                      "operator_name": {
+                        "type": "string"
+                      },
+                      "remark": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "page": {
+                  "type": "integer"
+                },
+                "page_size": {
+                  "type": "integer"
+                },
+                "total": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system/menus/{id}/bind-permission": {
+      "post": {
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "schemes": [
+          "https"
+        ],
+        "summary": "BindPermission",
+        "operationId": "menuManagementBindPermission",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "UUID v7",
+            "name": "id",
+            "in": "path",
+            "required": true
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "create_permission": {
+                  "description": "是否创建新权限",
+                  "type": "boolean"
+                },
+                "permission_key": {
+                  "description": "已有权限标识",
+                  "type": "string"
+                },
+                "permission_name": {
+                  "description": "新权限名称",
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "menu": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "name",
+                    "code",
+                    "type",
+                    "visible",
+                    "enabled",
+                    "order",
+                    "show_in_nav",
+                    "cacheable",
+                    "children_count",
+                    "created_at",
+                    "updated_at"
+                  ],
+                  "properties": {
+                    "cacheable": {
+                      "type": "boolean"
+                    },
+                    "children": {
+                      "description": "子菜单（树形结构）",
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "id",
+                          "name",
+                          "code",
+                          "type",
+                          "visible",
+                          "enabled",
+                          "order",
+                          "show_in_nav",
+                          "cacheable",
+                          "children_count",
+                          "created_at",
+                          "updated_at"
+                        ],
+                        "properties": {
+                          "cacheable": {
+                            "type": "boolean"
+                          },
+                          "children": {
+                            "description": "子菜单（树形结构）",
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "required": [
+                                "id",
+                                "name",
+                                "code",
+                                "type",
+                                "visible",
+                                "enabled",
+                                "order",
+                                "show_in_nav",
+                                "cacheable",
+                                "children_count",
+                                "created_at",
+                                "updated_at"
+                              ],
+                              "properties": {
+                                "cacheable": {
+                                  "type": "boolean"
+                                },
+                                "children": {
+                                  "description": "子菜单（树形结构）",
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "required": [
+                                      "id",
+                                      "name",
+                                      "code",
+                                      "type",
+                                      "visible",
+                                      "enabled",
+                                      "order",
+                                      "show_in_nav",
+                                      "cacheable",
+                                      "children_count",
+                                      "created_at",
+                                      "updated_at"
+                                    ],
+                                    "properties": {
+                                      "cacheable": {
+                                        "type": "boolean"
+                                      },
+                                      "children": {
+                                        "description": "子菜单（树形结构）",
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object"
+                                        }
+                                      },
+                                      "children_count": {
+                                        "description": "子节点数量",
+                                        "type": "integer"
+                                      },
+                                      "code": {
+                                        "type": "string"
+                                      },
+                                      "component_key": {
+                                        "type": "string"
+                                      },
+                                      "created_at": {
+                                        "type": "string"
+                                      },
+                                      "created_by": {
+                                        "type": "string"
+                                      },
+                                      "enabled": {
+                                        "type": "boolean"
+                                      },
+                                      "external_url": {
+                                        "type": "string"
+                                      },
+                                      "group_id": {
+                                        "type": "string"
+                                      },
+                                      "id": {
+                                        "description": "UUID v7",
+                                        "type": "string"
+                                      },
+                                      "name": {
+                                        "type": "string"
+                                      },
+                                      "open_mode": {
+                                        "description": "new/iframe/same",
+                                        "type": "string"
+                                      },
+                                      "order": {
+                                        "type": "integer"
+                                      },
+                                      "parent_id": {
+                                        "type": "string"
+                                      },
+                                      "path": {
+                                        "type": "string"
+                                      },
+                                      "permission_key": {
+                                        "type": "string"
+                                      },
+                                      "risk_flags": {
+                                        "description": "风险标记：UNBOUND_PERMISSION/ROUTE_CONFLICT/ORDER_CONFLICT",
+                                        "type": "array",
+                                        "items": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "route_name": {
+                                        "type": "string"
+                                      },
+                                      "show_in_nav": {
+                                        "type": "boolean"
+                                      },
+                                      "type": {
+                                        "description": "directory/page/external/button",
+                                        "type": "string"
+                                      },
+                                      "updated_at": {
+                                        "type": "string"
+                                      },
+                                      "updated_by": {
+                                        "type": "string"
+                                      },
+                                      "visible": {
+                                        "type": "boolean"
+                                      }
+                                    }
+                                  }
+                                },
+                                "children_count": {
+                                  "description": "子节点数量",
+                                  "type": "integer"
+                                },
+                                "code": {
+                                  "type": "string"
+                                },
+                                "component_key": {
+                                  "type": "string"
+                                },
+                                "created_at": {
+                                  "type": "string"
+                                },
+                                "created_by": {
+                                  "type": "string"
+                                },
+                                "enabled": {
+                                  "type": "boolean"
+                                },
+                                "external_url": {
+                                  "type": "string"
+                                },
+                                "group_id": {
+                                  "type": "string"
+                                },
+                                "id": {
+                                  "description": "UUID v7",
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string"
+                                },
+                                "open_mode": {
+                                  "description": "new/iframe/same",
+                                  "type": "string"
+                                },
+                                "order": {
+                                  "type": "integer"
+                                },
+                                "parent_id": {
+                                  "type": "string"
+                                },
+                                "path": {
+                                  "type": "string"
+                                },
+                                "permission_key": {
+                                  "type": "string"
+                                },
+                                "risk_flags": {
+                                  "description": "风险标记：UNBOUND_PERMISSION/ROUTE_CONFLICT/ORDER_CONFLICT",
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                },
+                                "route_name": {
+                                  "type": "string"
+                                },
+                                "show_in_nav": {
+                                  "type": "boolean"
+                                },
+                                "type": {
+                                  "description": "directory/page/external/button",
+                                  "type": "string"
+                                },
+                                "updated_at": {
+                                  "type": "string"
+                                },
+                                "updated_by": {
+                                  "type": "string"
+                                },
+                                "visible": {
+                                  "type": "boolean"
+                                }
+                              }
+                            }
+                          },
+                          "children_count": {
+                            "description": "子节点数量",
+                            "type": "integer"
+                          },
+                          "code": {
+                            "type": "string"
+                          },
+                          "component_key": {
+                            "type": "string"
+                          },
+                          "created_at": {
+                            "type": "string"
+                          },
+                          "created_by": {
+                            "type": "string"
+                          },
+                          "enabled": {
+                            "type": "boolean"
+                          },
+                          "external_url": {
+                            "type": "string"
+                          },
+                          "group_id": {
+                            "type": "string"
+                          },
+                          "id": {
+                            "description": "UUID v7",
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "open_mode": {
+                            "description": "new/iframe/same",
+                            "type": "string"
+                          },
+                          "order": {
+                            "type": "integer"
+                          },
+                          "parent_id": {
+                            "type": "string"
+                          },
+                          "path": {
+                            "type": "string"
+                          },
+                          "permission_key": {
+                            "type": "string"
+                          },
+                          "risk_flags": {
+                            "description": "风险标记：UNBOUND_PERMISSION/ROUTE_CONFLICT/ORDER_CONFLICT",
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "route_name": {
+                            "type": "string"
+                          },
+                          "show_in_nav": {
+                            "type": "boolean"
+                          },
+                          "type": {
+                            "description": "directory/page/external/button",
+                            "type": "string"
+                          },
+                          "updated_at": {
+                            "type": "string"
+                          },
+                          "updated_by": {
+                            "type": "string"
+                          },
+                          "visible": {
+                            "type": "boolean"
+                          }
+                        }
+                      }
+                    },
+                    "children_count": {
+                      "description": "子节点数量",
+                      "type": "integer"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "component_key": {
+                      "type": "string"
+                    },
+                    "created_at": {
+                      "type": "string"
+                    },
+                    "created_by": {
+                      "type": "string"
+                    },
+                    "enabled": {
+                      "type": "boolean"
+                    },
+                    "external_url": {
+                      "type": "string"
+                    },
+                    "group_id": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "description": "UUID v7",
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "open_mode": {
+                      "description": "new/iframe/same",
+                      "type": "string"
+                    },
+                    "order": {
+                      "type": "integer"
+                    },
+                    "parent_id": {
+                      "type": "string"
+                    },
+                    "path": {
+                      "type": "string"
+                    },
+                    "permission_key": {
+                      "type": "string"
+                    },
+                    "risk_flags": {
+                      "description": "风险标记：UNBOUND_PERMISSION/ROUTE_CONFLICT/ORDER_CONFLICT",
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "route_name": {
+                      "type": "string"
+                    },
+                    "show_in_nav": {
+                      "type": "boolean"
+                    },
+                    "type": {
+                      "description": "directory/page/external/button",
+                      "type": "string"
+                    },
+                    "updated_at": {
+                      "type": "string"
+                    },
+                    "updated_by": {
+                      "type": "string"
+                    },
+                    "visible": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system/menus/{id}/enabled": {
+      "patch": {
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "schemes": [
+          "https"
+        ],
+        "summary": "ToggleMenuEnabled",
+        "operationId": "menuManagementToggleMenuEnabled",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "UUID v7",
+            "name": "id",
+            "in": "path",
+            "required": true
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "required": [
+                "enabled"
+              ],
+              "properties": {
+                "enabled": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "menu": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "name",
+                    "code",
+                    "type",
+                    "visible",
+                    "enabled",
+                    "order",
+                    "show_in_nav",
+                    "cacheable",
+                    "children_count",
+                    "created_at",
+                    "updated_at"
+                  ],
+                  "properties": {
+                    "cacheable": {
+                      "type": "boolean"
+                    },
+                    "children": {
+                      "description": "子菜单（树形结构）",
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "id",
+                          "name",
+                          "code",
+                          "type",
+                          "visible",
+                          "enabled",
+                          "order",
+                          "show_in_nav",
+                          "cacheable",
+                          "children_count",
+                          "created_at",
+                          "updated_at"
+                        ],
+                        "properties": {
+                          "cacheable": {
+                            "type": "boolean"
+                          },
+                          "children": {
+                            "description": "子菜单（树形结构）",
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "required": [
+                                "id",
+                                "name",
+                                "code",
+                                "type",
+                                "visible",
+                                "enabled",
+                                "order",
+                                "show_in_nav",
+                                "cacheable",
+                                "children_count",
+                                "created_at",
+                                "updated_at"
+                              ],
+                              "properties": {
+                                "cacheable": {
+                                  "type": "boolean"
+                                },
+                                "children": {
+                                  "description": "子菜单（树形结构）",
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "required": [
+                                      "id",
+                                      "name",
+                                      "code",
+                                      "type",
+                                      "visible",
+                                      "enabled",
+                                      "order",
+                                      "show_in_nav",
+                                      "cacheable",
+                                      "children_count",
+                                      "created_at",
+                                      "updated_at"
+                                    ],
+                                    "properties": {
+                                      "cacheable": {
+                                        "type": "boolean"
+                                      },
+                                      "children": {
+                                        "description": "子菜单（树形结构）",
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object"
+                                        }
+                                      },
+                                      "children_count": {
+                                        "description": "子节点数量",
+                                        "type": "integer"
+                                      },
+                                      "code": {
+                                        "type": "string"
+                                      },
+                                      "component_key": {
+                                        "type": "string"
+                                      },
+                                      "created_at": {
+                                        "type": "string"
+                                      },
+                                      "created_by": {
+                                        "type": "string"
+                                      },
+                                      "enabled": {
+                                        "type": "boolean"
+                                      },
+                                      "external_url": {
+                                        "type": "string"
+                                      },
+                                      "group_id": {
+                                        "type": "string"
+                                      },
+                                      "id": {
+                                        "description": "UUID v7",
+                                        "type": "string"
+                                      },
+                                      "name": {
+                                        "type": "string"
+                                      },
+                                      "open_mode": {
+                                        "description": "new/iframe/same",
+                                        "type": "string"
+                                      },
+                                      "order": {
+                                        "type": "integer"
+                                      },
+                                      "parent_id": {
+                                        "type": "string"
+                                      },
+                                      "path": {
+                                        "type": "string"
+                                      },
+                                      "permission_key": {
+                                        "type": "string"
+                                      },
+                                      "risk_flags": {
+                                        "description": "风险标记：UNBOUND_PERMISSION/ROUTE_CONFLICT/ORDER_CONFLICT",
+                                        "type": "array",
+                                        "items": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "route_name": {
+                                        "type": "string"
+                                      },
+                                      "show_in_nav": {
+                                        "type": "boolean"
+                                      },
+                                      "type": {
+                                        "description": "directory/page/external/button",
+                                        "type": "string"
+                                      },
+                                      "updated_at": {
+                                        "type": "string"
+                                      },
+                                      "updated_by": {
+                                        "type": "string"
+                                      },
+                                      "visible": {
+                                        "type": "boolean"
+                                      }
+                                    }
+                                  }
+                                },
+                                "children_count": {
+                                  "description": "子节点数量",
+                                  "type": "integer"
+                                },
+                                "code": {
+                                  "type": "string"
+                                },
+                                "component_key": {
+                                  "type": "string"
+                                },
+                                "created_at": {
+                                  "type": "string"
+                                },
+                                "created_by": {
+                                  "type": "string"
+                                },
+                                "enabled": {
+                                  "type": "boolean"
+                                },
+                                "external_url": {
+                                  "type": "string"
+                                },
+                                "group_id": {
+                                  "type": "string"
+                                },
+                                "id": {
+                                  "description": "UUID v7",
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string"
+                                },
+                                "open_mode": {
+                                  "description": "new/iframe/same",
+                                  "type": "string"
+                                },
+                                "order": {
+                                  "type": "integer"
+                                },
+                                "parent_id": {
+                                  "type": "string"
+                                },
+                                "path": {
+                                  "type": "string"
+                                },
+                                "permission_key": {
+                                  "type": "string"
+                                },
+                                "risk_flags": {
+                                  "description": "风险标记：UNBOUND_PERMISSION/ROUTE_CONFLICT/ORDER_CONFLICT",
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                },
+                                "route_name": {
+                                  "type": "string"
+                                },
+                                "show_in_nav": {
+                                  "type": "boolean"
+                                },
+                                "type": {
+                                  "description": "directory/page/external/button",
+                                  "type": "string"
+                                },
+                                "updated_at": {
+                                  "type": "string"
+                                },
+                                "updated_by": {
+                                  "type": "string"
+                                },
+                                "visible": {
+                                  "type": "boolean"
+                                }
+                              }
+                            }
+                          },
+                          "children_count": {
+                            "description": "子节点数量",
+                            "type": "integer"
+                          },
+                          "code": {
+                            "type": "string"
+                          },
+                          "component_key": {
+                            "type": "string"
+                          },
+                          "created_at": {
+                            "type": "string"
+                          },
+                          "created_by": {
+                            "type": "string"
+                          },
+                          "enabled": {
+                            "type": "boolean"
+                          },
+                          "external_url": {
+                            "type": "string"
+                          },
+                          "group_id": {
+                            "type": "string"
+                          },
+                          "id": {
+                            "description": "UUID v7",
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "open_mode": {
+                            "description": "new/iframe/same",
+                            "type": "string"
+                          },
+                          "order": {
+                            "type": "integer"
+                          },
+                          "parent_id": {
+                            "type": "string"
+                          },
+                          "path": {
+                            "type": "string"
+                          },
+                          "permission_key": {
+                            "type": "string"
+                          },
+                          "risk_flags": {
+                            "description": "风险标记：UNBOUND_PERMISSION/ROUTE_CONFLICT/ORDER_CONFLICT",
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "route_name": {
+                            "type": "string"
+                          },
+                          "show_in_nav": {
+                            "type": "boolean"
+                          },
+                          "type": {
+                            "description": "directory/page/external/button",
+                            "type": "string"
+                          },
+                          "updated_at": {
+                            "type": "string"
+                          },
+                          "updated_by": {
+                            "type": "string"
+                          },
+                          "visible": {
+                            "type": "boolean"
+                          }
+                        }
+                      }
+                    },
+                    "children_count": {
+                      "description": "子节点数量",
+                      "type": "integer"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "component_key": {
+                      "type": "string"
+                    },
+                    "created_at": {
+                      "type": "string"
+                    },
+                    "created_by": {
+                      "type": "string"
+                    },
+                    "enabled": {
+                      "type": "boolean"
+                    },
+                    "external_url": {
+                      "type": "string"
+                    },
+                    "group_id": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "description": "UUID v7",
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "open_mode": {
+                      "description": "new/iframe/same",
+                      "type": "string"
+                    },
+                    "order": {
+                      "type": "integer"
+                    },
+                    "parent_id": {
+                      "type": "string"
+                    },
+                    "path": {
+                      "type": "string"
+                    },
+                    "permission_key": {
+                      "type": "string"
+                    },
+                    "risk_flags": {
+                      "description": "风险标记：UNBOUND_PERMISSION/ROUTE_CONFLICT/ORDER_CONFLICT",
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "route_name": {
+                      "type": "string"
+                    },
+                    "show_in_nav": {
+                      "type": "boolean"
+                    },
+                    "type": {
+                      "description": "directory/page/external/button",
+                      "type": "string"
+                    },
+                    "updated_at": {
+                      "type": "string"
+                    },
+                    "updated_by": {
+                      "type": "string"
+                    },
+                    "visible": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system/menus/{id}/move": {
+      "patch": {
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "schemes": [
+          "https"
+        ],
+        "summary": "MoveMenu",
+        "operationId": "menuManagementMoveMenu",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "UUID v7",
+            "name": "id",
+            "in": "path",
+            "required": true
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "required": [
+                "new_order"
+              ],
+              "properties": {
+                "new_order": {
+                  "description": "新位置（同级排序）",
+                  "type": "integer"
+                },
+                "new_parent_id": {
+                  "description": "新父级ID（空表示移到根节点）",
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "menu": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "name",
+                    "code",
+                    "type",
+                    "visible",
+                    "enabled",
+                    "order",
+                    "show_in_nav",
+                    "cacheable",
+                    "children_count",
+                    "created_at",
+                    "updated_at"
+                  ],
+                  "properties": {
+                    "cacheable": {
+                      "type": "boolean"
+                    },
+                    "children": {
+                      "description": "子菜单（树形结构）",
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "id",
+                          "name",
+                          "code",
+                          "type",
+                          "visible",
+                          "enabled",
+                          "order",
+                          "show_in_nav",
+                          "cacheable",
+                          "children_count",
+                          "created_at",
+                          "updated_at"
+                        ],
+                        "properties": {
+                          "cacheable": {
+                            "type": "boolean"
+                          },
+                          "children": {
+                            "description": "子菜单（树形结构）",
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "required": [
+                                "id",
+                                "name",
+                                "code",
+                                "type",
+                                "visible",
+                                "enabled",
+                                "order",
+                                "show_in_nav",
+                                "cacheable",
+                                "children_count",
+                                "created_at",
+                                "updated_at"
+                              ],
+                              "properties": {
+                                "cacheable": {
+                                  "type": "boolean"
+                                },
+                                "children": {
+                                  "description": "子菜单（树形结构）",
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "required": [
+                                      "id",
+                                      "name",
+                                      "code",
+                                      "type",
+                                      "visible",
+                                      "enabled",
+                                      "order",
+                                      "show_in_nav",
+                                      "cacheable",
+                                      "children_count",
+                                      "created_at",
+                                      "updated_at"
+                                    ],
+                                    "properties": {
+                                      "cacheable": {
+                                        "type": "boolean"
+                                      },
+                                      "children": {
+                                        "description": "子菜单（树形结构）",
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object"
+                                        }
+                                      },
+                                      "children_count": {
+                                        "description": "子节点数量",
+                                        "type": "integer"
+                                      },
+                                      "code": {
+                                        "type": "string"
+                                      },
+                                      "component_key": {
+                                        "type": "string"
+                                      },
+                                      "created_at": {
+                                        "type": "string"
+                                      },
+                                      "created_by": {
+                                        "type": "string"
+                                      },
+                                      "enabled": {
+                                        "type": "boolean"
+                                      },
+                                      "external_url": {
+                                        "type": "string"
+                                      },
+                                      "group_id": {
+                                        "type": "string"
+                                      },
+                                      "id": {
+                                        "description": "UUID v7",
+                                        "type": "string"
+                                      },
+                                      "name": {
+                                        "type": "string"
+                                      },
+                                      "open_mode": {
+                                        "description": "new/iframe/same",
+                                        "type": "string"
+                                      },
+                                      "order": {
+                                        "type": "integer"
+                                      },
+                                      "parent_id": {
+                                        "type": "string"
+                                      },
+                                      "path": {
+                                        "type": "string"
+                                      },
+                                      "permission_key": {
+                                        "type": "string"
+                                      },
+                                      "risk_flags": {
+                                        "description": "风险标记：UNBOUND_PERMISSION/ROUTE_CONFLICT/ORDER_CONFLICT",
+                                        "type": "array",
+                                        "items": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "route_name": {
+                                        "type": "string"
+                                      },
+                                      "show_in_nav": {
+                                        "type": "boolean"
+                                      },
+                                      "type": {
+                                        "description": "directory/page/external/button",
+                                        "type": "string"
+                                      },
+                                      "updated_at": {
+                                        "type": "string"
+                                      },
+                                      "updated_by": {
+                                        "type": "string"
+                                      },
+                                      "visible": {
+                                        "type": "boolean"
+                                      }
+                                    }
+                                  }
+                                },
+                                "children_count": {
+                                  "description": "子节点数量",
+                                  "type": "integer"
+                                },
+                                "code": {
+                                  "type": "string"
+                                },
+                                "component_key": {
+                                  "type": "string"
+                                },
+                                "created_at": {
+                                  "type": "string"
+                                },
+                                "created_by": {
+                                  "type": "string"
+                                },
+                                "enabled": {
+                                  "type": "boolean"
+                                },
+                                "external_url": {
+                                  "type": "string"
+                                },
+                                "group_id": {
+                                  "type": "string"
+                                },
+                                "id": {
+                                  "description": "UUID v7",
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string"
+                                },
+                                "open_mode": {
+                                  "description": "new/iframe/same",
+                                  "type": "string"
+                                },
+                                "order": {
+                                  "type": "integer"
+                                },
+                                "parent_id": {
+                                  "type": "string"
+                                },
+                                "path": {
+                                  "type": "string"
+                                },
+                                "permission_key": {
+                                  "type": "string"
+                                },
+                                "risk_flags": {
+                                  "description": "风险标记：UNBOUND_PERMISSION/ROUTE_CONFLICT/ORDER_CONFLICT",
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                },
+                                "route_name": {
+                                  "type": "string"
+                                },
+                                "show_in_nav": {
+                                  "type": "boolean"
+                                },
+                                "type": {
+                                  "description": "directory/page/external/button",
+                                  "type": "string"
+                                },
+                                "updated_at": {
+                                  "type": "string"
+                                },
+                                "updated_by": {
+                                  "type": "string"
+                                },
+                                "visible": {
+                                  "type": "boolean"
+                                }
+                              }
+                            }
+                          },
+                          "children_count": {
+                            "description": "子节点数量",
+                            "type": "integer"
+                          },
+                          "code": {
+                            "type": "string"
+                          },
+                          "component_key": {
+                            "type": "string"
+                          },
+                          "created_at": {
+                            "type": "string"
+                          },
+                          "created_by": {
+                            "type": "string"
+                          },
+                          "enabled": {
+                            "type": "boolean"
+                          },
+                          "external_url": {
+                            "type": "string"
+                          },
+                          "group_id": {
+                            "type": "string"
+                          },
+                          "id": {
+                            "description": "UUID v7",
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "open_mode": {
+                            "description": "new/iframe/same",
+                            "type": "string"
+                          },
+                          "order": {
+                            "type": "integer"
+                          },
+                          "parent_id": {
+                            "type": "string"
+                          },
+                          "path": {
+                            "type": "string"
+                          },
+                          "permission_key": {
+                            "type": "string"
+                          },
+                          "risk_flags": {
+                            "description": "风险标记：UNBOUND_PERMISSION/ROUTE_CONFLICT/ORDER_CONFLICT",
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "route_name": {
+                            "type": "string"
+                          },
+                          "show_in_nav": {
+                            "type": "boolean"
+                          },
+                          "type": {
+                            "description": "directory/page/external/button",
+                            "type": "string"
+                          },
+                          "updated_at": {
+                            "type": "string"
+                          },
+                          "updated_by": {
+                            "type": "string"
+                          },
+                          "visible": {
+                            "type": "boolean"
+                          }
+                        }
+                      }
+                    },
+                    "children_count": {
+                      "description": "子节点数量",
+                      "type": "integer"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "component_key": {
+                      "type": "string"
+                    },
+                    "created_at": {
+                      "type": "string"
+                    },
+                    "created_by": {
+                      "type": "string"
+                    },
+                    "enabled": {
+                      "type": "boolean"
+                    },
+                    "external_url": {
+                      "type": "string"
+                    },
+                    "group_id": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "description": "UUID v7",
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "open_mode": {
+                      "description": "new/iframe/same",
+                      "type": "string"
+                    },
+                    "order": {
+                      "type": "integer"
+                    },
+                    "parent_id": {
+                      "type": "string"
+                    },
+                    "path": {
+                      "type": "string"
+                    },
+                    "permission_key": {
+                      "type": "string"
+                    },
+                    "risk_flags": {
+                      "description": "风险标记：UNBOUND_PERMISSION/ROUTE_CONFLICT/ORDER_CONFLICT",
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "route_name": {
+                      "type": "string"
+                    },
+                    "show_in_nav": {
+                      "type": "boolean"
+                    },
+                    "type": {
+                      "description": "directory/page/external/button",
+                      "type": "string"
+                    },
+                    "updated_at": {
+                      "type": "string"
+                    },
+                    "updated_by": {
+                      "type": "string"
+                    },
+                    "visible": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system/menus/{id}/visible": {
+      "patch": {
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "schemes": [
+          "https"
+        ],
+        "summary": "ToggleMenuVisible",
+        "operationId": "menuManagementToggleMenuVisible",
+        "parameters": [
+          {
+            "type": "string",
+            "description": "UUID v7",
+            "name": "id",
+            "in": "path",
+            "required": true
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "required": [
+                "visible"
+              ],
+              "properties": {
+                "visible": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "menu": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "name",
+                    "code",
+                    "type",
+                    "visible",
+                    "enabled",
+                    "order",
+                    "show_in_nav",
+                    "cacheable",
+                    "children_count",
+                    "created_at",
+                    "updated_at"
+                  ],
+                  "properties": {
+                    "cacheable": {
+                      "type": "boolean"
+                    },
+                    "children": {
+                      "description": "子菜单（树形结构）",
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "id",
+                          "name",
+                          "code",
+                          "type",
+                          "visible",
+                          "enabled",
+                          "order",
+                          "show_in_nav",
+                          "cacheable",
+                          "children_count",
+                          "created_at",
+                          "updated_at"
+                        ],
+                        "properties": {
+                          "cacheable": {
+                            "type": "boolean"
+                          },
+                          "children": {
+                            "description": "子菜单（树形结构）",
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "required": [
+                                "id",
+                                "name",
+                                "code",
+                                "type",
+                                "visible",
+                                "enabled",
+                                "order",
+                                "show_in_nav",
+                                "cacheable",
+                                "children_count",
+                                "created_at",
+                                "updated_at"
+                              ],
+                              "properties": {
+                                "cacheable": {
+                                  "type": "boolean"
+                                },
+                                "children": {
+                                  "description": "子菜单（树形结构）",
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "required": [
+                                      "id",
+                                      "name",
+                                      "code",
+                                      "type",
+                                      "visible",
+                                      "enabled",
+                                      "order",
+                                      "show_in_nav",
+                                      "cacheable",
+                                      "children_count",
+                                      "created_at",
+                                      "updated_at"
+                                    ],
+                                    "properties": {
+                                      "cacheable": {
+                                        "type": "boolean"
+                                      },
+                                      "children": {
+                                        "description": "子菜单（树形结构）",
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object"
+                                        }
+                                      },
+                                      "children_count": {
+                                        "description": "子节点数量",
+                                        "type": "integer"
+                                      },
+                                      "code": {
+                                        "type": "string"
+                                      },
+                                      "component_key": {
+                                        "type": "string"
+                                      },
+                                      "created_at": {
+                                        "type": "string"
+                                      },
+                                      "created_by": {
+                                        "type": "string"
+                                      },
+                                      "enabled": {
+                                        "type": "boolean"
+                                      },
+                                      "external_url": {
+                                        "type": "string"
+                                      },
+                                      "group_id": {
+                                        "type": "string"
+                                      },
+                                      "id": {
+                                        "description": "UUID v7",
+                                        "type": "string"
+                                      },
+                                      "name": {
+                                        "type": "string"
+                                      },
+                                      "open_mode": {
+                                        "description": "new/iframe/same",
+                                        "type": "string"
+                                      },
+                                      "order": {
+                                        "type": "integer"
+                                      },
+                                      "parent_id": {
+                                        "type": "string"
+                                      },
+                                      "path": {
+                                        "type": "string"
+                                      },
+                                      "permission_key": {
+                                        "type": "string"
+                                      },
+                                      "risk_flags": {
+                                        "description": "风险标记：UNBOUND_PERMISSION/ROUTE_CONFLICT/ORDER_CONFLICT",
+                                        "type": "array",
+                                        "items": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "route_name": {
+                                        "type": "string"
+                                      },
+                                      "show_in_nav": {
+                                        "type": "boolean"
+                                      },
+                                      "type": {
+                                        "description": "directory/page/external/button",
+                                        "type": "string"
+                                      },
+                                      "updated_at": {
+                                        "type": "string"
+                                      },
+                                      "updated_by": {
+                                        "type": "string"
+                                      },
+                                      "visible": {
+                                        "type": "boolean"
+                                      }
+                                    }
+                                  }
+                                },
+                                "children_count": {
+                                  "description": "子节点数量",
+                                  "type": "integer"
+                                },
+                                "code": {
+                                  "type": "string"
+                                },
+                                "component_key": {
+                                  "type": "string"
+                                },
+                                "created_at": {
+                                  "type": "string"
+                                },
+                                "created_by": {
+                                  "type": "string"
+                                },
+                                "enabled": {
+                                  "type": "boolean"
+                                },
+                                "external_url": {
+                                  "type": "string"
+                                },
+                                "group_id": {
+                                  "type": "string"
+                                },
+                                "id": {
+                                  "description": "UUID v7",
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string"
+                                },
+                                "open_mode": {
+                                  "description": "new/iframe/same",
+                                  "type": "string"
+                                },
+                                "order": {
+                                  "type": "integer"
+                                },
+                                "parent_id": {
+                                  "type": "string"
+                                },
+                                "path": {
+                                  "type": "string"
+                                },
+                                "permission_key": {
+                                  "type": "string"
+                                },
+                                "risk_flags": {
+                                  "description": "风险标记：UNBOUND_PERMISSION/ROUTE_CONFLICT/ORDER_CONFLICT",
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                },
+                                "route_name": {
+                                  "type": "string"
+                                },
+                                "show_in_nav": {
+                                  "type": "boolean"
+                                },
+                                "type": {
+                                  "description": "directory/page/external/button",
+                                  "type": "string"
+                                },
+                                "updated_at": {
+                                  "type": "string"
+                                },
+                                "updated_by": {
+                                  "type": "string"
+                                },
+                                "visible": {
+                                  "type": "boolean"
+                                }
+                              }
+                            }
+                          },
+                          "children_count": {
+                            "description": "子节点数量",
+                            "type": "integer"
+                          },
+                          "code": {
+                            "type": "string"
+                          },
+                          "component_key": {
+                            "type": "string"
+                          },
+                          "created_at": {
+                            "type": "string"
+                          },
+                          "created_by": {
+                            "type": "string"
+                          },
+                          "enabled": {
+                            "type": "boolean"
+                          },
+                          "external_url": {
+                            "type": "string"
+                          },
+                          "group_id": {
+                            "type": "string"
+                          },
+                          "id": {
+                            "description": "UUID v7",
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "open_mode": {
+                            "description": "new/iframe/same",
+                            "type": "string"
+                          },
+                          "order": {
+                            "type": "integer"
+                          },
+                          "parent_id": {
+                            "type": "string"
+                          },
+                          "path": {
+                            "type": "string"
+                          },
+                          "permission_key": {
+                            "type": "string"
+                          },
+                          "risk_flags": {
+                            "description": "风险标记：UNBOUND_PERMISSION/ROUTE_CONFLICT/ORDER_CONFLICT",
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "route_name": {
+                            "type": "string"
+                          },
+                          "show_in_nav": {
+                            "type": "boolean"
+                          },
+                          "type": {
+                            "description": "directory/page/external/button",
+                            "type": "string"
+                          },
+                          "updated_at": {
+                            "type": "string"
+                          },
+                          "updated_by": {
+                            "type": "string"
+                          },
+                          "visible": {
+                            "type": "boolean"
+                          }
+                        }
+                      }
+                    },
+                    "children_count": {
+                      "description": "子节点数量",
+                      "type": "integer"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "component_key": {
+                      "type": "string"
+                    },
+                    "created_at": {
+                      "type": "string"
+                    },
+                    "created_by": {
+                      "type": "string"
+                    },
+                    "enabled": {
+                      "type": "boolean"
+                    },
+                    "external_url": {
+                      "type": "string"
+                    },
+                    "group_id": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "description": "UUID v7",
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "open_mode": {
+                      "description": "new/iframe/same",
+                      "type": "string"
+                    },
+                    "order": {
+                      "type": "integer"
+                    },
+                    "parent_id": {
+                      "type": "string"
+                    },
+                    "path": {
+                      "type": "string"
+                    },
+                    "permission_key": {
+                      "type": "string"
+                    },
+                    "risk_flags": {
+                      "description": "风险标记：UNBOUND_PERMISSION/ROUTE_CONFLICT/ORDER_CONFLICT",
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "route_name": {
+                      "type": "string"
+                    },
+                    "show_in_nav": {
+                      "type": "boolean"
+                    },
+                    "type": {
+                      "description": "directory/page/external/button",
+                      "type": "string"
+                    },
+                    "updated_at": {
+                      "type": "string"
+                    },
+                    "updated_by": {
+                      "type": "string"
+                    },
+                    "visible": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/system/organization": {
       "post": {
         "consumes": [
@@ -1779,7 +5681,7 @@
       }
     }
   },
-  "x-date": "2026-01-26 09:49:32",
+  "x-date": "2026-01-26 13:54:26",
   "x-description": "This is a goctl generated swagger file.",
   "x-github": "https://github.com/zeromicro/go-zero",
   "x-go-zero-doc": "https://go-zero.dev/",
