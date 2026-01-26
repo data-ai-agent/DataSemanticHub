@@ -220,8 +220,8 @@ func (l *UpdateUserLogic) UpdateUser(userId string, req *types.UpdateUserReq) (r
 		// 6.3 记录审计日志（如果有变更）
 		if len(changes) > 0 {
 			auditLogModel := l.svcCtx.AuditLogModel.WithTx(tx)
-			operatorName := "System"
-			operatorID := "system"
+			operatorName := errorx.SystemOperatorName
+			operatorID := errorx.SystemOperatorID
 			if updatedBy != nil {
 				operatorID = *updatedBy
 				// 尝试获取操作人姓名（使用非事务查询，避免嵌套事务问题）

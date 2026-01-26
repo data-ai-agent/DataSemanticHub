@@ -35,4 +35,10 @@ type Config struct {
 			DisableForeignKey bool
 		}
 	}
+	Redis struct {
+		Host     string
+		Port     int
+		Password string
+		DB       int
+	}
 }

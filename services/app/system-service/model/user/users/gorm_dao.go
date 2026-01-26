@@ -113,7 +113,7 @@ func (m *gormUserModel) FindList(ctx context.Context, req *FindListReq) ([]*User
 		"name":          true,
 		"created_at":    true,
 		"last_login_at": true,
-		"updated_at":     true,
+		"updated_at":    true,
 	}
 	if !allowedSortFields[sortField] {
 		sortField = "created_at"

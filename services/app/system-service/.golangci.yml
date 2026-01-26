@@ -1,0 +1,94 @@
+version: 2
+
+run:
+  timeout: 5m
+  tests: false
+  build-tags: ""
+  skip-dirs:
+    - vendor
+  skip-files:
+    - ".*\\.pb\\.go"
+    - ".*\\.gen\\.go"
+    - ".*_test\\.go"
+  modules-download-mode: readonly
+
+linters:
+  enable:
+    - govet
+    - errcheck
+    - staticcheck
+    - unused
+    - ineffassign
+    - dupl
+    - gocyclo
+    - gosec
+    - revive
+    - unparam
+    - unconvert
+    - varnamelen
+    - misspell
+    - gocritic
+    - goconst
+    - godot
+
+linters-settings:
+  govet:
+    enable-all: true
+    disable:
+      - shadow
+
+  gocyclo:
+    min-complexity: 15
+
+  errcheck:
+    check-type-assertions: true
+    check-blank: true
+
+  revive:
+    severity: warning
+    rules:
+      - name: var-naming
+        severity: warning
+        disabled: false
+      - name: exported-func
+        severity: warning
+        disabled: false
+
+  gosec:
+    excludes:
+      - G104
+
+  varnamelen:
+    min-name-length: 2
+
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - experimental
+      - performance
+      - style
+
+  misspell:
+    locale: US
+
+issues:
+  exclude-rules:
+    - path: "api/internal/types/"
+      linters:
+        - errcheck
+    - path: ".*\\.api$"
+      linters:
+        - errcheck
+    - text: "SA9003:"
+      linters:
+        - gosec
+    - text: "Error return value of.*is checked"
+      linters:
+        - errcheck
+    - text: "unused-error-truncation"
+      linters:
+        - errcheck
+
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  fix: false

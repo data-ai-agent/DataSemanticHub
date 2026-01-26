@@ -6,8 +6,10 @@ package handler
 import (
 	"net/http"
 
+	organization "github.com/DataSemanticHub/services/app/system-service/api/internal/handler/organization"
 	user "github.com/DataSemanticHub/services/app/system-service/api/internal/handler/user"
 	user_management "github.com/DataSemanticHub/services/app/system-service/api/internal/handler/user_management"
+	user_public "github.com/DataSemanticHub/services/app/system-service/api/internal/handler/user_public"
 	"github.com/DataSemanticHub/services/app/system-service/api/internal/svc"
 
 	"github.com/zeromicro/go-zero/rest"
@@ -26,21 +28,72 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 	)
 
 	server.AddRoutes(
-		[]rest.Route{
-			{
-				// 用户注册
-				Method:  http.MethodPost,
-				Path:    "/user/register",
-				Handler: user.RegisterHandler(serverCtx),
-			},
-			{
-				// 用户登录
-				Method:  http.MethodPost,
-				Path:    "/user/login",
-				Handler: user.LoginHandler(serverCtx),
-			},
-		},
-		rest.WithPrefix("/api/v1"),
+		rest.WithMiddlewares(
+			[]rest.Middleware{serverCtx.Authority},
+			[]rest.Route{
+				{
+					// 创建组织
+					Method:  http.MethodPost,
+					Path:    "/organization",
+					Handler: organization.CreateOrgHandler(serverCtx),
+				},
+				{
+					// 获取组织详情
+					Method:  http.MethodGet,
+					Path:    "/organization/:id",
+					Handler: organization.GetOrgDetailHandler(serverCtx),
+				},
+				{
+					// 更新组织
+					Method:  http.MethodPut,
+					Path:    "/organization/:id",
+					Handler: organization.UpdateOrgHandler(serverCtx),
+				},
+				{
+					// 删除组织
+					Method:  http.MethodDelete,
+					Path:    "/organization/:id",
+					Handler: organization.DeleteOrgHandler(serverCtx),
+				},
+				{
+					// 获取部门用户
+					Method:  http.MethodGet,
+					Path:    "/organization/:id/users",
+					Handler: organization.GetOrgUsersHandler(serverCtx),
+				},
+				{
+					// 移动组织
+					Method:  http.MethodPost,
+					Path:    "/organization/move",
+					Handler: organization.MoveOrgHandler(serverCtx),
+				},
+				{
+					// 获取组织架构树
+					Method:  http.MethodGet,
+					Path:    "/organization/tree",
+					Handler: organization.GetOrgTreeHandler(serverCtx),
+				},
+				{
+					// 删除用户辅助部门
+					Method:  http.MethodDelete,
+					Path:    "/user/:userId/aux-dept/:deptId",
+					Handler: organization.RemoveUserAuxDeptHandler(serverCtx),
+				},
+				{
+					// 添加用户辅助部门
+					Method:  http.MethodPost,
+					Path:    "/user/aux-dept",
+					Handler: organization.AddUserAuxDeptHandler(serverCtx),
+				},
+				{
+					// 设置用户主部门
+					Method:  http.MethodPost,
+					Path:    "/user/primary-dept",
+					Handler: organization.SetUserPrimaryDeptHandler(serverCtx),
+				},
+			}...,
+		),
+		rest.WithPrefix("/api/v1/system"),
 	)
 
 	server.AddRoutes(
@@ -59,6 +112,24 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 			},
 		},
 		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
+		rest.WithPrefix("/api/v1"),
+	)
+
+	server.AddRoutes(
+		[]rest.Route{
+			{
+				// 用户登录
+				Method:  http.MethodPost,
+				Path:    "/user/login",
+				Handler: user_public.LoginHandler(serverCtx),
+			},
+			{
+				// 用户注册
+				Method:  http.MethodPost,
+				Path:    "/user/register",
+				Handler: user_public.RegisterHandler(serverCtx),
+			},
+		},
 		rest.WithPrefix("/api/v1"),
 	)
 

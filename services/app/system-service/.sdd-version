@@ -1,6 +1,6 @@
 {
-  "version": "0.6.0",
-  "installed_at": "2026-01-20T09:02:31Z",
+  "version": "0.8.1",
+  "installed_at": "2026-01-25T02:06:40Z",
   "services": ["api","rpc"],
   "project_name": "system-service",
   "go_module": "github.com/DataSemanticHub/services/app/system-service",

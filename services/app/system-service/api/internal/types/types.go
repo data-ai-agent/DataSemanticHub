@@ -12,6 +12,12 @@ type AuditLog struct {
 	Timestamp  string                 `json:"timestamp"`
 }
 
+type DeptUser struct {
+	UserId    string `json:"userId"`
+	UserName  string `json:"userName"`
+	IsPrimary bool   `json:"isPrimary"`
+}
+
 type HealthResp struct {
 	Status string `json:"status"`
 }
@@ -37,6 +43,36 @@ type KeywordInfo struct {
 type OperationError struct {
 	UserId string `json:"user_id"`
 	Reason string `json:"reason"`
+}
+
+type OrgDetail struct {
+	Id         string `json:"id"`
+	ParentId   string `json:"parentId"`
+	ParentName string `json:"parentName"`
+	Name       string `json:"name"`
+	Code       string `json:"code"`
+	Ancestors  string `json:"ancestors"`
+	SortOrder  int    `json:"sortOrder"`
+	LeaderId   string `json:"leaderId"`
+	LeaderName string `json:"leaderName"`
+	Type       int8   `json:"type"`
+	Status     int8   `json:"status"`
+	Desc       string `json:"desc"`
+	CreatedAt  string `json:"createdAt"`
+	UpdatedAt  string `json:"updatedAt"`
+}
+
+type OrgTreeNode struct {
+	Id         string         `json:"id"`
+	ParentId   string         `json:"parentId"`
+	Name       string         `json:"name"`
+	Code       string         `json:"code"`
+	Type       int8           `json:"type"`
+	Status     int8           `json:"status"`
+	SortOrder  int            `json:"sortOrder"`
+	LeaderId   string         `json:"leaderId"`
+	LeaderName string         `json:"leaderName"`
+	Children   []*OrgTreeNode `json:"children"`
 }
 
 type PageBaseInfo struct {

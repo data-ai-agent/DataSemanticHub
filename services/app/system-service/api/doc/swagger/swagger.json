@@ -40,6 +40,674 @@
         }
       }
     },
+    "/api/v1/system/organization": {
+      "post": {
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "schemes": [
+          "https"
+        ],
+        "summary": "创建组织",
+        "operationId": "organizationCreateOrg",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "required": [
+                "name"
+              ],
+              "properties": {
+                "code": {
+                  "type": "string"
+                },
+                "desc": {
+                  "type": "string"
+                },
+                "leaderId": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "parentId": {
+                  "type": "string",
+                  "default": "0",
+                  "example": "0"
+                },
+                "sortOrder": {
+                  "type": "integer",
+                  "default": 0,
+                  "example": 0
+                },
+                "type": {
+                  "type": "integer",
+                  "default": 2,
+                  "example": 2
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system/organization/move": {
+      "post": {
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "schemes": [
+          "https"
+        ],
+        "summary": "移动组织",
+        "operationId": "organizationMoveOrg",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "required": [
+                "id",
+                "targetParentId"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "sortOrders": {
+                  "description": "同级排序ID列表",
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "targetParentId": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system/organization/tree": {
+      "get": {
+        "produces": [
+          "application/json"
+        ],
+        "schemes": [
+          "https"
+        ],
+        "summary": "获取组织架构树",
+        "operationId": "organizationGetOrgTree",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "description": "模糊搜索",
+                  "type": "string"
+                },
+                "status": {
+                  "description": "状态过滤",
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "tree": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "id",
+                      "parentId",
+                      "name",
+                      "code",
+                      "type",
+                      "status",
+                      "sortOrder",
+                      "leaderId",
+                      "leaderName",
+                      "children"
+                    ],
+                    "properties": {
+                      "children": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "required": [
+                            "id",
+                            "parentId",
+                            "name",
+                            "code",
+                            "type",
+                            "status",
+                            "sortOrder",
+                            "leaderId",
+                            "leaderName",
+                            "children"
+                          ],
+                          "properties": {
+                            "children": {
+                              "type": "array",
+                              "items": {
+                                "type": "object"
+                              }
+                            },
+                            "code": {
+                              "type": "string"
+                            },
+                            "id": {
+                              "type": "string"
+                            },
+                            "leaderId": {
+                              "type": "string"
+                            },
+                            "leaderName": {
+                              "type": "string"
+                            },
+                            "name": {
+                              "type": "string"
+                            },
+                            "parentId": {
+                              "type": "string"
+                            },
+                            "sortOrder": {
+                              "type": "integer"
+                            },
+                            "status": {
+                              "type": "integer"
+                            },
+                            "type": {
+                              "type": "integer"
+                            }
+                          }
+                        }
+                      },
+                      "code": {
+                        "type": "string"
+                      },
+                      "id": {
+                        "type": "string"
+                      },
+                      "leaderId": {
+                        "type": "string"
+                      },
+                      "leaderName": {
+                        "type": "string"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "parentId": {
+                        "type": "string"
+                      },
+                      "sortOrder": {
+                        "type": "integer"
+                      },
+                      "status": {
+                        "type": "integer"
+                      },
+                      "type": {
+                        "type": "integer"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system/organization/{id}": {
+      "get": {
+        "produces": [
+          "application/json"
+        ],
+        "schemes": [
+          "https"
+        ],
+        "summary": "获取组织详情",
+        "operationId": "organizationGetOrgDetail",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "detail": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "parentId",
+                    "parentName",
+                    "name",
+                    "code",
+                    "ancestors",
+                    "sortOrder",
+                    "leaderId",
+                    "leaderName",
+                    "type",
+                    "status",
+                    "desc",
+                    "createdAt",
+                    "updatedAt"
+                  ],
+                  "properties": {
+                    "ancestors": {
+                      "type": "string"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "createdAt": {
+                      "type": "string"
+                    },
+                    "desc": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "leaderId": {
+                      "type": "string"
+                    },
+                    "leaderName": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "parentId": {
+                      "type": "string"
+                    },
+                    "parentName": {
+                      "type": "string"
+                    },
+                    "sortOrder": {
+                      "type": "integer"
+                    },
+                    "status": {
+                      "type": "integer"
+                    },
+                    "type": {
+                      "type": "integer"
+                    },
+                    "updatedAt": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "schemes": [
+          "https"
+        ],
+        "summary": "更新组织",
+        "operationId": "organizationUpdateOrg",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "id",
+            "in": "path",
+            "required": true
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "code": {
+                  "type": "string"
+                },
+                "desc": {
+                  "type": "string"
+                },
+                "leaderId": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "sortOrder": {
+                  "type": "integer"
+                },
+                "status": {
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "consumes": [
+          "application/x-www-form-urlencoded"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "schemes": [
+          "https"
+        ],
+        "summary": "删除组织",
+        "operationId": "organizationDeleteOrg",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "id",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system/organization/{id}/users": {
+      "get": {
+        "produces": [
+          "application/json"
+        ],
+        "schemes": [
+          "https"
+        ],
+        "summary": "获取部门用户",
+        "operationId": "organizationGetOrgUsers",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "id",
+            "in": "path",
+            "required": true
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "recursive": {
+                  "description": "是否递归查询子部门",
+                  "type": "boolean",
+                  "default": false,
+                  "example": false
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "users": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "userId",
+                      "userName",
+                      "isPrimary"
+                    ],
+                    "properties": {
+                      "isPrimary": {
+                        "type": "boolean"
+                      },
+                      "userId": {
+                        "type": "string"
+                      },
+                      "userName": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system/user/aux-dept": {
+      "post": {
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "schemes": [
+          "https"
+        ],
+        "summary": "添加用户辅助部门",
+        "operationId": "organizationAddUserAuxDept",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "required": [
+                "userId",
+                "deptId"
+              ],
+              "properties": {
+                "deptId": {
+                  "type": "string"
+                },
+                "userId": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system/user/primary-dept": {
+      "post": {
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "schemes": [
+          "https"
+        ],
+        "summary": "设置用户主部门",
+        "operationId": "organizationSetUserPrimaryDept",
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "required": [
+                "userId",
+                "deptId"
+              ],
+              "properties": {
+                "deptId": {
+                  "type": "string"
+                },
+                "userId": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/system/user/{userId}/aux-dept/{deptId}": {
+      "delete": {
+        "consumes": [
+          "application/x-www-form-urlencoded"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "schemes": [
+          "https"
+        ],
+        "summary": "删除用户辅助部门",
+        "operationId": "organizationRemoveUserAuxDept",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "userId",
+            "in": "path",
+            "required": true
+          },
+          {
+            "type": "string",
+            "name": "deptId",
+            "in": "path",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/user/info": {
       "get": {
         "produces": [
@@ -100,7 +768,7 @@
           "https"
         ],
         "summary": "用户登录",
-        "operationId": "user-PublicLogin",
+        "operationId": "userPublicLogin",
         "parameters": [
           {
             "name": "body",
@@ -211,7 +879,7 @@
           "https"
         ],
         "summary": "用户注册",
-        "operationId": "user-PublicRegister",
+        "operationId": "userPublicRegister",
         "parameters": [
           {
             "name": "body",
@@ -1111,7 +1779,7 @@
       }
     }
   },
-  "x-date": "2026-01-23 18:21:07",
+  "x-date": "2026-01-26 09:49:32",
   "x-description": "This is a goctl generated swagger file.",
   "x-github": "https://github.com/zeromicro/go-zero",
   "x-go-zero-doc": "https://go-zero.dev/",

@@ -83,7 +83,7 @@ func (l *DeleteUserLogic) DeleteUser(userId string, req *types.DeleteUserReq) (r
 
 	// 6. 处理责任转交（如果提供 transferTo）
 	impactsTransferred := false
-	if req.TransferTo != "" && req.TransferTo != "" {
+	if req.TransferTo != "" {
 		// 验证转交目标用户是否存在
 		transferToUser, err := l.svcCtx.UserModel.FindOne(l.ctx, req.TransferTo)
 		if err != nil {

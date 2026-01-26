@@ -30,6 +30,22 @@ func setupTestDB(t *testing.T) *gorm.DB {
 	return db
 }
 
+// setupTestDBWithRoleBindings 创建测试数据库并包含 role_bindings 表
+func setupTestDBWithRoleBindings(t *testing.T) *gorm.DB {
+	db := setupTestDB(t)
+
+	// 创建 role_bindings 表（GetStatistics 会查询这个表）
+	type RoleBinding struct {
+		Id             int64  `gorm:"primaryKey;autoIncrement"`
+		UserId         string `gorm:"size:36;not null;index"`
+		PermissionRole *string `gorm:"size:50;index"`
+	}
+	err := db.Table("role_bindings").AutoMigrate(&RoleBinding{})
+	require.NoError(t, err)
+
+	return db
+}
+
 // TestInsert_ValidInput_ReturnsUser 测试正常插入用户
 func TestInsert_ValidInput_ReturnsUser(t *testing.T) {
 	db := setupTestDB(t)
@@ -192,7 +208,7 @@ func TestInsert_ConcurrentDuplicateEmail_OnlyOneSucceeds(t *testing.T) {
 	// 验证结果：只有一个成功，其他都返回邮箱已存在错误或表锁定（并发场景下的正常现象）
 	assert.Equal(t, 1, successCount, "应该只有一个插入成功，实际成功数: %d", successCount)
 	assert.Equal(t, concurrency-1, emailExistsCount, "其他插入应该返回邮箱已存在错误或表锁定，实际邮箱已存在/锁定错误数: %d，其他错误数: %d", emailExistsCount, otherErrorCount)
-	
+
 	// 在 SQLite 并发场景下，可能会有表锁定错误，这是正常的
 	// 只要没有其他类型的错误（如表不存在等），测试就通过
 	if otherErrorCount > 0 {
@@ -603,14 +619,14 @@ func TestFindList_MultiDimensionFilter_ReturnsFilteredResults(t *testing.T) {
 
 	user1ID, _ := uuid.NewV7()
 	user1 := &User{
-		Id:           user1ID.String(),
-		FirstName:    "John",
-		LastName:     "Doe",
-		Name:         "John Doe",
-		Email:        "john.doe@example.com",
-		DeptId:       &deptId1,
-		PasswordHash: string(passwordHash),
-		Status:       status1,
+		Id:            user1ID.String(),
+		FirstName:     "John",
+		LastName:      "Doe",
+		Name:          "John Doe",
+		Email:         "john.doe@example.com",
+		DeptId:        &deptId1,
+		PasswordHash:  string(passwordHash),
+		Status:        status1,
 		AccountSource: "local",
 	}
 	_, err := model.Insert(ctx, user1)
@@ -618,14 +634,14 @@ func TestFindList_MultiDimensionFilter_ReturnsFilteredResults(t *testing.T) {
 
 	user2ID, _ := uuid.NewV7()
 	user2 := &User{
-		Id:           user2ID.String(),
-		FirstName:    "Jane",
-		LastName:     "Smith",
-		Name:         "Jane Smith",
-		Email:        "jane.smith@example.com",
-		DeptId:       &deptId2,
-		PasswordHash: string(passwordHash),
-		Status:       status2,
+		Id:            user2ID.String(),
+		FirstName:     "Jane",
+		LastName:      "Smith",
+		Name:          "Jane Smith",
+		Email:         "jane.smith@example.com",
+		DeptId:        &deptId2,
+		PasswordHash:  string(passwordHash),
+		Status:        status2,
 		AccountSource: "sso",
 	}
 	_, err = model.Insert(ctx, user2)
@@ -657,8 +673,8 @@ func TestFindList_MultiDimensionFilter_ReturnsFilteredResults(t *testing.T) {
 
 	// 按账号来源筛选
 	req3 := &FindListReq{
-		Page:         1,
-		PageSize:     10,
+		Page:          1,
+		PageSize:      10,
 		AccountSource: "local",
 	}
 	result3, total3, err := model.FindList(ctx, req3)
@@ -705,8 +721,8 @@ func TestFindList_SortFunction_ReturnsSortedResults(t *testing.T) {
 
 	// 按名称升序排序
 	req := &FindListReq{
-		Page:     1,
-		PageSize: 10,
+		Page:      1,
+		PageSize:  10,
 		SortField: "name",
 		SortOrder: "asc",
 	}
@@ -722,8 +738,8 @@ func TestFindList_SortFunction_ReturnsSortedResults(t *testing.T) {
 
 	// 按名称降序排序
 	req2 := &FindListReq{
-		Page:     1,
-		PageSize: 10,
+		Page:      1,
+		PageSize:  10,
 		SortField: "name",
 		SortOrder: "desc",
 	}
@@ -1199,7 +1215,7 @@ func TestUpdateStatus_AllStatusValues_UpdatesCorrectly(t *testing.T) {
 
 // TestGetStatistics_ValidData_ReturnsStatistics 测试正常统计场景
 func TestGetStatistics_ValidData_ReturnsStatistics(t *testing.T) {
-	db := setupTestDB(t)
+	db := setupTestDBWithRoleBindings(t)
 	model := NewModel(db)
 	ctx := context.Background()
 
@@ -1242,7 +1258,7 @@ func TestGetStatistics_ValidData_ReturnsStatistics(t *testing.T) {
 		Name:         "Inactive User",
 		Email:        "inactive@example.com",
 		PasswordHash: string(passwordHash),
-		Status:       2, // 停用
+		Status:       2,   // 停用
 		DeptId:       nil, // 无组织归属
 	}
 
@@ -1254,7 +1270,7 @@ func TestGetStatistics_ValidData_ReturnsStatistics(t *testing.T) {
 		Name:         "NoDept User",
 		Email:        "nodept@example.com",
 		PasswordHash: string(passwordHash),
-		Status:       1, // 启用
+		Status:       1,   // 启用
 		DeptId:       nil, // 无组织归属
 	}
 	user4.LastLoginAt = &[]time.Time{time.Now().AddDate(0, 0, -10)}[0] // 10天前登录（不在7天内）
@@ -1276,9 +1292,9 @@ func TestGetStatistics_ValidData_ReturnsStatistics(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotNil(t, stats)
 	assert.Equal(t, int64(4), stats.Total)
-	assert.Equal(t, int64(2), stats.Active) // user1 和 user4
-	assert.Equal(t, int64(1), stats.Locked)  // user2
-	assert.Equal(t, int64(1), stats.Inactive) // user3
+	assert.Equal(t, int64(2), stats.Active)       // user1 和 user4
+	assert.Equal(t, int64(1), stats.Locked)       // user2
+	assert.Equal(t, int64(1), stats.Inactive)     // user3
 	assert.Equal(t, int64(2), stats.NoOrgBinding) // user3 和 user4
 	// 近7天活跃率：只有 user1 在7天内登录，所以是 1/4 = 25%
 	assert.InDelta(t, 25.0, stats.RecentActiveRate, 0.1)
@@ -1286,7 +1302,7 @@ func TestGetStatistics_ValidData_ReturnsStatistics(t *testing.T) {
 
 // TestGetStatistics_EmptyDatabase_ReturnsZero 测试空数据库场景
 func TestGetStatistics_EmptyDatabase_ReturnsZero(t *testing.T) {
-	db := setupTestDB(t)
+	db := setupTestDBWithRoleBindings(t)
 	model := NewModel(db)
 	ctx := context.Background()
 
@@ -1307,7 +1323,8 @@ func TestGetStatistics_EmptyDatabase_ReturnsZero(t *testing.T) {
 
 // TestGetStatistics_WithRoleBindings_CalculatesNoPermissionRole 测试有角色绑定的统计场景
 func TestGetStatistics_WithRoleBindings_CalculatesNoPermissionRole(t *testing.T) {
-	db := setupTestDB(t)
+	db := setupTestDBWithRoleBindings(t)
+
 	model := NewModel(db)
 	ctx := context.Background()
 

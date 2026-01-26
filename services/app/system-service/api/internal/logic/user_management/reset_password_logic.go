@@ -180,7 +180,6 @@ func (l *ResetPasswordLogic) generateTemporaryPassword() string {
 		all     = letters + digits
 	)
 
-	rand.Seed(time.Now().UnixNano())
 	length := 12 // 默认12位
 
 	// 确保至少包含一个字母和一个数字

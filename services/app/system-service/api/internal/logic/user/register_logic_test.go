@@ -55,7 +55,7 @@ func TestRegister_ValidInput_ReturnsUser(t *testing.T) {
 		Email:         "john.doe@example.com",
 		Organization:  "Test Org",
 		PasswordHash:  string(passwordHash),
-		Status:        0,        // 未激活
+		Status:        0,       // 未激活
 		AccountSource: "local", // 本地注册
 	}
 
@@ -514,7 +514,7 @@ func TestRegister_StatusIsInactive_OnRegistration(t *testing.T) {
 		Name:          "Jane Smith",
 		Email:         "jane.smith@example.com",
 		PasswordHash:  string(passwordHash),
-		Status:        0,        // 未激活
+		Status:        0,       // 未激活
 		AccountSource: "local", // 本地注册
 	}
 

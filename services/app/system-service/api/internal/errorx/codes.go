@@ -1,5 +1,15 @@
 package errorx
 
+// 通用常量
+const (
+	// AccountSourceLocal: 本地账号
+	AccountSourceLocal = "local"
+
+	// SystemOperator: 系统操作者
+	SystemOperatorName = "System"
+	SystemOperatorID   = "system"
+)
+
 // 用户认证错误码范围: 30100-30199
 
 const (
@@ -57,4 +67,41 @@ const (
 
 	// 30210: 角色绑定不存在
 	ErrUserManagementRoleBindingNotFound = 30210
+)
+
+// 组织架构错误码范围: 200100-200150
+
+const (
+	// 200101: 参数校验失败
+	ErrCodeOrgParamInvalid = 200101
+
+	// 200102: 父节点不存在
+	ErrCodeOrgParentNotFound = 200102
+
+	// 200103: 同级名称重复
+	ErrCodeOrgNameDuplicate = 200103
+
+	// 200104: 存在子节点
+	ErrCodeOrgHasChildren = 200104
+
+	// 200105: 存在关联用户
+	ErrCodeOrgHasUsers = 200105
+
+	// 200106: 移动形成环路
+	ErrCodeOrgMoveCycle = 200106
+
+	// 200107: 存在启用状态子节点
+	ErrCodeOrgHasActiveChildren = 200107
+
+	// 200108: 部门不存在
+	ErrCodeOrgNotFound = 200108
+
+	// 200109: 根节点不允许删除
+	ErrCodeOrgRootDelete = 200109
+
+	// 200110: 主部门无效
+	ErrCodeOrgPrimaryInvalid = 200110
+
+	// 200111: 辅助部门重复
+	ErrCodeOrgAuxDuplicate = 200111
 )
