@@ -105,7 +105,12 @@ public class CommonUtil {
         if (request != null) {
             introspectInfo = (IntrospectInfo) request.getAttribute("introspectInfo");
         }
-        if (introspectInfo.getExt() == null) {
+        if (introspectInfo == null) {
+            introspectInfo = new IntrospectInfo();
+            introspectInfo.setActive(true);
+            introspectInfo.setScope("");
+            introspectInfo.setClientId("");
+            introspectInfo.setSub("anonymous");
             introspectInfo.setExt(new Ext());
         }
         return introspectInfo;

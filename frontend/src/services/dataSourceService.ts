@@ -13,11 +13,11 @@ import { dataConnectionServiceClient } from '../utils/serviceClient';
 export interface BinData {
     host: string;
     port: number;
-    databaseName: string;
+    database_name: string;
     account: string;
     password: string;
     schema?: string;
-    connectProtocol?: string;
+    connect_protocol?: string;
 }
 
 /**
@@ -28,7 +28,7 @@ export interface DataSourceVo {
     name: string;
     type: string;
     comment: string;
-    binData: BinData;
+    bin_data: BinData;
     latest_task_status?: string;
     create_time?: string;
     update_time?: string;
@@ -106,7 +106,50 @@ export interface Connector {
     bgColor: string;
 }
 
-// ==================== 数据转换函数 ====================
+/**
+ * 后端返回的连接器数据结构
+ */
+interface BackendConnector {
+    type: string;
+    olk_connector_name: string;
+    show_connector_name: string;
+    connect_protocol: string;
+}
+
+// ==================== 类型映射缓存 ====================
+
+// 前端显示名 -> 后端类型名
+let displayToBackendMap: Record<string, string> = {};
+
+// 后端类型名 -> 前端显示名
+let backendToDisplayMap: Record<string, string> = {};
+
+// 缓存的连接器列表
+let cachedConnectors: Connector[] = [];
+
+/**
+ * 默认颜色配置
+ */
+const defaultTypeConfigs: Record<string, { color: string; bgColor: string; defaultPort: number }> = {
+    MySQL: { color: 'text-blue-700', bgColor: 'bg-blue-100', defaultPort: 3306 },
+    Oracle: { color: 'text-orange-700', bgColor: 'bg-orange-100', defaultPort: 1521 },
+    PostgreSQL: { color: 'text-emerald-700', bgColor: 'bg-emerald-100', defaultPort: 5432 },
+    'SQL Server': { color: 'text-purple-700', bgColor: 'bg-purple-100', defaultPort: 1433 },
+    Redis: { color: 'text-red-700', bgColor: 'bg-red-100', defaultPort: 6379 },
+    MongoDB: { color: 'text-green-700', bgColor: 'bg-green-100', defaultPort: 27017 },
+    ClickHouse: { color: 'text-yellow-700', bgColor: 'bg-yellow-100', defaultPort: 8123 },
+    StarRocks: { color: 'text-blue-700', bgColor: 'bg-blue-100', defaultPort: 9030 },
+    Hive: { color: 'text-amber-700', bgColor: 'bg-amber-100', defaultPort: 10000 },
+    Elasticsearch: { color: 'text-pink-700', bgColor: 'bg-pink-100', defaultPort: 9200 },
+    Kafka: { color: 'text-slate-700', bgColor: 'bg-slate-100', defaultPort: 9092 },
+};
+
+/**
+ * 将前端显示类型转换为后端 API 需求的类型
+ */
+const toBackendType = (frontendType: string): string => {
+    return displayToBackendMap[frontendType] || frontendType.toLowerCase();
+};
 
 /**
  * 前端模型 → 后端请求体
@@ -114,16 +157,16 @@ export interface Connector {
 export const toBackendRequest = (frontend: Partial<DataSource> & { password?: string }): DataSourceVo => {
     return {
         name: frontend.name!,
-        type: frontend.type!,
+        type: toBackendType(frontend.type!),
         comment: frontend.desc || '',
-        binData: {
+        bin_data: {
             host: frontend.host!,
             port: frontend.port || 0,
-            databaseName: frontend.dbName || '',
+            database_name: frontend.dbName || '',
             account: frontend.username || '',
             password: frontend.password || '',
             schema: frontend.schemaName || '',
-            connectProtocol: 'jdbc', // 默认协议
+            connect_protocol: 'jdbc', // 默认协议
         }
     };
 };
@@ -157,23 +200,46 @@ export const fromBackendResponse = (backend: any): DataSource => {
 };
 
 /**
- * 格式化数据源类型（小写转大写）
+ * 格式化数据源类型（后端类型名 -> 前端显示名）
  */
 const formatDataSourceType = (type: string): string => {
-    const typeMapping: Record<string, string> = {
-        'mysql': 'MySQL',
-        'oracle': 'Oracle',
-        'postgresql': 'PostgreSQL',
-        'sqlserver': 'SQL Server',
-        'redis': 'Redis',
-        'mongodb': 'MongoDB',
-        'clickhouse': 'ClickHouse',
-        'starrocks': 'StarRocks',
-        'hive': 'Hive',
-        'elasticsearch': 'Elasticsearch',
-        'kafka': 'Kafka',
-    };
-    return typeMapping[type?.toLowerCase()] || type;
+    return backendToDisplayMap[type] || type;
+};
+
+/**
+ * 解析后端连接器数据并更新映射缓存
+ */
+const parseBackendConnectors = (backendConnectors: BackendConnector[]): Connector[] => {
+    // 清空缓存
+    displayToBackendMap = {};
+    backendToDisplayMap = {};
+    const connectors: Connector[] = [];
+
+    backendConnectors.forEach((item: BackendConnector) => {
+        const displayName = item.show_connector_name;
+        const backendName = item.olk_connector_name;
+
+        // 建立映射关系
+        displayToBackendMap[displayName] = backendName;
+        backendToDisplayMap[backendName] = displayName;
+
+        // 获取默认配置
+        const config = defaultTypeConfigs[displayName] || {
+            color: 'text-slate-700',
+            bgColor: 'bg-slate-100',
+            defaultPort: 3306,
+        };
+
+        connectors.push({
+            type: displayName,
+            name: displayName,
+            defaultPort: config.defaultPort,
+            color: config.color,
+            bgColor: config.bgColor,
+        });
+    });
+
+    return connectors;
 };
 
 /**
@@ -432,84 +498,42 @@ export const dataSourceService = {
      * 获取支持的数据源类型
      */
     async getConnectors(): Promise<Connector[]> {
+        console.log('getConnectors: 开始调用接口', DATASOURCE_ENDPOINTS.CONNECTORS);
         try {
             const response = await dataConnectionServiceClient(DATASOURCE_ENDPOINTS.CONNECTORS, {
                 method: 'GET',
             });
+            console.log('getConnectors: 接口响应', response.status, response.statusText);
 
             if (!response.ok) {
                 throw await parseDataSourceError(response);
             }
 
             const result = await response.json();
+            console.log('getConnectors: 解析后的 JSON', result);
 
             // 检查业务状态码
             if (result.code && result.code !== 0 && result.code !== 200) {
                 const errorMsg = result.msg || result.description || '获取数据源类型失败';
+                console.error('getConnectors: 业务错误', errorMsg);
                 throw new Error(errorMsg);
             }
 
-            const data = result.data || result.items || result;
+            // 后端返回的数据结构是 {code: 0, connectors: [...]}
+            // 需要先检查 connectors 字段，如果不存在再尝试其他字段
+            const data = result.connectors || result.data || result.items || [];
             const list = Array.isArray(data) ? data : [];
+            console.log('getConnectors: 连接器列表', list);
 
-            // 格式化返回的连接器类型
-            const typeConfigs: Record<string, { color: string; bgColor: string; defaultPort: number }> = {
-                MySQL: { color: 'text-blue-700', bgColor: 'bg-blue-100', defaultPort: 3306 },
-                Oracle: { color: 'text-orange-700', bgColor: 'bg-orange-100', defaultPort: 1521 },
-                PostgreSQL: { color: 'text-emerald-700', bgColor: 'bg-emerald-100', defaultPort: 5432 },
-                'SQL Server': { color: 'text-purple-700', bgColor: 'bg-purple-100', defaultPort: 1433 },
-                Redis: { color: 'text-red-700', bgColor: 'bg-red-100', defaultPort: 6379 },
-                MongoDB: { color: 'text-green-700', bgColor: 'bg-green-100', defaultPort: 27017 },
-                ClickHouse: { color: 'text-yellow-700', bgColor: 'bg-yellow-100', defaultPort: 8123 },
-                StarRocks: { color: 'text-blue-700', bgColor: 'bg-blue-100', defaultPort: 9030 },
-                Hive: { color: 'text-amber-700', bgColor: 'bg-amber-100', defaultPort: 10000 },
-                Elasticsearch: { color: 'text-pink-700', bgColor: 'bg-pink-100', defaultPort: 9200 },
-                Kafka: { color: 'text-slate-700', bgColor: 'bg-slate-100', defaultPort: 9092 },
-            };
+            // 解析后端连接器数据并更新映射缓存
+            const connectors = parseBackendConnectors(list);
+            cachedConnectors = connectors;
 
-            // 返回默认连接器列表（如果后端未提供）
-            if (list.length === 0) {
-                return Object.keys(typeConfigs).map(type => ({
-                    type,
-                    name: type,
-                    defaultPort: typeConfigs[type].defaultPort,
-                    color: typeConfigs[type].color,
-                    bgColor: typeConfigs[type].bgColor,
-                }));
-            }
+            console.log('getConnectors: 解析后的连接器', connectors);
 
-            return list.map((item: any) => ({
-                type: formatDataSourceType(item.type || item.name),
-                name: formatDataSourceType(item.type || item.name),
-                defaultPort: item.defaultPort || typeConfigs[formatDataSourceType(item.type || item.name)]?.defaultPort || 3306,
-                color: typeConfigs[formatDataSourceType(item.type || item.name)]?.color || 'text-slate-700',
-                bgColor: typeConfigs[formatDataSourceType(item.type || item.name)]?.bgColor || 'bg-slate-100',
-            }));
+            return connectors;
         } catch (error) {
             console.error('Failed to fetch connectors:', error);
-            // 开发环境返回默认连接器列表
-            if (import.meta.env.DEV) {
-                const typeConfigs: Record<string, { color: string; bgColor: string; defaultPort: number }> = {
-                    MySQL: { color: 'text-blue-700', bgColor: 'bg-blue-100', defaultPort: 3306 },
-                    Oracle: { color: 'text-orange-700', bgColor: 'bg-orange-100', defaultPort: 1521 },
-                    PostgreSQL: { color: 'text-emerald-700', bgColor: 'bg-emerald-100', defaultPort: 5432 },
-                    'SQL Server': { color: 'text-purple-700', bgColor: 'bg-purple-100', defaultPort: 1433 },
-                    Redis: { color: 'text-red-700', bgColor: 'bg-red-100', defaultPort: 6379 },
-                    MongoDB: { color: 'text-green-700', bgColor: 'bg-green-100', defaultPort: 27017 },
-                    ClickHouse: { color: 'text-yellow-700', bgColor: 'bg-yellow-100', defaultPort: 8123 },
-                    StarRocks: { color: 'text-blue-700', bgColor: 'bg-blue-100', defaultPort: 9030 },
-                    Hive: { color: 'text-amber-700', bgColor: 'bg-amber-100', defaultPort: 10000 },
-                    Elasticsearch: { color: 'text-pink-700', bgColor: 'bg-pink-100', defaultPort: 9200 },
-                    Kafka: { color: 'text-slate-700', bgColor: 'bg-slate-100', defaultPort: 9092 },
-                };
-                return Object.keys(typeConfigs).map(type => ({
-                    type,
-                    name: type,
-                    defaultPort: typeConfigs[type].defaultPort,
-                    color: typeConfigs[type].color,
-                    bgColor: typeConfigs[type].bgColor,
-                }));
-            }
             throw error;
         }
     },
