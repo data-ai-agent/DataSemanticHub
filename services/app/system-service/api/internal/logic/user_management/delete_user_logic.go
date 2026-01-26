@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/DataSemanticHub/services/app/system-service/api/internal/contextkeys"
 	"github.com/DataSemanticHub/services/app/system-service/api/internal/errorx"
 	"github.com/DataSemanticHub/services/app/system-service/api/internal/svc"
 	"github.com/DataSemanticHub/services/app/system-service/api/internal/types"
@@ -44,7 +45,7 @@ func (l *DeleteUserLogic) DeleteUser(userId string, req *types.DeleteUserReq) (r
 	// 2. 获取当前操作人信息（从 context 中获取）
 	var operatorID string
 	var operatorName string
-	if operatorIDValue := l.ctx.Value("user_id"); operatorIDValue != nil {
+	if operatorIDValue := l.ctx.Value(contextkeys.UserIDKey); operatorIDValue != nil {
 		if operatorIDStr, ok := operatorIDValue.(string); ok {
 			operatorID = operatorIDStr
 			// 尝试获取操作人姓名
@@ -83,7 +84,7 @@ func (l *DeleteUserLogic) DeleteUser(userId string, req *types.DeleteUserReq) (r
 
 	// 6. 处理责任转交（如果提供 transferTo）
 	impactsTransferred := false
-	if req.TransferTo != "" && req.TransferTo != "" {
+	if req.TransferTo != "" {
 		// 验证转交目标用户是否存在
 		transferToUser, err := l.svcCtx.UserModel.FindOne(l.ctx, req.TransferTo)
 		if err != nil {

@@ -25,7 +25,7 @@ import {
     Loader2
 } from 'lucide-react';
 import { useToast } from '../components/ui/Toast';
-import { menuService, MenuItem, MenuType, MenuStatus, PermissionItem } from '../services/menuService';
+import { menuService, MenuItem, MenuType, MenuStatus, PermissionItem, GetMenuStatsResp, convertMenuToMenuItem } from '../services/menuService';
 
 const formatDate = () => new Date().toISOString().split('T')[0];
 const groups = ['语义治理', '语义资产管理', '数据连接', '数据服务', '平台管理'];
@@ -49,10 +49,12 @@ const MenuManagementView = () => {
     const [expandedMenuIds, setExpandedMenuIds] = useState<Set<string>>(new Set(['menu_semantic_modeling']));
     const [permissions, setPermissions] = useState<PermissionItem[]>([]);
     const [isPermissionLoading, setIsPermissionLoading] = useState(false);
+    const [menuStats, setMenuStats] = useState<GetMenuStatsResp | null>(null);
 
     // Fetch menus on mount
     useEffect(() => {
         fetchMenus();
+        fetchMenuStats();
     }, []);
 
     const fetchMenus = async () => {
@@ -82,7 +84,18 @@ const MenuManagementView = () => {
         }
     };
 
+    const fetchMenuStats = async () => {
+        try {
+            const data = await menuService.getMenuStats();
+            setMenuStats(data);
+        } catch (error) {
+            console.error('Fetch menu stats error:', error);
+        }
+    };
+
     const getMenuRisk = (menu: MenuItem) => {
+        if (menu.riskFlags?.includes('UNBOUND_PERMISSION')) return 'high';
+        if (menu.riskFlags?.includes('ROUTE_CONFLICT') || menu.riskFlags?.includes('ORDER_CONFLICT')) return 'medium';
         if (menu.type === '页面' && !menu.permission) return 'high';
         if (menu.type === '页面' && !menu.path) return 'medium';
         return 'none';
@@ -146,11 +159,10 @@ const MenuManagementView = () => {
     }, [menuTree, menus, searchTerm, statusFilter, groupFilter, typeFilter, permissionFilter, visibilityFilter]);
 
     const activeMenu = menus.find((item) => item.id === activeMenuId) ?? menus[0];
-    const totalCount = menus.length;
-    const enabledCount = menus.filter((item) => item.status === '启用').length; // Keeping status for now
-    const hiddenCount = menus.filter((item) => item.visibility === '隐藏').length;
-    const permissionCount = new Set(menus.map((item) => item.permission).filter(Boolean)).size;
-    const unlinkedCount = menus.filter(item => item.type === '页面' && !item.permission).length;
+    const totalCount = menuStats?.total ?? menus.length;
+    const enabledCount = menuStats?.enabled ?? menus.filter((item) => item.status === '启用').length;
+    const hiddenCount = menuStats?.hidden ?? menus.filter((item) => item.visibility === '隐藏').length;
+    const unlinkedCount = menuStats?.unbound_permission ?? menus.filter(item => item.type === '页面' && !item.permission).length;
 
     const parentOptions = menus.filter((item) => item.type === '目录');
 
@@ -232,6 +244,7 @@ const MenuManagementView = () => {
                 await menuService.updateMenu(draftMenu.id, draftMenu);
                 setMenus(prev => prev.map(item => (item.id === draftMenu.id ? draftMenu : item)));
             }
+            await fetchMenuStats();
             closeModal();
         } catch (error: any) {
             setFormError(error.message || '保存失败');
@@ -239,14 +252,14 @@ const MenuManagementView = () => {
     };
 
     const handleToggleStatus = async (menu: MenuItem) => {
-        const nextStatus: MenuStatus = menu.status === '启用' ? '隐藏' : '启用';
+        const nextVisible = menu.visibility !== '显示';
         try {
-            await menuService.updateMenu(menu.id, { ...menu, status: nextStatus, updatedAt: formatDate() });
+            const updatedMenu = await menuService.toggleMenuVisible(menu.id, nextVisible);
+            const updatedItem = convertMenuToMenuItem(updatedMenu);
             setMenus((prev) =>
-                prev.map((item) =>
-                    item.id === menu.id ? { ...item, status: nextStatus, updatedAt: formatDate() } : item
-                )
+                prev.map((item) => (item.id === menu.id ? { ...item, ...updatedItem } : item))
             );
+            await fetchMenuStats();
         } catch (error) {
             toast.error('操作失败');
         }
@@ -265,6 +278,7 @@ const MenuManagementView = () => {
                 }
                 return next;
             });
+            await fetchMenuStats();
         } catch (error) {
             toast.error('删除失败');
         }

@@ -7,14 +7,13 @@ import (
 	"time"
 
 	"github.com/DataSemanticHub/services/app/system-service/api/internal/config"
-	"github.com/DataSemanticHub/services/app/system-service/api/internal/errorx"
+	"github.com/DataSemanticHub/services/app/system-service/api/internal/contextkeys"
 	"github.com/DataSemanticHub/services/app/system-service/api/internal/svc"
 	"github.com/DataSemanticHub/services/app/system-service/api/internal/types"
 	auditlogs "github.com/DataSemanticHub/services/app/system-service/model/user/audit_logs"
 	"github.com/DataSemanticHub/services/app/system-service/model/user/users"
 
 	"github.com/google/uuid"
-	baseErrorx "github.com/jinguoxing/idrm-go-base/errorx"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -190,7 +189,7 @@ func TestDeleteUser_ValidInput_ArchivesUser(t *testing.T) {
 	}
 
 	// 设置 context 中的操作人ID
-	ctx := context.WithValue(context.Background(), "user_id", operatorID.String())
+	ctx := context.WithValue(context.Background(), contextkeys.UserIDKey, operatorID.String())
 	logic.ctx = ctx
 
 	changes := map[string]interface{}{
@@ -241,7 +240,7 @@ func TestDeleteUser_UserNotFound_ReturnsError(t *testing.T) {
 	operatorID, _ := uuid.NewV7()
 
 	// 设置 context 中的操作人ID
-	ctx := context.WithValue(context.Background(), "user_id", operatorID.String())
+	ctx := context.WithValue(context.Background(), contextkeys.UserIDKey, operatorID.String())
 	logic.ctx = ctx
 
 	// 设置 mock 期望
@@ -275,7 +274,7 @@ func TestDeleteUser_SelfOperation_ReturnsError(t *testing.T) {
 	}
 
 	// 设置 context 中的操作人ID
-	ctx := context.WithValue(context.Background(), "user_id", operatorID.String())
+	ctx := context.WithValue(context.Background(), contextkeys.UserIDKey, operatorID.String())
 	logic.ctx = ctx
 
 	// 设置 mock 期望
@@ -321,7 +320,7 @@ func TestDeleteUser_WithTransferTo_TransfersImpacts(t *testing.T) {
 	}
 
 	// 设置 context 中的操作人ID
-	ctx := context.WithValue(context.Background(), "user_id", operatorID.String())
+	ctx := context.WithValue(context.Background(), contextkeys.UserIDKey, operatorID.String())
 	logic.ctx = ctx
 
 	changes := map[string]interface{}{
@@ -388,7 +387,7 @@ func TestDeleteUser_InvalidTransferTo_ReturnsError(t *testing.T) {
 	}
 
 	// 设置 context 中的操作人ID
-	ctx := context.WithValue(context.Background(), "user_id", operatorID.String())
+	ctx := context.WithValue(context.Background(), contextkeys.UserIDKey, operatorID.String())
 	logic.ctx = ctx
 
 	// 设置 mock 期望
@@ -431,7 +430,7 @@ func TestDeleteUser_ForceDelete_DeletesPermanently(t *testing.T) {
 	}
 
 	// 设置 context 中的操作人ID
-	ctx := context.WithValue(context.Background(), "user_id", operatorID.String())
+	ctx := context.WithValue(context.Background(), contextkeys.UserIDKey, operatorID.String())
 	logic.ctx = ctx
 
 	changes := map[string]interface{}{
@@ -511,7 +510,7 @@ func TestDeleteUser_AuditLog_RecordsChanges(t *testing.T) {
 	}
 
 	// 设置 context 中的操作人ID
-	ctx := context.WithValue(context.Background(), "user_id", operatorID.String())
+	ctx := context.WithValue(context.Background(), contextkeys.UserIDKey, operatorID.String())
 	logic.ctx = ctx
 
 	// 设置 mock 期望

@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/DataSemanticHub/services/app/system-service/api/internal/config"
-	"github.com/DataSemanticHub/services/app/system-service/api/internal/errorx"
 	"github.com/DataSemanticHub/services/app/system-service/api/internal/svc"
 	"github.com/DataSemanticHub/services/app/system-service/api/internal/types"
 	auditlogs "github.com/DataSemanticHub/services/app/system-service/model/user/audit_logs"
@@ -15,7 +14,6 @@ import (
 	"github.com/DataSemanticHub/services/app/system-service/model/user/users"
 
 	"github.com/google/uuid"
-	baseErrorx "github.com/jinguoxing/idrm-go-base/errorx"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"gorm.io/datatypes"
@@ -74,6 +72,32 @@ func (m *MockUserModelForUpdate) Update(ctx context.Context, data *users.User) e
 func (m *MockUserModelForUpdate) UpdateLastLoginAt(ctx context.Context, id string, loginAt time.Time) error {
 	args := m.Called(ctx, id, loginAt)
 	return args.Error(0)
+}
+
+func (m *MockUserModelForUpdate) UpdateStatus(ctx context.Context, id string, status int8, lockReason *string, lockBy *string) error {
+	args := m.Called(ctx, id, status, lockReason, lockBy)
+	return args.Error(0)
+}
+
+func (m *MockUserModelForUpdate) BatchUpdateStatus(ctx context.Context, userIds []string, status int8, lockReason *string, lockBy *string) ([]string, []users.BatchUpdateError, error) {
+	args := m.Called(ctx, userIds, status, lockReason, lockBy)
+	if args.Get(0) == nil {
+		return nil, nil, args.Error(2)
+	}
+	successIds := args.Get(0).([]string)
+	var errs []users.BatchUpdateError
+	if args.Get(1) != nil {
+		errs = args.Get(1).([]users.BatchUpdateError)
+	}
+	return successIds, errs, args.Error(2)
+}
+
+func (m *MockUserModelForUpdate) GetStatistics(ctx context.Context) (*users.Statistics, error) {
+	args := m.Called(ctx)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*users.Statistics), args.Error(1)
 }
 
 func (m *MockUserModelForUpdate) Delete(ctx context.Context, id string) error {
@@ -200,7 +224,7 @@ func setupTestLogicForUpdate() (*UpdateUserLogic, *MockUserModelForUpdate, *Mock
 
 // TestUpdateUser_ValidInput_UpdatesUser 测试正常更新场景
 func TestUpdateUser_ValidInput_UpdatesUser(t *testing.T) {
-	logic, mockUserModel, mockRoleBindingModel, mockAuditLogModel := setupTestLogicForUpdate()
+	logic, mockUserModel, _, _ := setupTestLogicForUpdate()
 
 	// 准备测试数据
 	userID, _ := uuid.NewV7()

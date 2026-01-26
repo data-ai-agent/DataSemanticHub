@@ -10,11 +10,12 @@ CREATE TABLE `{{table_name}}` (
     -- `status` tinyint NOT NULL DEFAULT 1 COMMENT '状态: 1-启用, 0-禁用',
     
     -- === Audit Fields ===
-    `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-    `deleted_at` datetime DEFAULT NULL COMMENT '删除时间(软删除)',
+    `created_at` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间',
+    `updated_at` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) COMMENT '更新时间',
+    `deleted_at` datetime(3) DEFAULT NULL COMMENT '删除时间(软删除)',
     
     PRIMARY KEY (`id`)
-    -- UNIQUE KEY `uk_code` (`code`),
+    -- ⚠️ 注意: 唯一索引必须包含 deleted_at 以支持软删除
+    -- UNIQUE KEY `uk_code` (`code`, `deleted_at`),
     -- KEY `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='{{table_comment}}';

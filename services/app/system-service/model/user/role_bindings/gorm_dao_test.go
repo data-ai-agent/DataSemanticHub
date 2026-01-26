@@ -38,9 +38,9 @@ func TestFindByUserId_ValidUserId_ReturnsRoleBindings(t *testing.T) {
 	permissionRole1 := "admin"
 
 	roleBinding1 := &RoleBinding{
-		UserId:        userID.String(),
-		OrgId:         orgId1,
-		Position:      &position1,
+		UserId:         userID.String(),
+		OrgId:          orgId1,
+		Position:       &position1,
 		PermissionRole: &permissionRole1,
 	}
 	roleBinding2 := &RoleBinding{
@@ -130,9 +130,9 @@ func TestInsert_ValidInput_ReturnsRoleBinding(t *testing.T) {
 	permissionRole := "admin"
 
 	roleBinding := &RoleBinding{
-		UserId:        userID.String(),
-		OrgId:         orgId,
-		Position:      &position,
+		UserId:         userID.String(),
+		OrgId:          orgId,
+		Position:       &position,
 		PermissionRole: &permissionRole,
 	}
 
@@ -197,9 +197,9 @@ func TestDeleteByUserId_ValidUserId_DeletesAllRoleBindings(t *testing.T) {
 	permissionRole1 := "admin"
 
 	roleBinding1 := &RoleBinding{
-		UserId:        userID.String(),
-		OrgId:         orgId1,
-		Position:      &position1,
+		UserId:         userID.String(),
+		OrgId:          orgId1,
+		Position:       &position1,
 		PermissionRole: &permissionRole1,
 	}
 	roleBinding2 := &RoleBinding{

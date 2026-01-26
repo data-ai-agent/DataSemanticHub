@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/DataSemanticHub/services/app/system-service/api/internal/config"
+	"github.com/DataSemanticHub/services/app/system-service/model/system/menu_audit_logs"
+	"github.com/DataSemanticHub/services/app/system-service/model/system/menus"
 	auditlogs "github.com/DataSemanticHub/services/app/system-service/model/user/audit_logs"
 	rolebindings "github.com/DataSemanticHub/services/app/system-service/model/user/role_bindings"
 	"github.com/DataSemanticHub/services/app/system-service/model/user/users"
@@ -18,11 +20,13 @@ import (
 )
 
 type ServiceContext struct {
-	Config          config.Config
-	DB              *gorm.DB
-	UserModel       users.Model
-	RoleBindingModel rolebindings.Model
-	AuditLogModel   auditlogs.Model
+	Config            config.Config
+	DB                *gorm.DB
+	UserModel         users.Model
+	RoleBindingModel  rolebindings.Model
+	AuditLogModel     auditlogs.Model
+	MenuModel         menus.Model
+	MenuAuditLogModel menu_audit_logs.Model
 }
 
 func NewServiceContext(c config.Config) *ServiceContext {
@@ -33,11 +37,13 @@ func NewServiceContext(c config.Config) *ServiceContext {
 	}
 
 	return &ServiceContext{
-		Config:          c,
-		DB:              db,
-		UserModel:       users.NewModel(db),
-		RoleBindingModel: rolebindings.NewModel(db),
-		AuditLogModel:   auditlogs.NewModel(db),
+		Config:            c,
+		DB:                db,
+		UserModel:         users.NewModel(db),
+		RoleBindingModel:  rolebindings.NewModel(db),
+		AuditLogModel:     auditlogs.NewModel(db),
+		MenuModel:         menus.NewModel(db),
+		MenuAuditLogModel: menu_audit_logs.NewModel(db),
 	}
 }
 

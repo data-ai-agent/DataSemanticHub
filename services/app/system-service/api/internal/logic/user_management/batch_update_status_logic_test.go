@@ -6,14 +6,13 @@ import (
 	"time"
 
 	"github.com/DataSemanticHub/services/app/system-service/api/internal/config"
-	"github.com/DataSemanticHub/services/app/system-service/api/internal/errorx"
+	"github.com/DataSemanticHub/services/app/system-service/api/internal/contextkeys"
 	"github.com/DataSemanticHub/services/app/system-service/api/internal/svc"
 	"github.com/DataSemanticHub/services/app/system-service/api/internal/types"
 	auditlogs "github.com/DataSemanticHub/services/app/system-service/model/user/audit_logs"
 	"github.com/DataSemanticHub/services/app/system-service/model/user/users"
 
 	"github.com/google/uuid"
-	baseErrorx "github.com/jinguoxing/idrm-go-base/errorx"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -282,7 +281,7 @@ func TestBatchUpdateStatus_SelfOperation_ReturnsError(t *testing.T) {
 	userID, _ := uuid.NewV7()
 
 	// 设置 context 中的操作人ID
-	ctx := context.WithValue(context.Background(), "user_id", operatorID.String())
+	ctx := context.WithValue(context.Background(), contextkeys.UserIDKey, operatorID.String())
 	logic.ctx = ctx
 
 	user := &users.User{
@@ -354,7 +353,7 @@ func TestBatchUpdateStatus_LockStatus_WithReason_Succeeds(t *testing.T) {
 	operatorID, _ := uuid.NewV7()
 
 	// 设置 context 中的操作人ID
-	ctx := context.WithValue(context.Background(), "user_id", operatorID.String())
+	ctx := context.WithValue(context.Background(), contextkeys.UserIDKey, operatorID.String())
 	logic.ctx = ctx
 
 	user := &users.User{
@@ -430,7 +429,7 @@ func TestBatchUpdateStatus_AuditLog_RecordsChanges(t *testing.T) {
 	operatorID, _ := uuid.NewV7()
 
 	// 设置 context 中的操作人ID
-	ctx := context.WithValue(context.Background(), "user_id", operatorID.String())
+	ctx := context.WithValue(context.Background(), contextkeys.UserIDKey, operatorID.String())
 	logic.ctx = ctx
 
 	user := &users.User{

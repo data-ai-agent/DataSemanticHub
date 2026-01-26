@@ -7,14 +7,13 @@ import (
 	"time"
 
 	"github.com/DataSemanticHub/services/app/system-service/api/internal/config"
-	"github.com/DataSemanticHub/services/app/system-service/api/internal/errorx"
+	"github.com/DataSemanticHub/services/app/system-service/api/internal/contextkeys"
 	"github.com/DataSemanticHub/services/app/system-service/api/internal/svc"
 	"github.com/DataSemanticHub/services/app/system-service/api/internal/types"
 	auditlogs "github.com/DataSemanticHub/services/app/system-service/model/user/audit_logs"
 	"github.com/DataSemanticHub/services/app/system-service/model/user/users"
 
 	"github.com/google/uuid"
-	baseErrorx "github.com/jinguoxing/idrm-go-base/errorx"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -191,7 +190,7 @@ func TestResetPassword_ValidInput_ResetsPassword(t *testing.T) {
 	}
 
 	// 设置 context 中的操作人ID
-	ctx := context.WithValue(context.Background(), "user_id", operatorID.String())
+	ctx := context.WithValue(context.Background(), contextkeys.UserIDKey, operatorID.String())
 	logic.ctx = ctx
 
 	changes := map[string]interface{}{
@@ -309,7 +308,7 @@ func TestResetPassword_WithNewPassword_UsesProvidedPassword(t *testing.T) {
 	}
 
 	// 设置 context 中的操作人ID
-	ctx := context.WithValue(context.Background(), "user_id", operatorID.String())
+	ctx := context.WithValue(context.Background(), contextkeys.UserIDKey, operatorID.String())
 	logic.ctx = ctx
 
 	// 设置 mock 期望
@@ -414,7 +413,7 @@ func TestResetPassword_AuditLog_RecordsChanges(t *testing.T) {
 	}
 
 	// 设置 context 中的操作人ID
-	ctx := context.WithValue(context.Background(), "user_id", operatorID.String())
+	ctx := context.WithValue(context.Background(), contextkeys.UserIDKey, operatorID.String())
 	logic.ctx = ctx
 
 	// 设置 mock 期望
@@ -481,7 +480,7 @@ func TestResetPassword_GeneratesTemporaryPassword_WhenNotProvided(t *testing.T) 
 	}
 
 	// 设置 context 中的操作人ID
-	ctx := context.WithValue(context.Background(), "user_id", operatorID.String())
+	ctx := context.WithValue(context.Background(), contextkeys.UserIDKey, operatorID.String())
 	logic.ctx = ctx
 
 	// 设置 mock 期望

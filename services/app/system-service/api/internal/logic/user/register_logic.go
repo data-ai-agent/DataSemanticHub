@@ -13,11 +13,11 @@ import (
 	"github.com/DataSemanticHub/services/app/system-service/api/internal/types"
 	"github.com/DataSemanticHub/services/app/system-service/model/user/users"
 
+	"github.com/golang-jwt/jwt/v4"
 	"github.com/google/uuid"
 	baseErrorx "github.com/jinguoxing/idrm-go-base/errorx"
-	"golang.org/x/crypto/bcrypt"
 	"github.com/zeromicro/go-zero/core/logx"
-	"github.com/golang-jwt/jwt/v4"
+	"golang.org/x/crypto/bcrypt"
 	"time"
 )
 
@@ -79,8 +79,8 @@ func (l *RegisterLogic) Register(req *types.RegisterReq) (resp *types.RegisterRe
 		Email:         email,
 		Organization:  strings.TrimSpace(req.Organization),
 		PasswordHash:  string(passwordHash),
-		Status:        0,              // 未激活（首次登录时自动激活）
-		AccountSource: "local",        // 账号来源：本地注册
+		Status:        0,       // 未激活（首次登录时自动激活）
+		AccountSource: "local", // 账号来源：本地注册
 	}
 
 	createdUser, err := l.svcCtx.UserModel.Insert(l.ctx, user)
@@ -179,8 +179,8 @@ func (l *RegisterLogic) generateToken(userID, email string, rememberMe bool) (st
 	claims := jwt.MapClaims{
 		"user_id": userID,
 		"email":   email,
-		"exp":      now.Add(time.Duration(expire) * time.Second).Unix(),
-		"iat":      now.Unix(),
+		"exp":     now.Add(time.Duration(expire) * time.Second).Unix(),
+		"iat":     now.Unix(),
 	}
 
 	// 生成 Token

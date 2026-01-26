@@ -58,3 +58,55 @@ const (
 	// 30210: 角色绑定不存在
 	ErrUserManagementRoleBindingNotFound = 30210
 )
+
+// 菜单管理错误码范围: 200130-200150
+
+const (
+	// 200130: 菜单名称必填
+	ErrMenuNameRequired = 200130
+
+	// 200131: 菜单编码已存在
+	ErrMenuCodeExists = 200131
+
+	// 200132: 菜单类型无效
+	ErrMenuTypeInvalid = 200132
+
+	// 200133: 路由路径必填（page/directory类型）
+	ErrMenuPathRequired = 200133
+
+	// 200134: 外部链接必填（external类型）
+	ErrMenuExternalUrlRequired = 200134
+
+	// 200135: 打开方式必填（external类型）
+	ErrMenuOpenModeRequired = 200135
+
+	// 200136: 父子关系形成循环
+	ErrMenuCycleDetected = 200136
+
+	// 200137: 同级排序值冲突
+	ErrMenuOrderConflict = 200137
+
+	// 200138: 菜单存在子节点，不能删除
+	ErrMenuHasChildren = 200138
+
+	// 200139: 移动菜单导致循环
+	ErrMenuMoveCycle = 200139
+
+	// 200140: 分组约束不满足（父子必须同组）
+	ErrMenuGroupConstraint = 200140
+
+	// 200141: 路由冲突（path/route_name已存在）
+	ErrMenuRouteConflict = 200141
+
+	// 200142: 菜单不存在
+	ErrMenuNotFound = 200142
+
+	// 200143: 权限服务调用失败
+	ErrMenuPermissionServiceError = 200143
+
+	// 200144: 权限创建失败
+	ErrMenuPermissionCreateFailed = 200144
+
+	// 200145: 菜单已删除
+	ErrMenuDeleted = 200145
+)

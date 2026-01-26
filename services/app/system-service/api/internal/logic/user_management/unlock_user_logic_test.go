@@ -7,14 +7,13 @@ import (
 	"time"
 
 	"github.com/DataSemanticHub/services/app/system-service/api/internal/config"
-	"github.com/DataSemanticHub/services/app/system-service/api/internal/errorx"
+	"github.com/DataSemanticHub/services/app/system-service/api/internal/contextkeys"
 	"github.com/DataSemanticHub/services/app/system-service/api/internal/svc"
 	"github.com/DataSemanticHub/services/app/system-service/api/internal/types"
 	auditlogs "github.com/DataSemanticHub/services/app/system-service/model/user/audit_logs"
 	"github.com/DataSemanticHub/services/app/system-service/model/user/users"
 
 	"github.com/google/uuid"
-	baseErrorx "github.com/jinguoxing/idrm-go-base/errorx"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -92,6 +91,14 @@ func (m *MockUserModelForUnlock) BatchUpdateStatus(ctx context.Context, userIds 
 		errors = args.Get(1).([]users.BatchUpdateError)
 	}
 	return successIds, errors, args.Error(2)
+}
+
+func (m *MockUserModelForUnlock) GetStatistics(ctx context.Context) (*users.Statistics, error) {
+	args := m.Called(ctx)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*users.Statistics), args.Error(1)
 }
 
 func (m *MockUserModelForUnlock) Delete(ctx context.Context, id string) error {
@@ -187,7 +194,6 @@ func TestUnlockUser_ValidInput_UnlocksUser(t *testing.T) {
 		Name: "Operator",
 	}
 
-	operatorIDStr := operatorID.String()
 	changes := map[string]interface{}{
 		"status":      map[string]interface{}{"old": 3, "new": 1},
 		"lock_reason": map[string]interface{}{"old": lockReason, "new": nil},
@@ -206,7 +212,7 @@ func TestUnlockUser_ValidInput_UnlocksUser(t *testing.T) {
 	}
 
 	// 设置 context 中的操作人ID
-	ctx := context.WithValue(context.Background(), "user_id", operatorID.String())
+	ctx := context.WithValue(context.Background(), contextkeys.UserIDKey, operatorID.String())
 	logic.ctx = ctx
 
 	// 设置 mock 期望
@@ -343,7 +349,7 @@ func TestUnlockUser_AuditLog_RecordsChanges(t *testing.T) {
 	}
 
 	// 设置 context 中的操作人ID
-	ctx := context.WithValue(context.Background(), "user_id", operatorID.String())
+	ctx := context.WithValue(context.Background(), contextkeys.UserIDKey, operatorID.String())
 	logic.ctx = ctx
 
 	// 设置 mock 期望
@@ -412,7 +418,7 @@ func TestUnlockUser_ClearsLockInfo(t *testing.T) {
 	}
 
 	// 设置 context 中的操作人ID
-	ctx := context.WithValue(context.Background(), "user_id", operatorID.String())
+	ctx := context.WithValue(context.Background(), contextkeys.UserIDKey, operatorID.String())
 	logic.ctx = ctx
 
 	// 设置 mock 期望
