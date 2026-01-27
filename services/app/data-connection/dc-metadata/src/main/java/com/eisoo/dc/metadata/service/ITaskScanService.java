@@ -44,4 +44,8 @@ public interface ITaskScanService extends IService<TaskScanEntity> {
 
     ResponseEntity<?> updateScheduleScanJob(HttpServletRequest request, ScheduleTaskScanVO scheduleTaskScanVO);
 
+    ResponseEntity<?> deleteScheduleScanJob(HttpServletRequest request, String scheduleId);
+
+    ResponseEntity<?> executeScheduleScanJob(HttpServletRequest request, String scheduleId);
+
 }

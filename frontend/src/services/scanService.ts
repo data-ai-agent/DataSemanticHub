@@ -289,6 +289,8 @@ export interface ScanTask {
     taskStatus: 'enable' | 'disable';
     /** 开始时间 */
     startTime: string;
+    /** 扫描策略（仅在保存后可用） */
+    scanStrategy?: ('insert' | 'update' | 'delete')[];
     /** 扫描进度信息 */
     processInfo?: {
         tableCount: number;
@@ -339,8 +341,8 @@ export interface ScheduledScan {
     name: string;
     /** 数据源类型 */
     dataSourceType: string;
-    /** 扫描策略（保留字段供展示，但不发送后端） */
-    scanStrategy?: 'full' | 'incremental';
+    /** 扫描策略（用于展示和编辑，存储后端的 scan_strategy 数组） */
+    scanStrategy?: ('insert' | 'update' | 'delete')[];
     /** 定时表达式 */
     cronExpression: string;
     /** 状态 */
@@ -528,6 +530,8 @@ const SCAN_ENDPOINTS = {
     SCAN_SCHEDULE_STATUS: (scheduleId: string) => `/metadata/scan/schedule/${scheduleId}`,
     SCAN_SCHEDULE_TASK: (scheduleId: string) => `/metadata/scan/schedule/task/${scheduleId}`,
     SCAN_SCHEDULE_EXEC: (scheduleId: string) => `/metadata/scan/schedule/exec/${scheduleId}`,
+    SCAN_SCHEDULE_DELETE: (scheduleId: string) => `/metadata/scan/schedule/${scheduleId}`,
+    SCAN_SCHEDULE_EXECUTE: (scheduleId: string) => `/metadata/scan/schedule/${scheduleId}/execute`,
     SCAN_BATCH: '/metadata/scan/batch',
     DATA_SOURCE_TABLES: (dsId: string) => `/metadata/data-source/${dsId}`,
     TABLE_FIELDS: (tableId: string) => `/metadata/table/${tableId}`,
@@ -622,24 +626,48 @@ export const fromBackendTableScan = (backend: TableScanVo): TableScan => {
 /**
  * 后端定时任务 → 前端定时任务
  */
-export const fromBackendScheduledScan = (backend: ScheduledScanStatus): ScheduledScan => {
+export const fromBackendScheduledScan = (backend: any): ScheduledScan => {
+    // 处理后端返回的 cron_expression 可能是对象格式 {type: "CRON", expression: "..."}
+    const cronExpr = backend.cron_expression?.expression || backend.cron_expression || '0 0 2 * * ?';
+
     return {
         scheduleId: backend.schedule_id,
         name: backend.name,
         dataSourceType: formatDataSourceType(backend.ds_type),
-        // 定时扫描不使用 scan_strategy，这里可以设置默认值或不设置
-        scanStrategy: 'full', // 默认全量扫描，仅供前端展示
-        cronExpression: backend.cron_expression,
-        status: backend.status,
-        createTime: backend.create_time,
+        // 后端可能返回 scan_strategy 数组，如果没有则默认为空数组
+        scanStrategy: backend.scan_strategy || [],
+        cronExpression: cronExpr,
+        status: backend.status || (backend.task_status === 'enable' ? 'open' : 'close'),
+        createTime: backend.start_time || backend.create_time || '',
         nextRunTime: backend.next_run_time,
     };
 };
 
 /**
  * 后端定时任务执行历史 → 前端定时任务执行历史
+ * 支持两种后端格式：
+ * 1. ScheduleTaskInfoDto: task_id, scan_status, start_time, end_time, duration, task_process_info, task_result_info
+ * 2. ScheduledScanExecution: execution_id, schedule_id, execute_time, scan_status, table_count, success_count, fail_count, duration
  */
-export const fromBackendScheduledScanExecution = (backend: ScheduledScanExecution): ScheduledScanExecutionHistory => {
+export const fromBackendScheduledScanExecution = (backend: any): ScheduledScanExecutionHistory => {
+    // 处理 ScheduleTaskInfoDto 格式（来自 /scan/schedule/task/{scheduleId} 接口）
+    if (backend.task_id) {
+        const taskProcessInfo = backend.task_process_info ? JSON.parse(backend.task_process_info) : null;
+        const taskResultInfo = backend.task_result_info ? JSON.parse(backend.task_result_info) : null;
+
+        return {
+            executionId: backend.task_id,
+            scheduleId: backend.schedule_id || '',
+            executeTime: backend.start_time,
+            status: backend.scan_status,
+            tableCount: taskProcessInfo?.table_count || taskResultInfo?.table_count || 0,
+            successCount: taskResultInfo?.success_count || 0,
+            failCount: taskResultInfo?.fail_count || 0,
+            duration: backend.duration ? parseFloat(backend.duration) : undefined,
+        };
+    }
+
+    // 处理 ScheduledScanExecution 格式（预期的标准格式）
     return {
         executionId: backend.execution_id,
         scheduleId: backend.schedule_id,
@@ -903,14 +931,27 @@ export const scanService = {
     async updateScheduledScan(params: {
         scheduleId: string;
         cronExpression: string;
+        scanStrategy?: ('insert' | 'update' | 'delete')[];
         status?: 'open' | 'close';
     }): Promise<ScheduledScan> {
         try {
-            const requestBody: UpdateScheduledScanRequest = {
+            const requestBody: any = {
                 schedule_id: params.scheduleId,
-                cron_expression: params.cronExpression,
-                status: params.status,
+                cron_expression: {
+                    type: 'CRON',
+                    expression: params.cronExpression
+                },
             };
+
+            // 只在提供了 scanStrategy 时才添加此字段
+            if (params.scanStrategy) {
+                requestBody.scan_strategy = params.scanStrategy;
+            }
+
+            // 只在提供了 status 时才添加此字段
+            if (params.status !== undefined) {
+                requestBody.status = params.status;
+            }
 
             const response = await dataConnectionServiceClient(SCAN_ENDPOINTS.SCAN_SCHEDULE, {
                 method: 'PUT',
@@ -1140,6 +1181,42 @@ export const scanService = {
                     totalCount: 0,
                 };
             }
+            throw error;
+        }
+    },
+
+    /**
+     * 删除定时扫描任务
+     */
+    async deleteScheduledScan(scheduleId: string): Promise<void> {
+        try {
+            const response = await dataConnectionServiceClient(SCAN_ENDPOINTS.SCAN_SCHEDULE_DELETE(scheduleId), {
+                method: 'DELETE',
+            });
+
+            if (!response.ok) {
+                throw await parseScanError(response);
+            }
+        } catch (error) {
+            console.error('Failed to delete scheduled scan:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * 立即执行定时扫描任务
+     */
+    async executeScheduledScan(scheduleId: string): Promise<void> {
+        try {
+            const response = await dataConnectionServiceClient(SCAN_ENDPOINTS.SCAN_SCHEDULE_EXECUTE(scheduleId), {
+                method: 'POST',
+            });
+
+            if (!response.ok) {
+                throw await parseScanError(response);
+            }
+        } catch (error) {
+            console.error('Failed to execute scheduled scan:', error);
             throw error;
         }
     },

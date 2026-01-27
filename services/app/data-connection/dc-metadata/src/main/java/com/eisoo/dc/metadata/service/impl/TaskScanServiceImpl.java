@@ -3,6 +3,7 @@ package com.eisoo.dc.metadata.service.impl;
 import cn.hutool.json.JSONArray;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONObject;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.eisoo.dc.common.config.MetaDataConfig;
 import com.eisoo.dc.common.config.ScanTaskPoolConfig;
@@ -40,6 +41,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.ResponseEntity;
+
+
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.scheduling.config.CronTask;
 import org.springframework.scheduling.support.CronExpression;
@@ -1689,6 +1692,102 @@ public class TaskScanServiceImpl extends ServiceImpl<TaskScanMapper, TaskScanEnt
                         scanStrategyItem + ":不符合规范",
                         Message.MESSAGE_INTERNAL_ERROR);
             }
+        }
+    }
+
+    /**
+     * 删除定时扫描任务
+     */
+    @Override
+    public ResponseEntity<?> deleteScheduleScanJob(HttpServletRequest request, String scheduleId) {
+        IntrospectInfo introspectInfo = CommonUtil.getOrCreateIntrospectInfo(request);
+        String userId = StringUtils.defaultString(introspectInfo.getSub());
+        String token = CommonUtil.getToken(request);
+        log.info("userId:{}", userId);
+        log.info("token:{}", token);
+
+        try {
+            // 1. 查询定时任务是否存在
+            TaskScanScheduleEntity taskScanScheduleEntity = taskScanScheduleService.getById(scheduleId);
+            if (null == taskScanScheduleEntity) {
+                throw new AiShuException(ErrorCodeEnum.NotFound,
+                        "定时任务不存在",
+                        "scheduleId: " + scheduleId,
+                        Message.MESSAGE_INTERNAL_ERROR);
+            }
+
+            // 2. 移除定时任务调度
+            removeScheduleTask(scheduleId);
+
+            // 3. 删除定时任务记录
+            taskScanScheduleService.removeById(scheduleId);
+
+            // 4. 删除相关的扫描任务记录
+            LambdaQueryWrapper<TaskScanEntity> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.eq(TaskScanEntity::getScheduleId, scheduleId);
+            taskScanMapper.delete(queryWrapper);
+
+            JSONObject response = new JSONObject();
+            response.put("message", "删除成功");
+            response.put("schedule_id", scheduleId);
+            return ResponseEntity.ok(response);
+
+        } catch (AiShuException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("删除定时任务失败:scheduleId:{}", scheduleId, e);
+            throw new AiShuException(ErrorCodeEnum.InternalError,
+                    "删除定时任务失败",
+                    e.getMessage(),
+                    Message.MESSAGE_INTERNAL_ERROR);
+        }
+    }
+
+    /**
+     * 立即执行定时扫描任务
+     */
+    @Override
+    public ResponseEntity<?> executeScheduleScanJob(HttpServletRequest request, String scheduleId) {
+        IntrospectInfo introspectInfo = CommonUtil.getOrCreateIntrospectInfo(request);
+        String userId = StringUtils.defaultString(introspectInfo.getSub());
+        String token = CommonUtil.getToken(request);
+        log.info("userId:{}", userId);
+        log.info("token:{}", token);
+
+        try {
+            // 1. 查询定时任务是否存在
+            TaskScanScheduleEntity taskScanScheduleEntity = taskScanScheduleService.getById(scheduleId);
+            if (null == taskScanScheduleEntity) {
+                throw new AiShuException(ErrorCodeEnum.NotFound,
+                        "定时任务不存在",
+                        "scheduleId: " + scheduleId,
+                        Message.MESSAGE_INTERNAL_ERROR);
+            }
+
+            // 2. 检查任务状态，只有启用的任务才能立即执行
+            if (taskScanScheduleEntity.getTaskStatus() != 1) {
+                throw new AiShuException(ErrorCodeEnum.BadRequest,
+                        "任务未启用，无法立即执行",
+                        "当前状态: " + taskScanScheduleEntity.getTaskStatus(),
+                        Message.MESSAGE_INTERNAL_ERROR);
+            }
+
+            // 3. 立即提交扫描任务
+            submitDsScheduleScanTask(scheduleId, userId);
+
+            JSONObject response = new JSONObject();
+            response.put("message", "任务已提交执行");
+            response.put("schedule_id", scheduleId);
+            return ResponseEntity.ok(response);
+
+        } catch (AiShuException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("立即执行定时任务失败:scheduleId:{}", scheduleId, e);
+            throw new AiShuException(ErrorCodeEnum.InternalError,
+                    "立即执行定时任务失败",
+                    e.getMessage(),
+                    Message.MESSAGE_INTERNAL_ERROR);
         }
     }
 }

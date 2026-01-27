@@ -166,4 +166,16 @@ public class MetaDataController {
         return taskScanService.changeScanStatus(request, req);
     }
 
+    @ApiOperation(value = "删除定时扫描任务", notes = "删除定时扫描任务接口")
+    @DeleteMapping("/scan/schedule/{scheduleId}")
+    public ResponseEntity<?> deleteScheduleScanJob(HttpServletRequest request, @PathVariable("scheduleId") String scheduleId) {
+        return taskScanService.deleteScheduleScanJob(request, scheduleId);
+    }
+
+    @ApiOperation(value = "立即执行定时扫描任务", notes = "立即执行定时扫描任务接口")
+    @PostMapping("/scan/schedule/{scheduleId}/execute")
+    public ResponseEntity<?> executeScheduleScanJob(HttpServletRequest request, @PathVariable("scheduleId") String scheduleId) {
+        return taskScanService.executeScheduleScanJob(request, scheduleId);
+    }
+
 }
