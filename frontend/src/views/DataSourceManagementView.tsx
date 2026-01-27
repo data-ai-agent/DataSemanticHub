@@ -40,9 +40,11 @@ const DataSourceManagementView = () => {
     };
 
     const loadDataSources = async () => {
+        console.log('开始加载数据源列表...');
         setLoading(true);
         try {
             const result = await dataSourceService.getDataSources();
+            console.log('数据源列表加载成功:', result);
             setDataSources(result);
         } catch (error) {
             console.error('Failed to load data sources:', error);
@@ -144,16 +146,20 @@ const DataSourceManagementView = () => {
         }
 
         try {
-            const result = await dataSourceService.testConnection({
+            // 对于已存在的数据源，使用完整信息进行测试
+            // 如果没有密码，某些数据源可能仍能测试连接（如仅测试主机可达性）
+            const testRequest: TestConnectionRequest = {
                 name: ds.name,
                 type: ds.type,
                 host: ds.host,
                 port: ds.port,
                 dbName: ds.dbName,
                 username: ds.username,
-                password: '',
+                password: ds.password || '',  // 如果有密码则使用，否则使用空字符串
                 schemaName: ds.schemaName
-            });
+            };
+
+            const result = await dataSourceService.testConnection(testRequest);
 
             if (result.success) {
                 setDataSources(prev => prev.map(d =>

@@ -49,6 +49,7 @@ export interface DataSource {
     tableCount: number;
     desc: string;
     username?: string;
+    password?: string;
     schemaName?: string;
     // Governance Fields (前端独有，不发送后端)
     system?: string;
@@ -164,7 +165,7 @@ export const toBackendRequest = (frontend: Partial<DataSource> & { password?: st
             port: frontend.port || 0,
             database_name: frontend.dbName || '',
             account: frontend.username || '',
-            password: frontend.password || '',
+            password: frontend.password || '',  // 使用来自DataSource的密码字段
             schema: frontend.schemaName || '',
             connect_protocol: 'jdbc', // 默认协议
         }
@@ -185,17 +186,18 @@ export const fromBackendResponse = (backend: any): DataSource => {
         port: binData.port || 0,
         dbName: binData.database_name || '',
         username: binData.account || '',
+        password: binData.password,  // 添加密码字段
         schemaName: binData.schema || '',
-        desc: backend.comment || '',
+        desc: backend.comment || backend.desc || '',
         status: mapStatus(backend.latest_task_status),
         // 治理字段 - 使用 mock 默认值
-        system: '政务服务平台',
-        env: 'prod',
-        owner: '张三 (Data Owner)',
+        system: backend.system || '政务服务平台',
+        env: backend.env || 'prod',
+        owner: backend.owner || '张三 (Data Owner)',
         scanPolicy: { frequency: 'manual', scopeRegex: '.*', alertReceivers: [] },
         auth: { type: 'password' },
-        lastScan: 'Never',
-        tableCount: 0,
+        lastScan: backend.last_scan_time || (backend.updated_at ? new Date(backend.updated_at).toLocaleDateString() : 'Never'),
+        tableCount: backend.table_count || backend.total_tables || 0,
     };
 };
 
@@ -203,7 +205,36 @@ export const fromBackendResponse = (backend: any): DataSource => {
  * 格式化数据源类型（后端类型名 -> 前端显示名）
  */
 const formatDataSourceType = (type: string): string => {
-    return backendToDisplayMap[type] || type;
+    // 首先尝试直接匹配
+    if (backendToDisplayMap[type]) {
+        return backendToDisplayMap[type];
+    }
+    
+    // 尝试忽略大小写的匹配
+    const lowerType = type.toLowerCase();
+    for (const [backendType, displayName] of Object.entries(backendToDisplayMap)) {
+        if (backendType.toLowerCase() === lowerType) {
+            return displayName;
+        }
+    }
+    
+    // 如果找不到匹配项，尝试常见类型的映射
+    const commonMappings: Record<string, string> = {
+        'mysql': 'MySQL',
+        'postgresql': 'PostgreSQL',
+        'sqlserver': 'SQL Server',
+        'mssql': 'SQL Server',
+        'oracle': 'Oracle',
+        'mongodb': 'MongoDB',
+        'redis': 'Redis',
+        'elasticsearch': 'Elasticsearch',
+        'clickhouse': 'ClickHouse',
+        'starrocks': 'StarRocks',
+        'hive': 'Hive',
+        'kafka': 'Kafka'
+    };
+    
+    return commonMappings[lowerType] || type;
 };
 
 /**
@@ -254,6 +285,8 @@ const mapStatus = (status?: string): DataSource['status'] => {
         'failed': 'error',
         'idle': 'disconnected',
         'pending': 'scanning',
+        'unscanned': 'disconnected',  // 新增：未扫描状态视为断开连接
+        'scanning': 'scanning',      // 新增：扫描中状态
     };
 
     return statusMapping[status.toLowerCase()] || 'disconnected';
@@ -330,7 +363,8 @@ export const dataSourceService = {
                 throw new Error(errorMsg);
             }
 
-            const data = result.data || result.items || result;
+            // 尝试从多种可能的数据结构中提取数据源列表
+            const data = result.data || result.items || result.entries || result;
             const list = Array.isArray(data) ? data : [];
 
             return list.map(fromBackendResponse);
