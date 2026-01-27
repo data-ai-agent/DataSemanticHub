@@ -1158,18 +1158,18 @@ public class TaskScanServiceImpl extends ServiceImpl<TaskScanMapper, TaskScanEnt
         if (StringUtils.isBlank(userId)) {
             throw new AiShuException(ErrorCodeEnum.UnauthorizedError);
         }
-        boolean isOk = Authorization.checkResourceOperation(
-                serviceEndpoints.getAuthorizationPrivate(),
-                userId,
-                introspectInfo.getAccountType(),
-                new ResourceAuthVo(dsId, ResourceAuthConstant.RESOURCE_TYPE_DATA_SOURCE),
-                ResourceAuthConstant.RESOURCE_OPERATION_TYPE_SCAN);
-        if (!isOk) {
-            throw new AiShuException(ErrorCodeEnum.ForbiddenError,
-                    String.format(Detail.RESOURCE_PERMISSION_ERROR,
-                            ResourceAuthConstant.RESOURCE_OPERATION_TYPE_SCAN)
-            );
-        }
+//        boolean isOk = Authorization.checkResourceOperation(
+//                serviceEndpoints.getAuthorizationPrivate(),
+//                userId,
+//                introspectInfo.getAccountType(),
+//                new ResourceAuthVo(dsId, ResourceAuthConstant.RESOURCE_TYPE_DATA_SOURCE),
+//                ResourceAuthConstant.RESOURCE_OPERATION_TYPE_SCAN);
+//        if (!isOk) {
+//            throw new AiShuException(ErrorCodeEnum.ForbiddenError,
+//                    String.format(Detail.RESOURCE_PERMISSION_ERROR,
+//                            ResourceAuthConstant.RESOURCE_OPERATION_TYPE_SCAN)
+//            );
+//        }
         // 检查数据源是否正在扫描:当type=0时
         if (type == ScanTaskEnm.IMMEDIATE_DS.getCode()) {
             int runningDs = taskScanMapper.getRunningDs(dsId);
