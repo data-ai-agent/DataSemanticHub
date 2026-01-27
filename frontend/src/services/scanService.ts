@@ -90,7 +90,7 @@ export interface ScanDataSourceInfo {
     /** 数据源类型 */
     ds_type: string;
     /** 扫描策略 */
-    scan_strategy?: ScanStrategy;
+    scan_strategy?: ScanStrategy[];
 }
 
 /**
@@ -384,7 +384,7 @@ export interface CreateScanTaskParams {
     /** 数据源类型 */
     dataSourceType: string;
     /** 扫描策略 */
-    scanStrategy?: ScanStrategy;
+    scanStrategy?: ScanStrategy[];
     /** 表ID列表（type为1或3时需要） */
     tables?: string[];
     /** 定时表达式（针对定时扫描） */
@@ -611,7 +611,7 @@ export const scanService = {
                 ds_info: {
                     ds_id: params.dataSourceId,
                     ds_type: params.dataSourceType.toLowerCase(),
-                    scan_strategy: params.scanStrategy,
+                    scan_strategy: params.scanStrategy ? [params.scanStrategy] : undefined,
                 },
             };
 
@@ -655,7 +655,7 @@ export const scanService = {
                 ds_info: {
                     ds_id: param.dataSourceId,
                     ds_type: param.dataSourceType.toLowerCase(),
-                    scan_strategy: param.scanStrategy,
+                    scan_strategy: param.scanStrategy ? [param.scanStrategy] : undefined,
                 },
                 ...(param.tables && { tables: param.tables }),
                 ...(param.cronExpression && { cron_expression: param.cronExpression }),

@@ -130,7 +130,7 @@ const AssetScanningView = ({ onNavigate }: { onNavigate?: (moduleId: string) => 
                 type: newTask.type,
                 dataSourceId: newTask.dataSourceId,
                 dataSourceType: newTask.dataSourceType,
-                scanStrategy: newTask.scanStrategy,
+                scanStrategy: newTask.scanStrategy ? [newTask.scanStrategy] : undefined,
                 cronExpression: newTask.type === ScanTaskType.DataSourceScheduled ? newTask.cronExpression : undefined,
                 status: newTask.status,
             });
