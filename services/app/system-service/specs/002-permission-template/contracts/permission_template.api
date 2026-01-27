@@ -1,0 +1,188 @@
+syntax = "v1"
+
+import "../base.api"
+
+type (
+    // ========== 请求类型 ==========
+
+    // CreatePermissionTemplateReq 创建权限模板请求
+    CreatePermissionTemplateReq {
+        Name            string                        `json:"name" validate:"required,max=128"`
+        Code            string                        `json:"code" validate:"required,max=64,lowercase_alphanum"`
+        Description     string                        `json:"description" validate:"max=500"`
+        ScopeSuggestion string                        `json:"scope_suggestion" validate:"omitempty,oneof=global organization domain project"`
+        PolicyMatrix    map[string]PolicyMatrixEntry  `json:"policy_matrix" validate:"required"`
+        AdvancedPerms   map[string]AdvancedPermEntry  `json:"advanced_perms"`
+    }
+
+    // PolicyMatrixEntry 策略矩阵条目
+    PolicyMatrixEntry {
+        Actions []string `json:"actions" validate:"required,min=1"`
+        Scope   string   `json:"scope"`
+    }
+
+    // AdvancedPermEntry 高级权限点条目
+    AdvancedPermEntry {
+        Enabled bool                   `json:"enabled"`
+        Config  map[string]interface{} `json:"config"`
+    }
+
+    // UpdatePermissionTemplateReq 更新权限模板请求
+    UpdatePermissionTemplateReq {
+        Id              string                        `json:"id" validate:"required"`
+        Name            string                        `json:"name" validate:"required,max=128"`
+        Code            string                        `json:"code" validate:"required,max=64,lowercase_alphanum"`
+        Description     string                        `json:"description" validate:"max=500"`
+        ScopeSuggestion string                        `json:"scope_suggestion" validate:"omitempty,oneof=global organization domain project"`
+        PolicyMatrix    map[string]PolicyMatrixEntry  `json:"policy_matrix" validate:"required"`
+        AdvancedPerms   map[string]AdvancedPermEntry  `json:"advanced_perms"`
+    }
+
+    // GetPermissionTemplateReq 获取权限模板详情请求
+    GetPermissionTemplateReq {
+    }
+
+    // ListPermissionTemplatesReq 查询权限模板列表请求
+    ListPermissionTemplatesReq {
+        Keyword         string `json:"keyword" validate:"max=128"`
+        Status          string `json:"status" validate:"omitempty,oneof=draft published disabled"`
+        ScopeSuggestion string `json:"scope_suggestion" validate:"omitempty,oneof=global organization domain project"`
+        Page            int    `json:"page" validate:"min=1"`
+        PageSize        int    `json:"page_size" validate:"min=1,max=100"`
+    }
+
+    // PublishPermissionTemplateReq 发布权限模板请求
+    PublishPermissionTemplateReq {
+    }
+
+    // DisablePermissionTemplateReq 停用权限模板请求
+    DisablePermissionTemplateReq {
+    }
+
+    // EnablePermissionTemplateReq 重新启用权限模板请求
+    EnablePermissionTemplateReq {
+    }
+
+    // ClonePermissionTemplateReq 复制权限模板请求
+    ClonePermissionTemplateReq {
+        Name string `json:"name" validate:"required,max=128"`
+        Code string `json:"code" validate:"required,max=64,lowercase_alphanum"`
+    }
+
+    // DeletePermissionTemplateReq 删除权限模板请求
+    DeletePermissionTemplateReq {
+    }
+
+    // ========== 响应类型 ==========
+
+    // CreatePermissionTemplateResp 创建权限模板响应
+    CreatePermissionTemplateResp {
+        Id string `json:"id"`
+    }
+
+    // UpdatePermissionTemplateResp 更新权限模板响应
+    UpdatePermissionTemplateResp {
+        Success bool `json:"success"`
+    }
+
+    // PermissionTemplateDetail 权限模板详情
+    PermissionTemplateDetail {
+        Id              string                        `json:"id"`
+        Name            string                        `json:"name"`
+        Code            string                        `json:"code"`
+        Description     string                        `json:"description"`
+        Status          string                        `json:"status"`
+        ScopeSuggestion string                        `json:"scope_suggestion"`
+        PolicyMatrix    map[string]PolicyMatrixEntry  `json:"policy_matrix"`
+        AdvancedPerms   map[string]AdvancedPermEntry  `json:"advanced_perms"`
+        Version         int                           `json:"version"`
+        UsedByRoleCount int64                         `json:"used_by_role_count"`
+        LastAppliedAt   string                        `json:"last_applied_at"`
+        CreatedBy       string                        `json:"created_by"`
+        CreatedAt       string                        `json:"created_at"`
+        UpdatedBy       string                        `json:"updated_by"`
+        UpdatedAt       string                        `json:"updated_at"`
+    }
+
+    // GetPermissionTemplateResp 获取权限模板详情响应
+    GetPermissionTemplateResp {
+        Data PermissionTemplateDetail `json:"data"`
+    }
+
+    // PermissionTemplateItem 权限模板列表项
+    PermissionTemplateItem {
+        Id              string `json:"id"`
+        Name            string `json:"name"`
+        Code            string `json:"code"`
+        Status          string `json:"status"`
+        ScopeSuggestion string `json:"scope_suggestion"`
+        Version         int    `json:"version"`
+        UpdatedAt       string `json:"updated_at"`
+    }
+
+    // ListPermissionTemplatesResp 查询权限模板列表响应
+    ListPermissionTemplatesResp {
+        Total int64                    `json:"total"`
+        Data  []PermissionTemplateItem `json:"data"`
+    }
+
+    // PublishPermissionTemplateResp 发布权限模板响应
+    PublishPermissionTemplateResp {
+        Success bool `json:"success"`
+        Version int  `json:"version"`
+    }
+
+    // DisablePermissionTemplateResp 停用权限模板响应
+    DisablePermissionTemplateResp {
+        Success bool `json:"success"`
+    }
+
+    // EnablePermissionTemplateResp 重新启用权限模板响应
+    EnablePermissionTemplateResp {
+        Success bool `json:"success"`
+    }
+
+    // ClonePermissionTemplateResp 复制权限模板响应
+    ClonePermissionTemplateResp {
+        Id string `json:"id"`
+    }
+
+    // DeletePermissionTemplateResp 删除权限模板响应
+    DeletePermissionTemplateResp {
+        Success bool `json:"success"`
+    }
+)
+
+@server(
+    prefix: /api/v1/system
+    group: permission_template
+    middleware: AuthorityCheck
+)
+service system-service-api {
+    @handler CreatePermissionTemplate
+    post /permission-templates (CreatePermissionTemplateReq) returns (CreatePermissionTemplateResp)
+
+    @handler UpdatePermissionTemplate
+    put /permission-templates/:id (UpdatePermissionTemplateReq) returns (UpdatePermissionTemplateResp)
+
+    @handler GetPermissionTemplate
+    get /permission-templates/:id (GetPermissionTemplateReq) returns (GetPermissionTemplateResp)
+
+    @handler ListPermissionTemplates
+    get /permission-templates (ListPermissionTemplatesReq) returns (ListPermissionTemplatesResp)
+
+    @handler PublishPermissionTemplate
+    post /permission-templates/:id/publish (PublishPermissionTemplateReq) returns (PublishPermissionTemplateResp)
+
+    @handler DisablePermissionTemplate
+    post /permission-templates/:id/disable (DisablePermissionTemplateReq) returns (DisablePermissionTemplateResp)
+
+    @handler EnablePermissionTemplate
+    post /permission-templates/:id/enable (EnablePermissionTemplateReq) returns (EnablePermissionTemplateResp)
+
+    @handler ClonePermissionTemplate
+    post /permission-templates/:id/clone (ClonePermissionTemplateReq) returns (ClonePermissionTemplateResp)
+
+    @handler DeletePermissionTemplate
+    delete /permission-templates/:id (DeletePermissionTemplateReq) returns (DeletePermissionTemplateResp)
+}

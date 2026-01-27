@@ -3,6 +3,11 @@
 
 package types
 
+type AdvancedPermEntry struct {
+	Enabled bool                   `json:"enabled"`
+	Config  map[string]interface{} `json:"config"`
+}
+
 type AuditLog struct {
 	Id         int64                  `json:"id"`
 	Action     string                 `json:"action"`
@@ -154,6 +159,39 @@ type PageInfoWithKeyword struct {
 type PageResp struct {
 	Entries    interface{} `json:"entries"`     // 数据列表
 	TotalCount int64       `json:"total_count"` // 总记录数
+}
+
+type PermissionTemplateDetail struct {
+	Id              string                       `json:"id"`
+	Name            string                       `json:"name"`
+	Code            string                       `json:"code"`
+	Description     string                       `json:"description"`
+	Status          string                       `json:"status"`
+	ScopeSuggestion string                       `json:"scope_suggestion"`
+	PolicyMatrix    map[string]PolicyMatrixEntry `json:"policy_matrix"`
+	AdvancedPerms   map[string]AdvancedPermEntry `json:"advanced_perms"`
+	Version         int                          `json:"version"`
+	UsedByRoleCount int64                        `json:"used_by_role_count"`
+	LastAppliedAt   string                       `json:"last_applied_at"`
+	CreatedBy       string                       `json:"created_by"`
+	CreatedAt       string                       `json:"created_at"`
+	UpdatedBy       string                       `json:"updated_by"`
+	UpdatedAt       string                       `json:"updated_at"`
+}
+
+type PermissionTemplateItem struct {
+	Id              string `json:"id"`
+	Name            string `json:"name"`
+	Code            string `json:"code"`
+	Status          string `json:"status"`
+	ScopeSuggestion string `json:"scope_suggestion"`
+	Version         int    `json:"version"`
+	UpdatedAt       string `json:"updated_at"`
+}
+
+type PolicyMatrixEntry struct {
+	Actions []string `json:"actions" validate:"required,min=1"`
+	Scope   string   `json:"scope"`
 }
 
 type RiskItem struct {

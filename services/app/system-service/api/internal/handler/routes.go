@@ -8,6 +8,7 @@ import (
 
 	menu_management "github.com/DataSemanticHub/services/app/system-service/api/internal/handler/menu_management"
 	organization "github.com/DataSemanticHub/services/app/system-service/api/internal/handler/organization"
+	permission_template "github.com/DataSemanticHub/services/app/system-service/api/internal/handler/permission_template"
 	user "github.com/DataSemanticHub/services/app/system-service/api/internal/handler/user"
 	user_management "github.com/DataSemanticHub/services/app/system-service/api/internal/handler/user_management"
 	user_public "github.com/DataSemanticHub/services/app/system-service/api/internal/handler/user_public"
@@ -162,6 +163,60 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 					Method:  http.MethodPost,
 					Path:    "/user/primary-dept",
 					Handler: organization.SetUserPrimaryDeptHandler(serverCtx),
+				},
+			}...,
+		),
+		rest.WithPrefix("/api/v1/system"),
+	)
+
+	server.AddRoutes(
+		rest.WithMiddlewares(
+			[]rest.Middleware{serverCtx.AuthorityCheck},
+			[]rest.Route{
+				{
+					Method:  http.MethodPost,
+					Path:    "/permission-templates",
+					Handler: permission_template.CreatePermissionTemplateHandler(serverCtx),
+				},
+				{
+					Method:  http.MethodGet,
+					Path:    "/permission-templates",
+					Handler: permission_template.ListPermissionTemplatesHandler(serverCtx),
+				},
+				{
+					Method:  http.MethodPut,
+					Path:    "/permission-templates/:id",
+					Handler: permission_template.UpdatePermissionTemplateHandler(serverCtx),
+				},
+				{
+					Method:  http.MethodGet,
+					Path:    "/permission-templates/:id",
+					Handler: permission_template.GetPermissionTemplateHandler(serverCtx),
+				},
+				{
+					Method:  http.MethodDelete,
+					Path:    "/permission-templates/:id",
+					Handler: permission_template.DeletePermissionTemplateHandler(serverCtx),
+				},
+				{
+					Method:  http.MethodPost,
+					Path:    "/permission-templates/:id/clone",
+					Handler: permission_template.ClonePermissionTemplateHandler(serverCtx),
+				},
+				{
+					Method:  http.MethodPost,
+					Path:    "/permission-templates/:id/disable",
+					Handler: permission_template.DisablePermissionTemplateHandler(serverCtx),
+				},
+				{
+					Method:  http.MethodPost,
+					Path:    "/permission-templates/:id/enable",
+					Handler: permission_template.EnablePermissionTemplateHandler(serverCtx),
+				},
+				{
+					Method:  http.MethodPost,
+					Path:    "/permission-templates/:id/publish",
+					Handler: permission_template.PublishPermissionTemplateHandler(serverCtx),
 				},
 			}...,
 		),

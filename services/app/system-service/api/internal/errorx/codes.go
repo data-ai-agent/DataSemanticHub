@@ -156,3 +156,82 @@ const (
 	// 200145: 菜单已删除
 	ErrMenuDeleted = 200145
 )
+
+// 权限模板错误码范围: 200151-200175
+
+const (
+	// 200151: 模板名称或编码为空
+	ErrPermissionTemplateNameOrCodeRequired = 200151
+
+	// 200152: 模板编码已存在
+	ErrPermissionTemplateCodeExists = 200152
+
+	// 200153: 策略矩阵不能为空
+	ErrPermissionTemplatePolicyMatrixRequired = 200153
+
+	// 200154: 只有草稿状态可编辑
+	ErrPermissionTemplateOnlyDraftEditable = 200154
+
+	// 200155: 只有草稿状态可发布
+	ErrPermissionTemplateOnlyDraftPublishable = 200155
+
+	// 200156: 只有已发布状态可停用
+	ErrPermissionTemplateOnlyPublishedDisablable = 200156
+
+	// 200157: 只有已停用状态可重新启用
+	ErrPermissionTemplateOnlyDisabledEnablable = 200157
+
+	// 200158: 模板被角色引用，无法删除
+	ErrPermissionTemplateReferencedByRoles = 200158
+
+	// 200159: 模板不存在
+	ErrPermissionTemplateNotFound = 200159
+
+	// 200160: 权限不足
+	ErrPermissionTemplateInsufficientPermission = 200160
+
+	// 200161: 模板名称长度超限
+	ErrPermissionTemplateNameTooLong = 200161
+
+	// 200162: 模板描述长度超限
+	ErrPermissionTemplateDescriptionTooLong = 200162
+
+	// 200163: 适用范围枚举值无效
+	ErrPermissionTemplateInvalidScope = 200163
+
+	// 200164: 并发编辑冲突
+	ErrPermissionTemplateConcurrentEdit = 200164
+
+	// 200165: 模板版本冲突
+	ErrPermissionTemplateVersionConflict = 200165
+
+	// 200166: 模板已被停用，不可用于创建角色
+	ErrPermissionTemplateDisabledNotUsable = 200166
+
+	// 200167: 策略矩阵格式错误
+	ErrPermissionTemplateInvalidPolicyMatrix = 200167
+
+	// 200168: 高级权限点格式错误
+	ErrPermissionTemplateInvalidAdvancedPerms = 200168
+
+	// 200169: 模板编码格式错误
+	ErrPermissionTemplateInvalidCodeFormat = 200169
+
+	// 200170: 模板已被引用，禁止删除
+	ErrPermissionTemplateAlreadyReferenced = 200170
+
+	// 200171: 模板使用统计查询失败
+	ErrPermissionTemplateUsageStatsFailed = 200171
+
+	// 200172: 模板复制失败
+	ErrPermissionTemplateCloneFailed = 200172
+
+	// 200173: 模板发布失败
+	ErrPermissionTemplatePublishFailed = 200173
+
+	// 200174: 模板停用失败
+	ErrPermissionTemplateDisableFailed = 200174
+
+	// 200175: 模板重新启用失败
+	ErrPermissionTemplateEnableFailed = 200175
+)
