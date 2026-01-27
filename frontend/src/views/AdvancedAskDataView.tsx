@@ -18,7 +18,7 @@ import {
     Wrench,
     HelpCircle,
     ShieldCheck,
-    SlidersHorizontal,
+    Sliders,
     X,
     AlertTriangle,
     FileText,
@@ -1272,7 +1272,7 @@ const AdvancedAskDataView = () => {
                                 onClick={() => setShowAdvancedOptions(!showAdvancedOptions)}
                                 className="rounded-xl border border-slate-200 p-3 text-slate-500 hover:border-indigo-200 hover:text-indigo-600"
                             >
-                                <SlidersHorizontal size={16} />
+                                <Sliders size={16} />
                             </button>
                         </div>
                         {showAdvancedOptions && (

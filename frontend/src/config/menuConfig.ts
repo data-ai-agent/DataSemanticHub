@@ -1,10 +1,35 @@
 import {
-    Layout, Database, Layers,
-    Search, FileText, Activity, Sparkles,
-    MessageCircle, Verified, Lock, History,
-    Book, Tag, Bookmark, Network,
-    LayoutGrid, Building2, UserCog, GitBranch, FileCheck,
-    PanelLeftClose
+    Layout,
+    Database,
+    Layers,
+    Search,
+    FileText,
+    Activity,
+    Sparkles,
+    MessageCircle,
+    Verified,
+    Lock,
+    History,
+    Book,
+    Tag,
+    Bookmark,
+    Network,
+    LayoutGrid,
+    Building2,
+    UserCog,
+    GitBranch,
+    FileCheck,
+    PanelLeftClose,
+    Edit,
+    CheckSquare,
+    Upload,
+    Cpu,
+    TrendingUp,
+    Link,
+    Shield,
+    Settings,
+    ListChecks,
+    EyeOff
 } from 'lucide-react';
 
 export interface MenuItem {
@@ -20,7 +45,18 @@ export interface MenuGroup {
     items: MenuItem[];
 }
 
-export const APP_MENUS: MenuGroup[] = [
+export type ProductId = 'governance' | 'agent_factory';
+
+export interface AppProduct {
+    id: ProductId;
+    name: string;
+    icon: any;
+    color: string;
+    defaultModule: string;
+    menus: MenuGroup[];
+}
+
+export const GOVERNANCE_MENUS: MenuGroup[] = [
     {
         title: '数据服务',
         color: 'text-indigo-400',
@@ -55,8 +91,26 @@ export const APP_MENUS: MenuGroup[] = [
                     { id: 'td_modeling', label: '业务对象建模', icon: Layout }
                 ]
             },
-            { id: 'data_quality', label: '数据质量', icon: Verified },
-            { id: 'data_security', label: '数据安全', icon: Lock },
+            {
+                id: 'data_quality',
+                label: '数据质量',
+                icon: Verified,
+                children: [
+                    { id: 'quality_overview', label: '质量概览', icon: Activity },
+                    { id: 'quality_rules', label: '规则配置', icon: Settings },
+                    { id: 'quality_tasks', label: '质量任务', icon: ListChecks }
+                ]
+            },
+            {
+                id: 'data_security',
+                label: '数据安全',
+                icon: Lock,
+                children: [
+                    { id: 'security_overview', label: '安全概览', icon: Activity },
+                    { id: 'security_permission', label: '权限管理', icon: UserCog },
+                    { id: 'data_masking', label: '数据脱敏', icon: EyeOff }
+                ]
+            },
             { id: 'semantic_version', label: '语义版本', icon: History }
         ]
     },
@@ -93,3 +147,62 @@ export const APP_MENUS: MenuGroup[] = [
         ]
     }
 ];
+
+export const AGENT_FACTORY_MENUS: MenuGroup[] = [
+    {
+        title: '智能体工厂',
+        color: 'text-violet-400',
+        items: [
+            { id: 'agent_overview', label: '概览', icon: Activity },
+            { id: 'agent_templates', label: '模板库', icon: Bookmark },
+            { id: 'agent_designer', label: '智能体设计器', icon: Edit },
+            { id: 'agent_debug', label: '调试与Trace', icon: Search },
+            { id: 'agent_test', label: '用例与评测', icon: CheckSquare },
+            { id: 'agent_release', label: '发布与灰度', icon: Upload },
+            { id: 'agent_instances', label: '运行实例', icon: Cpu },
+            { id: 'agent_observability', label: '运行观测', icon: TrendingUp }
+        ]
+    },
+    {
+        title: '底座能力',
+        color: 'text-emerald-400',
+        items: [
+            { id: 'agent_tools', label: '工具与技能', icon: Link },
+            { id: 'agent_knowledge', label: '知识源与连接', icon: Network },
+            { id: 'agent_runtime_packs', label: '运行包与策略', icon: Shield }
+        ]
+    },
+    {
+        title: '治理与设置',
+        color: 'text-slate-400',
+        items: [
+            { id: 'agent_audit', label: '审计日志', icon: FileText },
+            { id: 'agent_settings', label: '工厂设置', icon: Settings }
+        ]
+    }
+];
+
+export const APP_PRODUCTS: AppProduct[] = [
+    {
+        id: 'governance',
+        name: '数据语义治理',
+        icon: LayoutGrid,
+        color: 'text-blue-600 bg-blue-50',
+        defaultModule: 'governance',
+        menus: GOVERNANCE_MENUS
+    },
+    {
+        id: 'agent_factory',
+        name: '智能体工厂',
+        icon: Sparkles,
+        color: 'text-violet-600 bg-violet-50',
+        defaultModule: 'agent_overview',
+        menus: AGENT_FACTORY_MENUS
+    }
+];
+
+export const DEFAULT_PRODUCT_ID: ProductId = 'governance';
+
+export const getProductById = (id?: string | null) => (
+    APP_PRODUCTS.find(product => product.id === id) ?? APP_PRODUCTS[0]
+);

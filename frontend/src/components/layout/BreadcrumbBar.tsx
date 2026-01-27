@@ -1,14 +1,15 @@
 import { ChevronRight } from 'lucide-react';
-import { APP_MENUS, MenuItem } from '../../config/menuConfig';
+import { MenuGroup } from '../../config/menuConfig';
 
 interface BreadcrumbBarProps {
     activeModule: string;
+    menus: MenuGroup[];
 }
 
-const BreadcrumbBar = ({ activeModule }: BreadcrumbBarProps) => {
+const BreadcrumbBar = ({ activeModule, menus }: BreadcrumbBarProps) => {
     // 查找当前模块的路径
     const findPath = (targetId: string): { group: string; parent?: string; current: string } | null => {
-        for (const group of APP_MENUS) {
+        for (const group of menus) {
             for (const item of group.items) {
                 // Check level 1
                 if (item.id === targetId) {

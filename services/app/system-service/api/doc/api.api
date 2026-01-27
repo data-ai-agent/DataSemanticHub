@@ -14,6 +14,9 @@ import "base.api"
 // ============================================
 import "user/auth.api"
 import "user/user_management.api"
+import "system/organization.api"
+import "system/menu_management.api"
+import "system/permission_template.api"
 
 // 定义 service 名称为 "api"
 // goctl 会生成: api.go + etc/api.yaml

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Activity, Bot, ChevronDown, AlertTriangle, CheckCircle, Clock, Edit3 } from 'lucide-react';
+import { Activity, Bot, ChevronDown, AlertTriangle, CheckCircle, Clock, Edit } from 'lucide-react';
 import { TableSemanticProfile, BUSINESS_DOMAINS, ObjectType } from '../../types/semantic';
 import { TermAutocomplete } from '../../components/TermAutocomplete';
 import { getAllTerms, depositNewTerm } from '../../data/mockData';
@@ -630,7 +630,7 @@ export const SemanticConclusionCard: React.FC<SemanticConclusionCardProps> = ({
                                                                 onClick={() => onEvidenceAction({ action: 'override', field: (item as any).field, source: item.source, reason: item.text })}
                                                                 className="text-blue-600 hover:underline flex items-center gap-1"
                                                             >
-                                                                <Edit3 size={11} /> 改判
+                                                                <Edit size={11} /> 改判
                                                             </button>
                                                             <button
                                                                 onClick={() => onEvidenceAction({ action: 'pending', field: (item as any).field, source: item.source, reason: item.text })}
@@ -669,7 +669,7 @@ export const SemanticConclusionCard: React.FC<SemanticConclusionCardProps> = ({
                                                                 onClick={() => onEvidenceAction({ action: 'override', source: item.source, reason: item.text })}
                                                                 className="text-blue-600 hover:underline flex items-center gap-1"
                                                             >
-                                                                <Edit3 size={11} /> 改判
+                                                                <Edit size={11} /> 改判
                                                             </button>
                                                             <button
                                                                 onClick={() => onEvidenceAction({ action: 'pending', source: item.source, reason: item.text })}
@@ -750,7 +750,7 @@ export const SemanticConclusionCard: React.FC<SemanticConclusionCardProps> = ({
                                                             onClick={() => onEvidenceAction({ action: 'override', field: item.field, source: 'AI', reason: item.reason })}
                                                             className="text-blue-600 hover:underline flex items-center gap-1"
                                                         >
-                                                            <Edit3 size={11} /> 改判
+                                                            <Edit size={11} /> 改判
                                                         </button>
                                                         <button
                                                             onClick={() => onEvidenceAction({ action: 'pending', field: item.field, source: 'AI', reason: item.reason })}
@@ -800,7 +800,7 @@ export const SemanticConclusionCard: React.FC<SemanticConclusionCardProps> = ({
                                                                 onClick={() => onEvidenceAction({ action: 'override', source: '规则', reason: group })}
                                                                 className="text-blue-600 hover:underline flex items-center gap-1"
                                                             >
-                                                                <Edit3 size={11} /> 改判
+                                                                <Edit size={11} /> 改判
                                                             </button>
                                                             <button
                                                                 onClick={() => onEvidenceAction({ action: 'pending', source: '规则', reason: group })}

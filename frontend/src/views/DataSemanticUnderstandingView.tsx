@@ -1,5 +1,5 @@
 import { useState, useRef, useMemo, useEffect } from 'react';
-import { Sparkles, Activity, CheckCircle, ChevronDown, ChevronRight, Bot, AlertTriangle, ArrowLeft, RefreshCw, Table, Share2, Layers, Shield, Database, Search, Settings, Filter, Plus, FileText, Key, Hash, CheckCircle2, XCircle, Info, PanelLeftOpen, PanelLeftClose, Server, Clock, Edit3, X, Box, ListPlus, Cpu, Star, Tag, ShieldCheck, AlertCircle, Wand2, ArrowRight } from 'lucide-react';
+import { Sparkles, Activity, CheckCircle, ChevronDown, ChevronRight, Bot, AlertTriangle, ArrowLeft, RefreshCw, Table, Share2, Layers, Shield, Database, Search, Settings, Filter, Plus, FileText, Key, Hash, CheckCircle2, XCircle, Info, ChevronLeft, Server, Clock, Edit, X, Box, Cpu, Star, Tag, ShieldCheck, AlertCircle, ArrowRight } from 'lucide-react';
 import { useToast } from '../components/ui/Toast';
 import { TableSemanticProfile, GovernanceStatus, ReviewStats, RunSummary, TableSemanticStage, FieldSemanticStatus } from '../types/semantic';
 import { ReadOnlyBadge } from '../components/common/ReadOnlyBadge';
@@ -1010,7 +1010,7 @@ const DataSemanticUnderstandingView = ({
                                 className="p-1 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-200 transition-colors"
                                 title={isTreeCollapsed ? "展开视图" : "收起视图"}
                             >
-                                {isTreeCollapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
+                                {isTreeCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
                             </button>
                         </div>
 
@@ -1388,7 +1388,7 @@ const DataSemanticUnderstandingView = ({
                                                                 </>
                                                             ) : (
                                                                 <>
-                                                                    {asset.semanticStage === 'NOT_STARTED' && <Wand2 size={12} />}
+                                                                    {asset.semanticStage === 'NOT_STARTED' && <Sparkles size={12} />}
                                                                     {asset.semanticStage === 'NOT_STARTED' ? '开始理解' : '继续理解'}
                                                                 </>
                                                             )}
@@ -1644,7 +1644,7 @@ const DataSemanticUnderstandingView = ({
                                                                     {/* AI Field Grouping */}
                                                                     <div className="space-y-3">
                                                                         <div className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-                                                                            <Wand2 size={16} className="text-purple-600" />
+                                                                            <Sparkles size={16} className="text-purple-600" />
                                                                             AI 推荐字段分组
                                                                         </div>
 
@@ -1747,7 +1747,7 @@ const DataSemanticUnderstandingView = ({
                                                 isReadOnly ? (
                                                     <div className="flex items-center justify-center h-full text-slate-400 bg-white border border-slate-200 rounded-xl border-dashed">
                                                         <div className="text-center">
-                                                            <Wand2 size={24} className="mx-auto mb-2 opacity-20" />
+                                                            <Sparkles size={24} className="mx-auto mb-2 opacity-20" />
                                                             <span className="text-xs">语义判定仅在工作态可编辑</span>
                                                         </div>
                                                     </div>
@@ -1804,7 +1804,7 @@ const DataSemanticUnderstandingView = ({
                                             ) : (
                                                 <div className="flex items-center justify-center h-full text-slate-400 bg-white border border-slate-200 rounded-xl border-dashed">
                                                     <div className="text-center">
-                                                        <Wand2 size={24} className="mx-auto mb-2 opacity-20" />
+                                                        <Sparkles size={24} className="mx-auto mb-2 opacity-20" />
                                                         <span className="text-xs">选择字段进行语义判定</span>
                                                     </div>
                                                 </div>
@@ -2098,7 +2098,7 @@ const DataSemanticUnderstandingView = ({
                                                                 className={`p-1.5 rounded-lg transition-colors ${showDirectory ? 'hover:bg-slate-100 text-slate-400' : 'bg-white border border-slate-200 shadow-sm text-slate-500 hover:text-blue-600'}`}
                                                                 title={showDirectory ? "收起目录" : "展开目录"}
                                                             >
-                                                                {showDirectory ? <PanelLeftClose size={14} /> : <ListPlus size={16} />}
+                                                                {showDirectory ? <ChevronLeft size={14} /> : <Plus size={16} />}
                                                             </button>
                                                         </div>
                                                         {showDirectory && (
@@ -2293,7 +2293,7 @@ const DataSemanticUnderstandingView = ({
                                                                                                 }}
                                                                                                 className="w-5 h-5 bg-blue-500 text-white rounded-full flex items-center justify-center hover:bg-blue-600"
                                                                                             >
-                                                                                                <Edit3 size={10} />
+                                                                                                <Edit size={10} />
                                                                                             </button>
                                                                                             <button
                                                                                                 onClick={(e) => {
@@ -4350,7 +4350,7 @@ const DataSemanticUnderstandingView = ({
                                         onClick={() => executeAddToCandidates(pendingGenData.table, pendingGenData.profile)}
                                         className="w-full py-3 bg-white border border-slate-200 text-slate-700 rounded-lg font-medium hover:bg-slate-50 flex items-center justify-center gap-2 transition-colors"
                                     >
-                                        <ListPlus size={18} /> 加入候选业务对象
+                                        <Plus size={18} /> 加入候选业务对象
                                     </button>
 
                                 </div>

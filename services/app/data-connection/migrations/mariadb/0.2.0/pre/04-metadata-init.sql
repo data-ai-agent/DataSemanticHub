@@ -1,4 +1,4 @@
-USE adp;
+USE datasemantichub;
 
 
 CREATE TABLE IF NOT EXISTS `t_data_quality_model` (

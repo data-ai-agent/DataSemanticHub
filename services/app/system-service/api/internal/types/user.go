@@ -7,37 +7,6 @@ type GetUserInfoResp struct {
 	UserInfo UserInfo `json:"user_info"`
 }
 
-type LoginReq struct {
-	Email      string `json:"email" validate:"required,email"`
-	Password   string `json:"password" validate:"required"`
-	RememberMe bool   `json:"remember_me"`
-}
-
-type LoginResp struct {
-	Token        string   `json:"token"`
-	RefreshToken string   `json:"refresh_token,optional"`
-	ExpiresIn    int64    `json:"expires_in"`
-	UserInfo     UserInfo `json:"user_info"`
-}
-
 type LogoutResp struct {
 	Message string `json:"message"`
-}
-
-type RegisterReq struct {
-	FirstName       string `json:"first_name" validate:"required,min=1,max=50"`
-	LastName        string `json:"last_name" validate:"required,min=1,max=50"`
-	Email           string `json:"email" validate:"required,email"`
-	Organization    string `json:"organization" validate:"max=100"`
-	Password        string `json:"password" validate:"required,min=8,max=128"`
-	ConfirmPassword string `json:"confirm_password" validate:"required"`
-	AgreeTerms      bool   `json:"agree_terms" validate:"required"`
-}
-
-type RegisterResp struct {
-	Id        string `json:"id"`
-	FirstName string `json:"first_name"`
-	LastName  string `json:"last_name"`
-	Email     string `json:"email"`
-	Token     string `json:"token"`
 }

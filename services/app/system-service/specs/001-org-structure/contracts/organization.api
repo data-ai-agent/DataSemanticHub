@@ -1,0 +1,198 @@
+syntax = "v1"
+
+import "../base.api"
+
+type (
+    // 获取组织树请求
+    GetOrgTreeReq {
+        Name   string `json:"name,optional"`    // 模糊搜索
+        Status int8   `json:"status,optional"`  // 状态过滤
+    }
+
+    // 组织树节点
+    OrgTreeNode {
+        Id        string         `json:"id"`
+        ParentId  string         `json:"parentId"`
+        Name      string         `json:"name"`
+        Code      string         `json:"code"`
+        Type      int8           `json:"type"`
+        Status    int8           `json:"status"`
+        SortOrder int            `json:"sortOrder"`
+        LeaderId  string         `json:"leaderId"`
+        LeaderName string        `json:"leaderName"`
+        Children  []*OrgTreeNode `json:"children"`
+    }
+
+    GetOrgTreeResp {
+        Tree []*OrgTreeNode `json:"tree"`
+    }
+
+    // 获取组织详情请求
+    GetOrgDetailReq {
+        Id string `json:"id" validate:"required"`
+    }
+
+    OrgDetail {
+        Id         string `json:"id"`
+        ParentId   string `json:"parentId"`
+        ParentName string `json:"parentName"`
+        Name       string `json:"name"`
+        Code       string `json:"code"`
+        Ancestors  string `json:"ancestors"`
+        SortOrder  int    `json:"sortOrder"`
+        LeaderId   string `json:"leaderId"`
+        LeaderName string `json:"leaderName"`
+        Type       int8   `json:"type"`
+        Status     int8   `json:"status"`
+        Desc       string `json:"desc"`
+        CreatedAt  string `json:"createdAt"`
+        UpdatedAt  string `json:"updatedAt"`
+    }
+
+    GetOrgDetailResp {
+        Detail *OrgDetail `json:"detail"`
+    }
+
+    // 创建组织请求
+    CreateOrgReq {
+        ParentId  string `json:"parentId,optional,default=0" validate:"required"`
+        Name      string `json:"name" validate:"required,max=100"`
+        Code      string `json:"code,optional" validate:"omitempty,max=50"`
+        SortOrder int    `json:"sortOrder,optional,default=0"`
+        LeaderId  string `json:"leaderId,optional"`
+        Type      int8   `json:"type,optional,default=2" validate:"oneof=1 2"`
+        Desc      string `json:"desc,optional" validate:"max=255"`
+    }
+
+    CreateOrgResp {
+        Id string `json:"id"`
+    }
+
+    // 更新组织请求
+    UpdateOrgReq {
+        Id        string `json:"id" path:"id" validate:"required"`
+        Name      string `json:"name,optional" validate:"omitempty,max=100"`
+        Code      string `json:"code,optional" validate:"omitempty,max=50"`
+        SortOrder int    `json:"sortOrder,optional"`
+        LeaderId  string `json:"leaderId,optional"`
+        Status    int8   `json:"status,optional" validate:"oneof=0 1"`
+        Desc      string `json:"desc,optional" validate:"max=255"`
+    }
+
+    UpdateOrgResp {
+        Success bool `json:"success"`
+    }
+
+    // 删除组织请求
+    DeleteOrgReq {
+        Id string `json:"id" path:"id" validate:"required"`
+    }
+
+    DeleteOrgResp {
+        Success bool `json:"success"`
+    }
+
+    // 移动组织请求
+    MoveOrgReq {
+        Id             string   `json:"id" validate:"required"`
+        TargetParentId string   `json:"targetParentId" validate:"required"`
+        SortOrders     []string `json:"sortOrders,optional"` // 同级排序ID列表
+    }
+
+    MoveOrgResp {
+        Success bool `json:"success"`
+    }
+
+    // 获取部门用户请求
+    GetOrgUsersReq {
+        Id        string `json:"id" path:"id" validate:"required"`
+        Recursive bool   `json:"recursive,optional,default=false"` // 是否递归查询子部门
+    }
+
+    DeptUser {
+        UserId    string `json:"userId"`
+        UserName  string `json:"userName"`
+        IsPrimary bool   `json:"isPrimary"`
+    }
+
+    GetOrgUsersResp {
+        Users []*DeptUser `json:"users"`
+    }
+
+    // 设置主部门请求
+    SetUserPrimaryDeptReq {
+        UserId string `json:"userId" validate:"required"`
+        DeptId string `json:"deptId" validate:"required"`
+    }
+
+    SetUserPrimaryDeptResp {
+        Success bool `json:"success"`
+    }
+
+    // 添加辅助部门请求
+    AddUserAuxDeptReq {
+        UserId string `json:"userId" validate:"required"`
+        DeptId string `json:"deptId" validate:"required"`
+    }
+
+    AddUserAuxDeptResp {
+        Success bool `json:"success"`
+    }
+
+    // 删除辅助部门请求
+    RemoveUserAuxDeptReq {
+        UserId string `json:"userId" validate:"required"`
+        DeptId string `json:"deptId" validate:"required"`
+    }
+
+    RemoveUserAuxDeptResp {
+        Success bool `json:"success"`
+    }
+)
+
+@server(
+    prefix: /api/v1/system
+    group: organization
+    middleware: Authority
+)
+service system-service-api {
+    @doc "获取组织架构树"
+    @handler GetOrgTree
+    get /organization/tree (GetOrgTreeReq) returns (GetOrgTreeResp)
+
+    @doc "获取组织详情"
+    @handler GetOrgDetail
+    get /organization/:id (GetOrgDetailReq) returns (GetOrgDetailResp)
+
+    @doc "创建组织"
+    @handler CreateOrg
+    post /organization (CreateOrgReq) returns (CreateOrgResp)
+
+    @doc "更新组织"
+    @handler UpdateOrg
+    put /organization/:id (UpdateOrgReq) returns (UpdateOrgResp)
+
+    @doc "删除组织"
+    @handler DeleteOrg
+    delete /organization/:id (DeleteOrgReq) returns (DeleteOrgResp)
+
+    @doc "移动组织"
+    @handler MoveOrg
+    post /organization/move (MoveOrgReq) returns (MoveOrgResp)
+
+    @doc "获取部门用户"
+    @handler GetOrgUsers
+    get /organization/:id/users (GetOrgUsersReq) returns (GetOrgUsersResp)
+
+    @doc "设置用户主部门"
+    @handler SetUserPrimaryDept
+    post /user/primary-dept (SetUserPrimaryDeptReq) returns (SetUserPrimaryDeptResp)
+
+    @doc "添加用户辅助部门"
+    @handler AddUserAuxDept
+    post /user/aux-dept (AddUserAuxDeptReq) returns (AddUserAuxDeptResp)
+
+    @doc "删除用户辅助部门"
+    @handler RemoveUserAuxDept
+    delete /user/:userId/aux-dept/:deptId (RemoveUserAuxDeptReq) returns (RemoveUserAuxDeptResp)
+}

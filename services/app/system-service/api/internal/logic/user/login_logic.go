@@ -14,8 +14,8 @@ import (
 
 	"github.com/golang-jwt/jwt/v4"
 	baseErrorx "github.com/jinguoxing/idrm-go-base/errorx"
-	"golang.org/x/crypto/bcrypt"
 	"github.com/zeromicro/go-zero/core/logx"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type LoginLogic struct {

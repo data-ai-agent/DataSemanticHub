@@ -12,6 +12,22 @@
 - [部署脚本](#部署脚本)
 - [服务访问](#服务访问)
 - [常见问题](#常见问题)
+- [📚 相关文档](#-相关文档)
+
+---
+
+## 📚 相关文档
+
+请查阅 `docs/` 目录获取更详细的指南：
+
+### 📖 用户指南 (Guide)
+- **[数据库迁移指南](docs/guide/database_migration_guide.md)**: 完整的数据库版本管理、迁移操作手册。
+
+### 🧠 核心概念 (Concept)
+- **[迁移概念详解 (UP vs DOWN)](docs/concept/migration_concepts.md)**: 理解为什么需要 `up.sql` 和 `down.sql` 以及最佳实践。
+
+### 📝 参考资料 (Reference)
+- **[实施总结](docs/reference/implementation_summary_20260127.md)**: 2026-01-27 数据库迁移改造的实施详情记录。
 
 ---
 

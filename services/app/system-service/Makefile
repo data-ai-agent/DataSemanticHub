@@ -68,7 +68,7 @@ deps:
 
 # 构建 Docker 镜像 (使用 build.sh 脚本)
 docker-build:
-	@cd deploy/docker && ./build.sh $(VERSION)
+	@./deploy/docker/build.sh $(VERSION)
 
 # 运行 Docker 容器
 docker-run:
@@ -146,3 +146,100 @@ help:
 	@echo "    make k8s-manifest    - View generated manifest (dry-run)"
 	@echo "    make k8s-delete      - Delete K8s deployment"
 	@echo "    make k8s-status      - Check K8s status"
+	@echo ""
+	@echo "  Database Migrations:"
+	@echo "    make migrate-up      - Run all pending migrations"
+	@echo "    make migrate-down    - Rollback last migration"
+	@echo "    make migrate-status  - Show migration status"
+	@echo "    make migrate-create MODULE=<module> NAME=<name>  - Create new migration"
+
+# ============================================
+# Database Migration Commands
+# ============================================
+
+# 数据库配置（从环境变量读取，或使用默认值）
+DB_HOST ?= localhost
+DB_PORT ?= 3306
+DB_NAME ?= datasemantichub
+DB_USER ?= root
+DB_PASSWORD ?=
+
+# 迁移工具配置
+MIGRATE := migrate
+MIGRATIONS_DIR := migrations/versions
+DB_URL := "mysql://$(DB_USER):$(DB_PASSWORD)@tcp($(DB_HOST):$(DB_PORT))/$(DB_NAME)?multiStatements=true"
+
+# 模块列表
+MODULES := system user
+
+# 执行所有模块的迁移
+migrate-up:
+	@echo "🔼 执行数据库迁移..."
+	@for module in $(MODULES); do \
+		echo ""; \
+		echo "📦 模块: $$module"; \
+		echo "────────────────────────────────────"; \
+		$(MIGRATE) -path $(MIGRATIONS_DIR)/$$module -database $(DB_URL) up || exit 1; \
+		echo "✅ $$module 迁移成功"; \
+	done
+	@echo ""
+	@echo "🎉 所有模块迁移完成！"
+
+# 回滚所有模块的最后一次迁移
+migrate-down:
+	@echo "🔽 回滚数据库迁移..."
+	@for module in $(MODULES); do \
+		echo ""; \
+		echo "📦 模块: $$module"; \
+		echo "────────────────────────────────────"; \
+		$(MIGRATE) -path $(MIGRATIONS_DIR)/$$module -database $(DB_URL) down 1 || exit 1; \
+		echo "✅ $$module 回滚成功"; \
+	done
+	@echo ""
+	@echo "🎉 所有模块回滚完成！"
+
+# 查看所有模块的迁移状态
+migrate-status:
+	@echo "📊 查看迁移状态..."
+	@echo ""
+	@for module in $(MODULES); do \
+		echo "📦 模块: $$module"; \
+		echo "────────────────────────────────────"; \
+		$(MIGRATE) -path $(MIGRATIONS_DIR)/$$module -database $(DB_URL) version 2>&1 || echo "  ⚠️  未执行任何迁移"; \
+		echo ""; \
+	done
+
+# 创建新的迁移文件
+migrate-create:
+	@if [ -z "$(MODULE)" ]; then \
+		echo "❌ 错误: 请指定模块名"; \
+		echo "用法: make migrate-create MODULE=system NAME=add_new_field"; \
+		exit 1; \
+	fi
+	@if [ -z "$(NAME)" ]; then \
+		echo "❌ 错误: 请指定迁移名称"; \
+		echo "用法: make migrate-create MODULE=system NAME=add_new_field"; \
+		exit 1; \
+	fi
+	@echo "📝 创建新的迁移文件..."
+	@$(MIGRATE) create -ext sql -dir $(MIGRATIONS_DIR)/$(MODULE) -seq $(NAME)
+	@echo "✅ 迁移文件已创建在 $(MIGRATIONS_DIR)/$(MODULE)/"
+	@echo ""
+	@echo "💡 后续步骤:"
+	@echo "   1. 编辑生成的 .up.sql 文件（添加变更逻辑）"
+	@echo "   2. 编辑生成的 .down.sql 文件（添加回滚逻辑）"
+	@echo "   3. 执行迁移: make migrate-up"
+
+# 安装golang-migrate工具
+install-migrate-tool:
+	@echo "📦 安装 golang-migrate 工具..."
+	@if command -v brew >/dev/null 2>&1; then \
+		echo "使用 Homebrew 安装..."; \
+		brew install golang-migrate; \
+	else \
+		echo "❌ 未找到 Homebrew"; \
+		echo "请手动安装: https://github.com/golang-migrate/migrate"; \
+		exit 1; \
+	fi
+	@echo "✅ 安装完成"
+	@$(MIGRATE) -version
