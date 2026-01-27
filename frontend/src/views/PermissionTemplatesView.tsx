@@ -97,6 +97,7 @@ const PermissionTemplatesView = () => {
     const [actionType, setActionType] = useState<'publish' | 'disable'>('publish');
     const [actionTarget, setActionTarget] = useState<Template | null>(null);
     const [actionReason, setActionReason] = useState('');
+    const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
     // API integration states
     const [isLoading, setIsLoading] = useState(false);
@@ -134,7 +135,14 @@ const PermissionTemplatesView = () => {
                 status: backendStatus,
                 keyword: searchTerm || undefined,
             });
-            const frontendTemplates = result.data.map(item =>
+            // 兼容后端返回结构，确保 data 始终是数组
+            const rawData: any = (result as any)?.data;
+            const items: any[] = Array.isArray(rawData)
+                ? rawData
+                : Array.isArray(rawData?.list)
+                    ? rawData.list
+                    : [];
+            const frontendTemplates = items.map(item =>
                 convertBackendToFrontendTemplateItem(item)
             );
             setTemplates(frontendTemplates);
@@ -196,6 +204,7 @@ const PermissionTemplatesView = () => {
     }, [statusFilter]);
 
     const openCreateModal = () => {
+        setValidationErrors({});
         const draft: Template = {
             id: `tpl_${Date.now()}`,
             name: '',
@@ -225,6 +234,7 @@ const PermissionTemplatesView = () => {
     const closeModal = () => {
         setModalOpen(false);
         setDraftTemplate(null);
+        setValidationErrors({});
     };
 
     const closeDrawer = () => {
@@ -234,6 +244,20 @@ const PermissionTemplatesView = () => {
 
     const saveNewTemplate = async () => {
         if (!draftTemplate) return;
+
+        // 表单验证
+        const errors: Record<string, string> = {};
+        if (!draftTemplate.name.trim()) {
+            errors.name = '请输入模板名称';
+        }
+        if (!draftTemplate.code.trim()) {
+            errors.code = '请输入模板编码';
+        }
+
+        setValidationErrors(errors);
+        if (Object.keys(errors).length > 0) {
+            return;
+        }
 
         setIsSaving(true);
         setError(null);
@@ -710,22 +734,40 @@ const PermissionTemplatesView = () => {
                             <div className="space-y-6 px-6 py-6 overflow-y-auto">
                                 <div className="grid gap-4 md:grid-cols-2">
                                     <div className="space-y-2">
-                                        <label className="text-xs font-semibold text-slate-600">模板名称</label>
+                                        <label className="text-xs font-semibold text-slate-600">
+                                            模板名称 <span className="text-red-500">*</span>
+                                        </label>
                                         <input
                                             value={draftTemplate.name}
-                                            onChange={(event) => setDraftTemplate({ ...draftTemplate, name: event.target.value })}
+                                            onChange={(event) => {
+                                                setDraftTemplate({ ...draftTemplate, name: event.target.value });
+                                                if (validationErrors.name) setValidationErrors({ ...validationErrors, name: '' });
+                                            }}
                                             placeholder="例如：语义治理负责人模板"
-                                            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none"
+                                            className={`w-full rounded-lg border px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none ${validationErrors.name ? 'border-red-500' : 'border-slate-200'
+                                                }`}
                                         />
+                                        {validationErrors.name && (
+                                            <p className="text-xs text-red-500">{validationErrors.name}</p>
+                                        )}
                                     </div>
                                     <div className="space-y-2">
-                                        <label className="text-xs font-semibold text-slate-600">模板编码</label>
+                                        <label className="text-xs font-semibold text-slate-600">
+                                            模板编码 <span className="text-red-500">*</span>
+                                        </label>
                                         <input
                                             value={draftTemplate.code}
-                                            onChange={(event) => setDraftTemplate({ ...draftTemplate, code: event.target.value })}
+                                            onChange={(event) => {
+                                                setDraftTemplate({ ...draftTemplate, code: event.target.value });
+                                                if (validationErrors.code) setValidationErrors({ ...validationErrors, code: '' });
+                                            }}
                                             placeholder="tpl_semantic_owner"
-                                            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none"
+                                            className={`w-full rounded-lg border px-3 py-2 text-sm text-slate-700 focus:border-indigo-500 focus:outline-none ${validationErrors.code ? 'border-red-500' : 'border-slate-200'
+                                                }`}
                                         />
+                                        {validationErrors.code && (
+                                            <p className="text-xs text-red-500">{validationErrors.code}</p>
+                                        )}
                                     </div>
                                     <div className="space-y-2 md:col-span-2">
                                         <label className="text-xs font-semibold text-slate-600">模板描述</label>

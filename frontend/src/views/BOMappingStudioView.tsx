@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import {
     Layout, Database, GitMerge, CheckCircle, AlertCircle,
-    Cpu, Plus, Link, Settings, Sparkles, X, ArrowLeft, ArrowRight, Sparkles, Search, Filter,
+    Cpu, Plus, Link, Settings, Sparkles, X, ArrowLeft, ArrowRight, Search, Filter,
     Eye, Bot, Code, Info
 } from 'lucide-react';
 
@@ -802,16 +802,25 @@ const BOMappingStudioView = ({ selectedBO, showRuleEditor, setShowRuleEditor, bu
                             </div>
                         </div>
                         <div className="flex-1 overflow-y-auto p-2" ref={tableListRef}>
-                            {selectedTable?.columns?.filter((col: any) => col.name.toLowerCase().includes(tableSearchTerm.toLowerCase())).map((col: any, idx: number) => {
-                                const mapping = currentMapping?.mappings?.find((m: any) => m.tblField === col.name);
-                                const sampleData = mockColumnSamples[col.name] || mockColumnSamples[col.name.toLowerCase()] || ['—', '—', '—'];
+                            {(selectedTable?.columns || []).filter((col: any) => {
+                                const name = (col?.name || '').toString().toLowerCase();
+                                const term = (tableSearchTerm || '').toString().toLowerCase();
+                                if (!term) return true;
+                                return name.includes(term);
+                            }).map((col: any, idx: number) => {
+                                const colName = col?.name || '';
+                                const mapping = currentMapping?.mappings?.find((m: any) => m.tblField === colName);
+                                const sampleData =
+                                    mockColumnSamples[colName] ||
+                                    mockColumnSamples[colName.toLowerCase?.() ? colName.toLowerCase() : colName] ||
+                                    ['—', '—', '—'];
 
                                 return (
                                     <div
                                         key={idx}
-                                        data-col={col.name}
+                                        data-col={colName}
                                         draggable="true"
-                                        onDragStart={(e) => handleDragStart(e, col.name)}
+                                        onDragStart={(e) => handleDragStart(e, colName)}
                                         className={`flex items-center justify-between p-3 mb-2 rounded-lg border transition-all text-xs relative group cursor-grab active:cursor-grabbing ${mapping ? 'bg-emerald-50 border-emerald-200' : 'bg-white border-slate-200 hover:border-emerald-300'}`}
                                     >
                                         {/* Connector Dot */}
@@ -819,7 +828,7 @@ const BOMappingStudioView = ({ selectedBO, showRuleEditor, setShowRuleEditor, bu
 
                                         <div className="flex-1 min-w-0">
                                             <div className="font-mono text-slate-700 flex items-center gap-1">
-                                                {col.name}
+                                                {colName}
                                                 {/* Data Preview Icon with Tooltip */}
                                                 <div className="relative ml-1">
                                                     <Eye size={12} className="text-slate-300 group-hover:text-emerald-500 cursor-help transition-colors" />

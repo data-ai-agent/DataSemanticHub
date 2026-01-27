@@ -2868,7 +2868,7 @@ const DataSemanticUnderstandingView = ({
                                                             if (safeName.includes('amount') || safeName.includes('price') || safeName.includes('total') || safeType.includes('decimal')) return { role: 'Measure', reason: '金额/数量字段', confidence: 80 };
                                                             return { role: 'BusAttr', reason: '默认业务属性', confidence: 60 };
                                                         };
-                                                        const getAIResult = (name: string) => {
+                                                        const getAIResult = (name?: string) => {
                                                             const aiMappings: Record<string, { role: string; meaning: string; scenario: string; confidence: number }> = {
                                                                 'id': { role: 'id', meaning: '记录标识', scenario: '主键关联', confidence: 92 },
                                                                 'user_id': { role: 'user_id', meaning: '用户标识', scenario: '用户关联查询', confidence: 95 },
@@ -2883,7 +2883,8 @@ const DataSemanticUnderstandingView = ({
                                                                 'amount': { role: 'amount', meaning: '金额数值', scenario: '财务统计', confidence: 88 },
                                                                 'order_id': { role: 'order_id', meaning: '订单标识', scenario: '订单关联', confidence: 95 },
                                                             };
-                                                            const key = Object.keys(aiMappings).find(k => name.includes(k));
+                                                            const safeName = (name || '').toLowerCase();
+                                                            const key = Object.keys(aiMappings).find(k => safeName.includes(k));
                                                             if (key) return aiMappings[key];
                                                             return { role: 'unknown', meaning: '待识别', scenario: '-', confidence: 0 };
                                                         };
@@ -3103,7 +3104,7 @@ const DataSemanticUnderstandingView = ({
                                                                         <div>
                                                                             <div className="text-slate-500 text-xs font-medium mb-1">敏感字段</div>
                                                                             <div className="text-2xl font-bold text-slate-800">{allFields.filter((f: any) => {
-                                                                                const name = f.fieldName.toLowerCase();
+                                                                                const name = (f.fieldName || f.name || '').toString().toLowerCase();
                                                                                 return name.includes('id_card') || name.includes('sfz') || name.includes('bank') ||
                                                                                     name.includes('mobile') || name.includes('phone') || name.includes('address');
                                                                             }).length}</div>
@@ -3394,14 +3395,16 @@ const DataSemanticUnderstandingView = ({
                                                                                     const aiRole = field.suggestion || aiResult.role;
 
                                                                                     // Sample values for the field
-                                                                                    const getSampleValues = (name: string, type: string): string[] => {
-                                                                                        if (name.includes('id')) return ['1001', '1002', '1003'];
-                                                                                        if (name.includes('name')) return ['张三', '李四', '王五'];
-                                                                                        if (name.includes('mobile') || name.includes('phone')) return ['138****1234', '159****5678'];
-                                                                                        if (name.includes('status')) return ['1', '2', '3'];
-                                                                                        if (name.includes('time') || name.includes('date')) return ['2024-01-15', '2024-02-20'];
-                                                                                        if (name.includes('amount') || name.includes('price')) return ['99.00', '188.50', '520.00'];
-                                                                                        if (type.includes('varchar')) return ['示例值A', '示例值B'];
+                                                                                    const getSampleValues = (name?: string, type?: string): string[] => {
+                                                                                        const safeName = (name || '').toString().toLowerCase();
+                                                                                        const safeType = (type || '').toString().toLowerCase();
+                                                                                        if (safeName.includes('id')) return ['1001', '1002', '1003'];
+                                                                                        if (safeName.includes('name')) return ['张三', '李四', '王五'];
+                                                                                        if (safeName.includes('mobile') || safeName.includes('phone')) return ['138****1234', '159****5678'];
+                                                                                        if (safeName.includes('status')) return ['1', '2', '3'];
+                                                                                        if (safeName.includes('time') || safeName.includes('date')) return ['2024-01-15', '2024-02-20'];
+                                                                                        if (safeName.includes('amount') || safeName.includes('price')) return ['99.00', '188.50', '520.00'];
+                                                                                        if (safeType.includes('varchar')) return ['示例值A', '示例值B'];
                                                                                         return ['-'];
                                                                                     };
                                                                                     const sampleValues = getSampleValues(field.fieldName, field.type);
@@ -3413,10 +3416,11 @@ const DataSemanticUnderstandingView = ({
                                                                                     const displayRole = override?.role || ruleRole; // Unused but kept for logic consistency if needed
 
                                                                                     // Sensitivity level inference (with override support)
-                                                                                    const getInferredSensitivity = (name: string): 'L1' | 'L2' | 'L3' | 'L4' => {
-                                                                                        if (name.includes('id_card') || name.includes('sfz') || name.includes('bank')) return 'L4';
-                                                                                        if (name.includes('mobile') || name.includes('phone') || name.includes('name') || name.includes('address')) return 'L3';
-                                                                                        if (name.includes('user') || name.includes('employee')) return 'L2';
+                                                                                    const getInferredSensitivity = (name?: string): 'L1' | 'L2' | 'L3' | 'L4' => {
+                                                                                        const safeName = (name || '').toString().toLowerCase();
+                                                                                        if (safeName.includes('id_card') || safeName.includes('sfz') || safeName.includes('bank')) return 'L4';
+                                                                                        if (safeName.includes('mobile') || safeName.includes('phone') || safeName.includes('name') || safeName.includes('address')) return 'L3';
+                                                                                        if (safeName.includes('user') || safeName.includes('employee')) return 'L2';
                                                                                         return 'L1';
                                                                                     };
                                                                                     const inferredSensitivity = getInferredSensitivity(field.fieldName);

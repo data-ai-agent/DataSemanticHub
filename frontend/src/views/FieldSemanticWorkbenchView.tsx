@@ -149,8 +149,13 @@ export const FieldSemanticWorkbenchView = ({ scanResults, onNavigateToField }: F
     // 3. Filter Logic
     const filteredFields = useMemo(() => {
         return allFields.filter(field => {
-            const matchesSearch = field.fieldName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                field.tableName.toLowerCase().includes(searchTerm.toLowerCase());
+            const fieldName = (field.fieldName || '').toString().toLowerCase();
+            const tableName = (field.tableName || '').toString().toLowerCase();
+            const term = (searchTerm || '').toString().toLowerCase();
+            const matchesSearch =
+                !term ||
+                fieldName.includes(term) ||
+                tableName.includes(term);
             const matchesRisk = filterRisk.length === 0 || (field.riskLevel && filterRisk.includes(field.riskLevel));
             const matchesStatus = filterStatus.length === 0 || filterStatus.includes(field.semanticStatus);
             const matchesLogicalView = filterLogicalView.length === 0 || (field.logicalViewName && filterLogicalView.includes(field.logicalViewName));
