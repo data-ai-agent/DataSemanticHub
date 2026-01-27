@@ -18,13 +18,15 @@ import (
 func TestUpdatePermissionTemplate_NormalUpdate(t *testing.T) {
 	// 准备测试数据
 	templateId := "template-id"
+	desc := "原始描述"
+	scope := permissiontemplatemodel.ScopeOrganization
 	existingTemplate := &permissiontemplatemodel.PermissionTemplate{
 		Id:              templateId,
 		Name:            "原始模板",
 		Code:            "original_code",
-		Description:     "原始描述",
+		Description:     &desc,
 		Status:          permissiontemplatemodel.StatusDraft,
-		ScopeSuggestion: permissiontemplatemodel.ScopeOrganization,
+		ScopeSuggestion: &scope,
 		Version:         1,
 		CreatedBy:       "creator-id",
 		CreatedAt:       time.Now(),

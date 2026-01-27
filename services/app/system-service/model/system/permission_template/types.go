@@ -12,9 +12,9 @@ type PermissionTemplate struct {
 	Id              string         `gorm:"primaryKey;size:36" json:"id"`                                                           // UUID v7
 	Name            string         `gorm:"size:128;not null" json:"name"`                                                           // 模板名称
 	Code            string         `gorm:"size:64;not null;index:idx_code" json:"code"`                                              // 模板编码（全局唯一）
-	Description     string         `gorm:"size:500" json:"description"`                                                             // 模板描述
+	Description     *string        `gorm:"size:500" json:"description,omitempty"`                                                   // 模板描述
 	Status          string         `gorm:"size:20;not null;default:'draft';index:idx_status" json:"status"`                          // 模板状态：draft/published/disabled
-	ScopeSuggestion string         `gorm:"size:50;index:idx_scope_suggestion" json:"scope_suggestion"`                                // 推荐适用范围：global/organization/domain/project
+	ScopeSuggestion *string        `gorm:"size:50;index:idx_scope_suggestion" json:"scope_suggestion,omitempty"`                     // 推荐适用范围：global/organization/domain/project
 	PolicyMatrix    datatypes.JSON `gorm:"type:json;not null" json:"policy_matrix"`                                                 // 策略矩阵（模块×动作勾选关系）
 	AdvancedPerms   datatypes.JSON `gorm:"type:json" json:"advanced_perms"`                                                         // 高级权限点配置
 	Version         int            `gorm:"type:int;not null;default:1" json:"version"`                                               // 版本号（每次发布递增）

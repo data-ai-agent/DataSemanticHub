@@ -113,14 +113,15 @@ func (m *MockPermissionTemplateModel) Trans(ctx context.Context, fn func(ctx con
 func createTestPermissionTemplates() []*permissiontemplatemodel.PermissionTemplate {
 	now := time.Now()
 	policyMatrixJSON := `{"user": {"actions": ["create", "read"], "scope": "organization"}}`
-
+	desc1 := "系统管理员权限模板"
+	scope1 := permissiontemplatemodel.ScopeGlobal
 	template1 := &permissiontemplatemodel.PermissionTemplate{
 		Id:              uuid.New().String(),
 		Name:            "系统管理员模板",
 		Code:            "system_admin",
-		Description:     "系统管理员权限模板",
+		Description:     &desc1,
 		Status:          permissiontemplatemodel.StatusPublished,
-		ScopeSuggestion: permissiontemplatemodel.ScopeGlobal,
+		ScopeSuggestion: &scope1,
 		PolicyMatrix:    datatypes.JSON([]byte(policyMatrixJSON)),
 		Version:         1,
 		CreatedBy:       "admin-user-id",
@@ -128,13 +129,15 @@ func createTestPermissionTemplates() []*permissiontemplatemodel.PermissionTempla
 		UpdatedAt:       now,
 	}
 
+	desc2 := "组织管理员权限模板"
+	scope2 := permissiontemplatemodel.ScopeOrganization
 	template2 := &permissiontemplatemodel.PermissionTemplate{
 		Id:              uuid.New().String(),
 		Name:            "组织管理员模板",
 		Code:            "org_admin",
-		Description:     "组织管理员权限模板",
+		Description:     &desc2,
 		Status:          permissiontemplatemodel.StatusDraft,
-		ScopeSuggestion: permissiontemplatemodel.ScopeOrganization,
+		ScopeSuggestion: &scope2,
 		PolicyMatrix:    datatypes.JSON([]byte(policyMatrixJSON)),
 		Version:         1,
 		CreatedBy:       "admin-user-id",
@@ -142,13 +145,15 @@ func createTestPermissionTemplates() []*permissiontemplatemodel.PermissionTempla
 		UpdatedAt:       now.Add(-1 * time.Hour),
 	}
 
+	desc3 := "域管理员权限模板"
+	scope3 := permissiontemplatemodel.ScopeDomain
 	template3 := &permissiontemplatemodel.PermissionTemplate{
 		Id:              uuid.New().String(),
 		Name:            "域管理员模板",
 		Code:            "domain_admin",
-		Description:     "域管理员权限模板",
+		Description:     &desc3,
 		Status:          permissiontemplatemodel.StatusDisabled,
-		ScopeSuggestion: permissiontemplatemodel.ScopeDomain,
+		ScopeSuggestion: &scope3,
 		PolicyMatrix:    datatypes.JSON([]byte(policyMatrixJSON)),
 		Version:         2,
 		CreatedBy:       "admin-user-id",

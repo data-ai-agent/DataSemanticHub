@@ -294,7 +294,7 @@ func TestCreatePermissionTemplate_WithAllScopes(t *testing.T) {
 			mockModel := new(MockPermissionTemplateModel)
 			mockModel.On("FindOneByCodeIncludingDeleted", mock.Anything, scope+"_template").Return(nil, permissiontemplatemodel.ErrPermissionTemplateNotFound)
 			mockModel.On("Insert", mock.Anything, mock.MatchedBy(func(template *permissiontemplatemodel.PermissionTemplate) bool {
-				return template.ScopeSuggestion == scope
+				return template.ScopeSuggestion != nil && *template.ScopeSuggestion == scope
 			})).Return(&permissiontemplatemodel.PermissionTemplate{Id: "scope-id"}, nil)
 
 			// 创建 ServiceContext

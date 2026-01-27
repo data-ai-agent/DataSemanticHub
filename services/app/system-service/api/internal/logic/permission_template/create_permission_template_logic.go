@@ -64,14 +64,25 @@ func (l *CreatePermissionTemplateLogic) CreatePermissionTemplate(req *types.Crea
 		}
 	}
 
-	// 4. 构建 PermissionTemplate 实体
+	// 4. 处理可选字段（空字符串转为 nil）
+	var description *string
+	if req.Description != "" {
+		description = &req.Description
+	}
+
+	var scopeSuggestion *string
+	if req.ScopeSuggestion != "" {
+		scopeSuggestion = &req.ScopeSuggestion
+	}
+
+	// 5. 构建 PermissionTemplate 实体
 	template := &permissiontemplatemodel.PermissionTemplate{
 		Id:              id.String(),
 		Name:            req.Name,
 		Code:            req.Code,
-		Description:     req.Description,
+		Description:     description,
 		Status:          permissiontemplatemodel.StatusDraft, // 默认为草稿状态
-		ScopeSuggestion: req.ScopeSuggestion,
+		ScopeSuggestion: scopeSuggestion,
 		PolicyMatrix:    policyMatrixJSON,
 		AdvancedPerms:   advancedPermsJSON,
 		Version:         1,

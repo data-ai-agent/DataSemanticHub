@@ -16,13 +16,15 @@ import (
 
 func TestClonePermissionTemplate_NormalClone(t *testing.T) {
 	sourceId := "source-template-id"
+	desc := "源模板描述"
+	scope := permissiontemplatemodel.ScopeGlobal
 	sourceTemplate := &permissiontemplatemodel.PermissionTemplate{
 		Id:              sourceId,
 		Name:            "源模板",
 		Code:            "source",
-		Description:     "源模板描述",
+		Description:     &desc,
 		Status:          permissiontemplatemodel.StatusPublished,
-		ScopeSuggestion: permissiontemplatemodel.ScopeGlobal,
+		ScopeSuggestion: &scope,
 		Version:         2,
 	}
 

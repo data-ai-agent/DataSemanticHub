@@ -103,11 +103,12 @@ func TestConcurrentCreateSameCode(t *testing.T) {
 // 预期：最后一次更新成功（后写覆盖），或者实现乐观锁（版本号校验）
 func TestConcurrentEditConflict(t *testing.T) {
 	templateId := "concurrent-edit-template-id"
+	desc := "原始描述"
 	originalTemplate := &permissiontemplatemodel.PermissionTemplate{
 		Id:          templateId,
 		Name:        "原始模板名称",
 		Code:        "concurrent_edit",
-		Description: "原始描述",
+		Description: &desc,
 		Status:      permissiontemplatemodel.StatusDraft,
 		Version:     1,
 	}

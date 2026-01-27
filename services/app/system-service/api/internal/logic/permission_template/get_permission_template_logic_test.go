@@ -22,6 +22,8 @@ func TestGetPermissionTemplate_NormalQuery(t *testing.T) {
 	// 准备测试数据
 	now := time.Now()
 	templateId := uuid.New().String()
+	desc := "系统管理员权限模板"
+	scope := permissiontemplatemodel.ScopeGlobal
 	policyMatrixJSON, _ := json.Marshal(map[string]types.PolicyMatrixEntry{
 		"user": {
 			Actions: []string{"create", "read", "update", "delete"},
@@ -41,9 +43,9 @@ func TestGetPermissionTemplate_NormalQuery(t *testing.T) {
 		Id:              templateId,
 		Name:            "系统管理员模板",
 		Code:            "system_admin",
-		Description:     "系统管理员权限模板",
+		Description:     &desc,
 		Status:          permissiontemplatemodel.StatusPublished,
-		ScopeSuggestion: permissiontemplatemodel.ScopeGlobal,
+		ScopeSuggestion: &scope,
 		PolicyMatrix:    datatypes.JSON(policyMatrixJSON),
 		AdvancedPerms:   datatypes.JSON(advancedPermsJSON),
 		Version:         2,
@@ -165,13 +167,15 @@ func TestGetPermissionTemplate_UsageStatsError(t *testing.T) {
 	// 准备测试数据
 	now := time.Now()
 	templateId := uuid.New().String()
+	desc := "测试模板描述"
+	scope := permissiontemplatemodel.ScopeOrganization
 	template := &permissiontemplatemodel.PermissionTemplate{
 		Id:              templateId,
 		Name:            "测试模板",
 		Code:            "test",
-		Description:     "测试模板描述",
+		Description:     &desc,
 		Status:          permissiontemplatemodel.StatusDraft,
-		ScopeSuggestion: permissiontemplatemodel.ScopeOrganization,
+		ScopeSuggestion: &scope,
 		PolicyMatrix:    datatypes.JSON([]byte(`{}`)),
 		Version:         1,
 		CreatedBy:       "admin-user-id",
@@ -214,13 +218,15 @@ func TestGetPermissionTemplate_DraftTemplate(t *testing.T) {
 	// 准备测试数据 - 草稿状态模板
 	now := time.Now()
 	templateId := uuid.New().String()
+	desc := "这是一个草稿模板"
+	scope := permissiontemplatemodel.ScopeProject
 	template := &permissiontemplatemodel.PermissionTemplate{
 		Id:              templateId,
 		Name:            "草稿模板",
 		Code:            "draft_template",
-		Description:     "这是一个草稿模板",
+		Description:     &desc,
 		Status:          permissiontemplatemodel.StatusDraft,
-		ScopeSuggestion: permissiontemplatemodel.ScopeProject,
+		ScopeSuggestion: &scope,
 		PolicyMatrix:    datatypes.JSON([]byte(`{}`)),
 		Version:         1,
 		CreatedBy:       "creator-id",
@@ -271,13 +277,15 @@ func TestGetPermissionTemplate_DisabledTemplate(t *testing.T) {
 	now := time.Now()
 	templateId := uuid.New().String()
 	updatedBy := "updater-id"
+	desc := "这是一个已停用的模板"
+	scope := permissiontemplatemodel.ScopeDomain
 	template := &permissiontemplatemodel.PermissionTemplate{
 		Id:              templateId,
 		Name:            "已停用模板",
 		Code:            "disabled_template",
-		Description:     "这是一个已停用的模板",
+		Description:     &desc,
 		Status:          permissiontemplatemodel.StatusDisabled,
-		ScopeSuggestion: permissiontemplatemodel.ScopeDomain,
+		ScopeSuggestion: &scope,
 		PolicyMatrix:    datatypes.JSON([]byte(`{}`)),
 		Version:         3,
 		CreatedBy:       "creator-id",
@@ -328,13 +336,15 @@ func TestGetPermissionTemplate_WithNilUpdatedBy(t *testing.T) {
 	// 准备测试数据 - UpdatedBy 为 nil
 	now := time.Now()
 	templateId := uuid.New().String()
+	desc := "模板描述"
+	scope := permissiontemplatemodel.ScopeGlobal
 	template := &permissiontemplatemodel.PermissionTemplate{
 		Id:              templateId,
 		Name:            "模板",
 		Code:            "template",
-		Description:     "模板描述",
+		Description:     &desc,
 		Status:          permissiontemplatemodel.StatusPublished,
-		ScopeSuggestion: permissiontemplatemodel.ScopeGlobal,
+		ScopeSuggestion: &scope,
 		PolicyMatrix:    datatypes.JSON([]byte(`{}`)),
 		Version:         1,
 		CreatedBy:       "creator-id",

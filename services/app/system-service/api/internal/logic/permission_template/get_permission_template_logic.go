@@ -63,9 +63,9 @@ func (l *GetPermissionTemplateLogic) convertToDetail(template *permissiontemplat
 		Id:              template.Id,
 		Name:            template.Name,
 		Code:            template.Code,
-		Description:     template.Description,
+		Description:     "",
 		Status:          template.Status,
-		ScopeSuggestion: template.ScopeSuggestion,
+		ScopeSuggestion: "",
 		Version:         template.Version,
 		UsedByRoleCount: stats.UsedByRoleCount,
 		CreatedBy:       template.CreatedBy,
@@ -75,6 +75,14 @@ func (l *GetPermissionTemplateLogic) convertToDetail(template *permissiontemplat
 	}
 
 	// 处理可选字段
+	if template.Description != nil {
+		detail.Description = *template.Description
+	}
+
+	if template.ScopeSuggestion != nil {
+		detail.ScopeSuggestion = *template.ScopeSuggestion
+	}
+
 	if template.UpdatedBy != nil {
 		detail.UpdatedBy = *template.UpdatedBy
 	}

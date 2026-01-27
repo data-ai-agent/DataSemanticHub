@@ -52,10 +52,16 @@ func (l *ListPermissionTemplatesLogic) ListPermissionTemplates(req *types.ListPe
 			Name:            tpl.Name,
 			Code:            tpl.Code,
 			Status:          tpl.Status,
-			ScopeSuggestion: tpl.ScopeSuggestion,
+			ScopeSuggestion: "",
 			Version:         tpl.Version,
 			UpdatedAt:       tpl.UpdatedAt.Format("2006-01-02 15:04:05.000"),
 		}
+
+		// 处理可选字段
+		if tpl.ScopeSuggestion != nil {
+			item.ScopeSuggestion = *tpl.ScopeSuggestion
+		}
+
 		items = append(items, item)
 	}
 

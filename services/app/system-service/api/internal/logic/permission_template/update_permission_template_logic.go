@@ -71,11 +71,22 @@ func (l *UpdatePermissionTemplateLogic) UpdatePermissionTemplate(req *types.Upda
 		}
 	}
 
-	// 5. 更新模板字段
+	// 5. 处理可选字段（空字符串转为 nil）
+	var description *string
+	if req.Description != "" {
+		description = &req.Description
+	}
+
+	var scopeSuggestion *string
+	if req.ScopeSuggestion != "" {
+		scopeSuggestion = &req.ScopeSuggestion
+	}
+
+	// 6. 更新模板字段
 	template.Name = req.Name
 	template.Code = req.Code
-	template.Description = req.Description
-	template.ScopeSuggestion = req.ScopeSuggestion
+	template.Description = description
+	template.ScopeSuggestion = scopeSuggestion
 	template.PolicyMatrix = policyMatrixJSON
 	template.AdvancedPerms = advancedPermsJSON
 	// UpdatedBy 和 UpdatedAt 由 GORM 自动处理
