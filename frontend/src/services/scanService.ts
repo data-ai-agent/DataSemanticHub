@@ -411,6 +411,114 @@ export interface QueryTableScanParams {
     keyword?: string;
 }
 
+/**
+ * 后端 - 表信息模型（数据源下的表）
+ */
+export interface TableInfoVo {
+    /** 表ID */
+    id: string;
+    /** 表名 */
+    table_name: string;
+    /** 数据库类型 */
+    db_type: string;
+    /** 表注释 */
+    table_comment?: string;
+    /** 创建时间 */
+    create_time?: string;
+    /** 更新时间 */
+    update_time?: string;
+}
+
+/**
+ * 后端 - 字段信息模型
+ */
+export interface FieldInfoVo {
+    /** 字段ID */
+    id: string;
+    /** 字段名 */
+    field_name: string;
+    /** 字段类型 */
+    field_type: string;
+    /** 字段注释 */
+    field_comment?: string;
+    /** 是否主键 */
+    is_primary?: boolean;
+    /** 是否可为空 */
+    is_nullable?: boolean;
+    /** 默认值 */
+    default_value?: string;
+    /** 创建时间 */
+    create_time?: string;
+}
+
+/**
+ * 前端 - 表信息
+ */
+export interface TableInfo {
+    /** 表ID */
+    id: string;
+    /** 表名 */
+    tableName: string;
+    /** 数据库类型 */
+    dbType: string;
+    /** 表注释 */
+    tableComment?: string;
+    /** 创建时间 */
+    createTime?: string;
+    /** 更新时间 */
+    updateTime?: string;
+}
+
+/**
+ * 前端 - 字段信息
+ */
+export interface FieldInfo {
+    /** 字段ID */
+    id: string;
+    /** 字段名 */
+    fieldName: string;
+    /** 字段类型 */
+    fieldType: string;
+    /** 字段注释 */
+    fieldComment?: string;
+    /** 是否主键 */
+    isPrimary?: boolean;
+    /** 是否可为空 */
+    isNullable?: boolean;
+    /** 默认值 */
+    defaultValue?: string;
+    /** 创建时间 */
+    createTime?: string;
+}
+
+/**
+ * 前端 - 查询表列表参数
+ */
+export interface QueryTablesParams {
+    /** 数据源ID */
+    dataSourceId: string;
+    /** 每页数量 */
+    limit?: number;
+    /** 偏移量 */
+    offset?: number;
+    /** 搜索关键词 */
+    keyword?: string;
+}
+
+/**
+ * 前端 - 查询字段列表参数
+ */
+export interface QueryFieldsParams {
+    /** 表ID */
+    tableId: string;
+    /** 每页数量 */
+    limit?: number;
+    /** 偏移量 */
+    offset?: number;
+    /** 搜索关键词 */
+    keyword?: string;
+}
+
 // ==================== API 端点定义 ====================
 
 const SCAN_ENDPOINTS = {
@@ -421,6 +529,8 @@ const SCAN_ENDPOINTS = {
     SCAN_SCHEDULE_TASK: (scheduleId: string) => `/metadata/scan/schedule/task/${scheduleId}`,
     SCAN_SCHEDULE_EXEC: (scheduleId: string) => `/metadata/scan/schedule/exec/${scheduleId}`,
     SCAN_BATCH: '/metadata/scan/batch',
+    DATA_SOURCE_TABLES: (dsId: string) => `/metadata/data-source/${dsId}`,
+    TABLE_FIELDS: (tableId: string) => `/metadata/table/${tableId}`,
 } as const;
 
 // ==================== 错误处理 ====================
@@ -575,6 +685,45 @@ const formatDataSourceType = (type: string): string => {
     return typeMapping[type?.toLowerCase()] || type;
 };
 
+/**
+ * 后端表信息 → 前端表信息
+ */
+const fromBackendTableInfo = (backend: TableInfoVo | any): TableInfo => {
+    return {
+        id: backend.id,
+        // 兼容两种命名格式: table_name 或 name
+        tableName: backend.table_name || backend.name || '',
+        // 兼容两种命名格式: db_type 或直接使用已格式化的类型
+        dbType: backend.db_type ? formatDataSourceType(backend.db_type) : (backend.dbType || '未知'),
+        // 兼容两种格式: 直接的 table_comment 或 advanced_params.comment
+        tableComment: backend.table_comment || (backend.advanced_params?.comment) || '',
+        createTime: backend.create_time,
+        updateTime: backend.update_time,
+    };
+};
+
+/**
+ * 后端字段信息 → 前端字段信息
+ */
+const fromBackendFieldInfo = (backend: FieldInfoVo | any): FieldInfo => {
+    return {
+        id: backend.id,
+        // 兼容两种命名格式: field_name 或 name
+        fieldName: backend.field_name || backend.name || '',
+        // 兼容两种命名格式: field_type 或 type
+        fieldType: backend.field_type || backend.type || backend.vega_type || '',
+        // 兼容两种命名格式: field_comment 或 comment
+        fieldComment: backend.field_comment || backend.comment,
+        // 兼容两种命名格式: is_primary 或 isPrimary
+        isPrimary: backend.is_primary ?? backend.isPrimary,
+        // 兼容两种命名格式: is_nullable 或 isNullable
+        isNullable: backend.is_nullable ?? backend.isNullable,
+        // 兼容两种命名格式: default_value 或 defaultValue
+        defaultValue: backend.default_value || backend.defaultValue,
+        createTime: backend.create_time,
+    };
+};
+
 // ==================== Scan Service ====================
 
 export const scanService = {
@@ -626,8 +775,12 @@ export const scanService = {
                 requestBody.tables = params.tables;
             }
 
+            // cron_expression 需要是一个对象，包含 type 和 expression
             if (params.cronExpression) {
-                requestBody.cron_expression = params.cronExpression;
+                requestBody.cron_expression = {
+                    type: 'CRON',
+                    expression: params.cronExpression
+                };
             }
 
             if (params.status) {
@@ -665,7 +818,7 @@ export const scanService = {
                         ds_type: param.dataSourceType.toLowerCase(),
                     },
                     ...(param.tables && { tables: param.tables }),
-                    ...(param.cronExpression && { cron_expression: param.cronExpression }),
+                    ...(param.cronExpression && { cron_expression: { type: 'CRON', expression: param.cronExpression } }),
                     ...(param.status && { status: param.status }),
                 };
 
@@ -886,6 +1039,104 @@ export const scanService = {
             if (import.meta.env.DEV) {
                 return {
                     executions: [],
+                    totalCount: 0,
+                };
+            }
+            throw error;
+        }
+    },
+
+    /**
+     * 获取数据源下的表列表
+     */
+    async getTablesByDataSourceId(params: QueryTablesParams): Promise<{ tables: TableInfo[]; totalCount: number }> {
+        try {
+            const queryParams = new URLSearchParams();
+            if (params.limit) {
+                queryParams.append('limit', params.limit.toString());
+            }
+            if (params.offset) {
+                queryParams.append('offset', params.offset.toString());
+            }
+            if (params.keyword) {
+                queryParams.append('keyword', params.keyword);
+            }
+
+            const url = `${SCAN_ENDPOINTS.DATA_SOURCE_TABLES(params.dataSourceId)}?${queryParams.toString()}`;
+
+            const response = await dataConnectionServiceClient(url, {
+                method: 'GET',
+            });
+
+            if (!response.ok) {
+                throw await parseScanError(response);
+            }
+
+            const result: any = await response.json();
+
+            // 处理可能的不同响应格式
+            const entries = result.entries || result.data || result.items || [];
+            const totalCount = result.total_count || result.totalCount || (Array.isArray(entries) ? entries.length : 0);
+            const tables = Array.isArray(entries) ? entries.map(fromBackendTableInfo) : [];
+
+            return {
+                tables,
+                totalCount,
+            };
+        } catch (error) {
+            console.error('Failed to fetch tables by data source id:', error);
+            if (import.meta.env.DEV) {
+                return {
+                    tables: [],
+                    totalCount: 0,
+                };
+            }
+            throw error;
+        }
+    },
+
+    /**
+     * 获取表下的字段列表
+     */
+    async getFieldsByTableId(params: QueryFieldsParams): Promise<{ fields: FieldInfo[]; totalCount: number }> {
+        try {
+            const queryParams = new URLSearchParams();
+            if (params.limit) {
+                queryParams.append('limit', params.limit.toString());
+            }
+            if (params.offset) {
+                queryParams.append('offset', params.offset.toString());
+            }
+            if (params.keyword) {
+                queryParams.append('keyword', params.keyword);
+            }
+
+            const url = `${SCAN_ENDPOINTS.TABLE_FIELDS(params.tableId)}?${queryParams.toString()}`;
+
+            const response = await dataConnectionServiceClient(url, {
+                method: 'GET',
+            });
+
+            if (!response.ok) {
+                throw await parseScanError(response);
+            }
+
+            const result: any = await response.json();
+
+            // 处理可能的不同响应格式
+            const entries = result.entries || result.data || result.items || [];
+            const totalCount = result.total_count || result.totalCount || (Array.isArray(entries) ? entries.length : 0);
+            const fields = Array.isArray(entries) ? entries.map(fromBackendFieldInfo) : [];
+
+            return {
+                fields,
+                totalCount,
+            };
+        } catch (error) {
+            console.error('Failed to fetch fields by table id:', error);
+            if (import.meta.env.DEV) {
+                return {
+                    fields: [],
                     totalCount: 0,
                 };
             }

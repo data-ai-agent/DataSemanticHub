@@ -11,6 +11,8 @@ import {
     type ScheduledScan,
     type ScheduledScanExecutionHistory,
     type TableScan,
+    type TableInfo,
+    type FieldInfo,
     ScanTaskType,
     ScanStrategy,
 } from '../services/scanService';
@@ -55,9 +57,21 @@ const AssetScanningView = ({ onNavigate }: { onNavigate?: (moduleId: string) => 
         dataSourceId: '',
         dataSourceType: 'MySQL',
         scanStrategy: [] as ('insert' | 'update' | 'delete')[],
+        selectedTables: [] as string[],
         cronExpression: '0 0 2 * * ?',
         status: 'open' as 'open' | 'close',
     });
+
+    // 表选择相关
+    const [availableTables, setAvailableTables] = useState<TableInfo[]>([]);
+    const [tablesLoading, setTablesLoading] = useState(false);
+    const [tableSearchKeyword, setTableSearchKeyword] = useState('');
+
+    // 字段信息相关
+    const [showFieldModal, setShowFieldModal] = useState(false);
+    const [selectedTableForFields, setSelectedTableForFields] = useState<TableScan | null>(null);
+    const [tableFields, setTableFields] = useState<FieldInfo[]>([]);
+    const [fieldsLoading, setFieldsLoading] = useState(false);
 
     // 加载数据源
     useEffect(() => {
@@ -121,6 +135,12 @@ const AssetScanningView = ({ onNavigate }: { onNavigate?: (moduleId: string) => 
             return;
         }
 
+        // 表即时扫描需要选择表
+        if (newTask.type === ScanTaskType.TableInstant && newTask.selectedTables.length === 0) {
+            alert('请至少选择一个表');
+            return;
+        }
+
         try {
             const ds = dataSources.find(d => d.id === newTask.dataSourceId);
             if (!ds) return;
@@ -131,6 +151,7 @@ const AssetScanningView = ({ onNavigate }: { onNavigate?: (moduleId: string) => 
                 dataSourceId: newTask.dataSourceId,
                 dataSourceType: newTask.dataSourceType,
                 scanStrategy: newTask.scanStrategy.length > 0 ? newTask.scanStrategy : undefined,
+                tables: newTask.selectedTables.length > 0 ? newTask.selectedTables : undefined,
                 cronExpression: newTask.type === ScanTaskType.DataSourceScheduled ? newTask.cronExpression : undefined,
                 status: newTask.status,
             });
@@ -156,9 +177,60 @@ const AssetScanningView = ({ onNavigate }: { onNavigate?: (moduleId: string) => 
             dataSourceId: '',
             dataSourceType: 'MySQL',
             scanStrategy: [] as ('insert' | 'update' | 'delete')[],
+            selectedTables: [],
             cronExpression: '0 0 2 * * ?',
             status: 'open',
         });
+        setAvailableTables([]);
+        setTableSearchKeyword('');
+    };
+
+    // 加载数据源下的表列表
+    const loadTablesForDataSource = async (dataSourceId: string, dataSourceType?: string) => {
+        if (!dataSourceId) {
+            setAvailableTables([]);
+            return;
+        }
+
+        setTablesLoading(true);
+        try {
+            const result = await scanService.getTablesByDataSourceId({
+                dataSourceId,
+                limit: 100,
+            });
+            // 为每个表设置数据源类型（从参数获取，如果没有则使用 newTask 中的值）
+            const dbType = dataSourceType || newTask.dataSourceType;
+            const tablesWithDbType = result.tables.map(table => ({
+                ...table,
+                dbType: dbType || table.dbType,
+            }));
+            setAvailableTables(tablesWithDbType);
+        } catch (error) {
+            console.error('Failed to load tables:', error);
+            setAvailableTables([]);
+        } finally {
+            setTablesLoading(false);
+        }
+    };
+
+    // 查看表字段信息
+    const handleViewTableFields = async (table: TableScan) => {
+        setSelectedTableForFields(table);
+        setShowFieldModal(true);
+        setFieldsLoading(true);
+
+        try {
+            const result = await scanService.getFieldsByTableId({
+                tableId: table.tableId,
+                limit: 500,
+            });
+            setTableFields(result.fields);
+        } catch (error) {
+            console.error('Failed to load table fields:', error);
+            setTableFields([]);
+        } finally {
+            setFieldsLoading(false);
+        }
     };
 
     const handleViewDetail = async (task: ScanTask) => {
@@ -562,11 +634,17 @@ const AssetScanningView = ({ onNavigate }: { onNavigate?: (moduleId: string) => 
                                     value={newTask.dataSourceId}
                                     onChange={e => {
                                         const ds = dataSources.find(d => d.id === e.target.value);
+                                        const dsType = ds?.type || 'MySQL';
                                         setNewTask({
                                             ...newTask,
                                             dataSourceId: e.target.value,
-                                            dataSourceType: ds?.type || 'MySQL',
+                                            dataSourceType: dsType,
+                                            selectedTables: [], // 重置已选择的表
                                         });
+                                        // 如果是表即时扫描，加载表列表
+                                        if (newTask.type === ScanTaskType.TableInstant) {
+                                            loadTablesForDataSource(e.target.value, dsType);
+                                        }
                                     }}
                                     className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white text-sm"
                                 >
@@ -576,6 +654,100 @@ const AssetScanningView = ({ onNavigate }: { onNavigate?: (moduleId: string) => 
                                     ))}
                                 </select>
                             </div>
+
+                            {/* 表即时扫描时显示表选择器 */}
+                            {newTask.type === ScanTaskType.TableInstant && (
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                                        选择表 <span className="text-red-500">*</span>
+                                    </label>
+                                    {!newTask.dataSourceId ? (
+                                        <div className="text-sm text-slate-400 p-3 bg-slate-50 rounded border border-slate-200">
+                                            请先选择数据源
+                                        </div>
+                                    ) : (
+                                        <div className="border border-slate-200 rounded-lg overflow-hidden">
+                                            {/* 搜索框 */}
+                                            <div className="p-3 border-b border-slate-200 bg-slate-50">
+                                                <input
+                                                    type="text"
+                                                    placeholder="搜索表名..."
+                                                    value={tableSearchKeyword}
+                                                    onChange={e => setTableSearchKeyword(e.target.value)}
+                                                    className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
+                                                />
+                                            </div>
+
+                                            {/* 表列表 */}
+                                            <div className="max-h-48 overflow-y-auto">
+                                                {tablesLoading ? (
+                                                    <div className="flex items-center justify-center py-8">
+                                                        <RefreshCw size={24} className="text-slate-400 animate-spin" />
+                                                    </div>
+                                                ) : availableTables.length === 0 ? (
+                                                    <div className="text-center py-8 text-sm text-slate-400">
+                                                        该数据源下暂无已扫描的表
+                                                    </div>
+                                                ) : (
+                                                    <div className="divide-y divide-slate-100">
+                                                        {availableTables
+                                                            .filter(table =>
+                                                                !tableSearchKeyword ||
+                                                                table.tableName.toLowerCase().includes(tableSearchKeyword.toLowerCase())
+                                                            )
+                                                            .map(table => (
+                                                                <label
+                                                                    key={table.id}
+                                                                    className={`flex items-center p-3 hover:bg-slate-50 cursor-pointer ${
+                                                                        newTask.selectedTables.includes(table.id)
+                                                                            ? 'bg-emerald-50'
+                                                                            : ''
+                                                                    }`}
+                                                                >
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={newTask.selectedTables.includes(table.id)}
+                                                                        onChange={e => {
+                                                                            if (e.target.checked) {
+                                                                                setNewTask({
+                                                                                    ...newTask,
+                                                                                    selectedTables: [...newTask.selectedTables, table.id],
+                                                                                });
+                                                                            } else {
+                                                                                setNewTask({
+                                                                                    ...newTask,
+                                                                                    selectedTables: newTask.selectedTables.filter(
+                                                                                        id => id !== table.id
+                                                                                    ),
+                                                                                });
+                                                                            }
+                                                                        }}
+                                                                        className="w-4 h-4 text-emerald-600 rounded focus:ring-2 focus:ring-emerald-500"
+                                                                    />
+                                                                    <div className="ml-3 flex-1">
+                                                                        <div className="text-sm font-medium text-slate-700">
+                                                                            {table.tableName}
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="text-xs text-slate-500 text-right max-w-[200px] truncate" title={table.tableComment}>
+                                                                        {table.tableComment || '-'}
+                                                                    </div>
+                                                                </label>
+                                                            ))}
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            {/* 已选择数量 */}
+                                            {newTask.selectedTables.length > 0 && (
+                                                <div className="p-3 border-t border-slate-200 bg-emerald-50 text-sm text-emerald-700">
+                                                    已选择 {newTask.selectedTables.length} 个表
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
 
                             {/* 只在数据源即时扫描(type=0)和定时扫描(type=2)时显示扫描策略选项 */}
                             {(newTask.type === ScanTaskType.DataSourceInstant || newTask.type === ScanTaskType.DataSourceScheduled) && (
@@ -773,13 +945,14 @@ const AssetScanningView = ({ onNavigate }: { onNavigate?: (moduleId: string) => 
                                                 <th className="px-4 py-2 text-left font-medium text-slate-600">状态</th>
                                                 <th className="px-4 py-2 text-left font-medium text-slate-600">行数</th>
                                                 <th className="px-4 py-2 text-left font-medium text-slate-600">扫描时间</th>
+                                                <th className="px-4 py-2 text-left font-medium text-slate-600">操作</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {tableScans.map(table => {
                                                 const statusConfig = getStatusConfig(table.status);
                                                 return (
-                                                    <tr key={table.tableId} className="border-b border-slate-100 hover:bg-slate-50">
+                                                    <tr key={table.tableId} className="border-b border-slate-100 hover:bg-blue-50 cursor-pointer">
                                                         <td className="px-4 py-2 font-medium text-slate-700">{table.tableName}</td>
                                                         <td className="px-4 py-2 text-slate-600">{table.dbType}</td>
                                                         <td className="px-4 py-2">
@@ -790,6 +963,17 @@ const AssetScanningView = ({ onNavigate }: { onNavigate?: (moduleId: string) => 
                                                         </td>
                                                         <td className="px-4 py-2 text-slate-600">{table.rowCount || '-'}</td>
                                                         <td className="px-4 py-2 text-slate-600">{table.scanTime || '-'}</td>
+                                                        <td className="px-4 py-2">
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleViewTableFields(table);
+                                                                }}
+                                                                className="text-blue-600 hover:text-blue-800 text-xs font-medium"
+                                                            >
+                                                                查看字段
+                                                            </button>
+                                                        </td>
                                                     </tr>
                                                 );
                                             })}
@@ -928,6 +1112,103 @@ const AssetScanningView = ({ onNavigate }: { onNavigate?: (moduleId: string) => 
                                             </div>
                                         );
                                     })}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Field Detail Modal */}
+            {showFieldModal && selectedTableForFields && (
+                <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[85vh]">
+                        <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
+                            <div>
+                                <h3 className="font-bold text-lg text-slate-800">字段信息</h3>
+                                <p className="text-xs text-slate-500 mt-1">
+                                    {selectedTableForFields.tableName}
+                                    {selectedTableForFields.tableComment && ` - ${selectedTableForFields.tableComment}`}
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => setShowFieldModal(false)}
+                                className="text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded p-1"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
+                            {/* 表信息摘要 */}
+                            <div className="grid grid-cols-3 gap-4 mb-6">
+                                <div className="bg-slate-50 p-3 rounded-lg">
+                                    <div className="text-xs text-slate-500 mb-1">数据库类型</div>
+                                    <div className="text-sm font-medium text-slate-700">{selectedTableForFields.dbType}</div>
+                                </div>
+                                <div className="bg-slate-50 p-3 rounded-lg">
+                                    <div className="text-xs text-slate-500 mb-1">状态</div>
+                                    <div className="text-sm font-medium text-slate-700">
+                                        {selectedTableForFields.status === 'success' && '成功'}
+                                        {selectedTableForFields.status === 'running' && '扫描中'}
+                                        {selectedTableForFields.status === 'fail' && '失败'}
+                                        {selectedTableForFields.status === 'wait' && '等待中'}
+                                    </div>
+                                </div>
+                                <div className="bg-slate-50 p-3 rounded-lg">
+                                    <div className="text-xs text-slate-500 mb-1">行数</div>
+                                    <div className="text-sm font-medium text-slate-700">
+                                        {selectedTableForFields.rowCount || '-'}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* 字段列表 */}
+                            <h4 className="font-semibold text-slate-800 mb-3">字段列表</h4>
+                            {fieldsLoading ? (
+                                <div className="flex items-center justify-center py-8">
+                                    <RefreshCw size={24} className="text-slate-400 animate-spin" />
+                                </div>
+                            ) : tableFields.length === 0 ? (
+                                <div className="text-center py-8 text-slate-400">暂无字段信息</div>
+                            ) : (
+                                <div className="border border-slate-200 rounded-lg overflow-hidden">
+                                    <table className="w-full text-sm">
+                                        <thead className="bg-slate-50 border-b border-slate-200">
+                                            <tr>
+                                                <th className="px-4 py-2 text-left font-medium text-slate-600">字段名</th>
+                                                <th className="px-4 py-2 text-left font-medium text-slate-600">字段类型</th>
+                                                <th className="px-4 py-2 text-left font-medium text-slate-600">主键</th>
+                                                <th className="px-4 py-2 text-left font-medium text-slate-600">可空</th>
+                                                <th className="px-4 py-2 text-left font-medium text-slate-600">默认值</th>
+                                                <th className="px-4 py-2 text-left font-medium text-slate-600">注释</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {tableFields.map(field => (
+                                                <tr key={field.id} className="border-b border-slate-100 hover:bg-slate-50">
+                                                    <td className="px-4 py-2 font-medium text-slate-700">{field.fieldName}</td>
+                                                    <td className="px-4 py-2 text-slate-600">{field.fieldType}</td>
+                                                    <td className="px-4 py-2 text-slate-600">
+                                                        {field.isPrimary ? (
+                                                            <span className="text-emerald-600 font-medium">是</span>
+                                                        ) : (
+                                                            <span className="text-slate-400">否</span>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-4 py-2 text-slate-600">
+                                                        {field.isNullable ? (
+                                                            <span className="text-blue-600">可空</span>
+                                                        ) : (
+                                                            <span className="text-red-600">非空</span>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-4 py-2 text-slate-600">{field.defaultValue || '-'}</td>
+                                                    <td className="px-4 py-2 text-slate-600">{field.fieldComment || '-'}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
                                 </div>
                             )}
                         </div>
