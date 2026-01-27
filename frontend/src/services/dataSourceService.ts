@@ -4,6 +4,7 @@
  */
 
 import { dataConnectionServiceClient } from '../utils/serviceClient';
+import { encryptRSA } from '../utils/rsaUtil';
 
 // ==================== 类型定义（基于 data-connection API）====================
 
@@ -154,8 +155,18 @@ const toBackendType = (frontendType: string): string => {
 
 /**
  * 前端模型 → 后端请求体
+ * 注意：密码会自动使用RSA加密
  */
 export const toBackendRequest = (frontend: Partial<DataSource> & { password?: string }): DataSourceVo => {
+    // 对密码进行RSA加密
+    const encryptedPassword = frontend.password
+        ? encryptRSA(frontend.password)
+        : '';
+
+    if (frontend.password && frontend.password !== encryptedPassword) {
+        console.log('[DataSource] 密码已加密');
+    }
+
     return {
         name: frontend.name!,
         type: toBackendType(frontend.type!),
@@ -165,7 +176,7 @@ export const toBackendRequest = (frontend: Partial<DataSource> & { password?: st
             port: frontend.port || 0,
             database_name: frontend.dbName || '',
             account: frontend.username || '',
-            password: frontend.password || '',  // 使用来自DataSource的密码字段
+            password: encryptedPassword,  // 使用加密后的密码
             schema: frontend.schemaName || '',
             connect_protocol: 'jdbc', // 默认协议
         }
