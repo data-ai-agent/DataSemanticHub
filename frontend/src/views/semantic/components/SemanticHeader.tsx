@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowLeft, Sparkles, RefreshCw, Layout, Wand2 } from 'lucide-react';
+import { ArrowLeft, Sparkles, RefreshCw, Layout } from 'lucide-react';
 import { GovernanceStatus, TableSemanticProfile } from '../../../types/semantic';
 import { getGovernanceDisplay, typeConfig } from '../utils';
 import { ReadOnlyBadge } from '../../../components/common/ReadOnlyBadge';
@@ -219,7 +219,7 @@ export const SemanticHeader: React.FC<SemanticHeaderProps> = (props) => {
                                 : 'text-slate-500 hover:text-slate-700'
                                 }`}
                         >
-                            <Wand2 size={14} /> 语义治理模式
+                            <Sparkles size={14} /> 语义治理模式
                         </button>
                     </div>
 

@@ -1,4 +1,4 @@
-import { Database, Link2 } from 'lucide-react';
+import { Database, Link } from 'lucide-react';
 import { agentFactoryMock } from '../../data/mockAgentFactory';
 import PageHeader from './components/PageHeader';
 
@@ -12,7 +12,7 @@ const KnowledgeConnectorsView = () => {
                 description="接入语义资产、文档库与指标库。"
                 actions={(
                     <button className="px-4 py-2 rounded-lg bg-slate-900 text-white text-sm flex items-center gap-2">
-                        <Link2 size={14} /> 新建连接
+                        <Link size={14} /> 新建连接
                     </button>
                 )}
             />

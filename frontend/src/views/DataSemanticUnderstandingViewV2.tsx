@@ -1,5 +1,5 @@
 import { useState, useRef, useMemo, useEffect } from 'react';
-import { Sparkles, Activity, CheckCircle, ChevronDown, ChevronRight, Bot, AlertTriangle, ArrowLeft, RefreshCw, Table, Share2, Layers, Shield, Database, Search, Settings, Filter, Plus, FileText, Key, Hash, CheckCircle2, XCircle, Info, PanelLeftOpen, PanelLeftClose, Server, Clock, Edit3, X, Box, ListPlus, Cpu, Star, Tag, ShieldCheck, AlertCircle, Wand2, ArrowRight } from 'lucide-react';
+import { Sparkles, Activity, CheckCircle, ChevronDown, ChevronRight, Bot, AlertTriangle, ArrowLeft, RefreshCw, Table, Share2, Layers, Shield, Database, Search, Settings, Filter, Plus, FileText, Key, Hash, CheckCircle2, XCircle, Info, ChevronLeft, Server, Clock, Edit, X, Box, Cpu, Star, Tag, ShieldCheck, AlertCircle, ArrowRight } from 'lucide-react';
 import { TableSemanticProfile, GovernanceStatus, ReviewStats, RunSummary, TableSemanticStage, FieldSemanticStatus } from '../types/semantic';
 import { ReadOnlyBadge } from '../components/common/ReadOnlyBadge';
 import { useVersionContext } from '../contexts/VersionContext';

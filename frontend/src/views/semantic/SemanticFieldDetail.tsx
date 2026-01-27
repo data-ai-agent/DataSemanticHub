@@ -2,7 +2,7 @@ import React from 'react';
 import {
     CheckCircle2, AlertTriangle, Shield, TrendingUp,
     Type, AlignLeft, Database, Search, Brain,
-    Share2, History, Wand2, Info
+    Share2, History, Sparkles, Info
 } from 'lucide-react';
 import { FieldSemanticProfile, RiskLevel, SemanticRole } from '../../types/semantic';
 import { FieldProfileSnapshot, ProfileSignals } from '../../services/profile';
@@ -155,7 +155,7 @@ export const SemanticFieldDetail: React.FC<SemanticFieldDetailProps> = ({
                                 <div className="text-lg font-bold text-slate-800">{ROLE_LABELS[analysis.role] || analysis.role}</div>
                             </div>
                             <div className="bg-white p-1.5 rounded-lg shadow-sm border border-purple-100">
-                                <Wand2 size={16} className="text-purple-500" />
+                                <Sparkles size={16} className="text-purple-500" />
                             </div>
                         </div>
                         <div className="p-3 bg-white rounded-lg text-slate-600 text-xs leading-relaxed border border-purple-100/50">

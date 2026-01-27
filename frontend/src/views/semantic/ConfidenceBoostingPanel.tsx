@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertCircle, CheckCircle, AlertTriangle, Sparkles, Link2, Search, X } from 'lucide-react';
+import { AlertCircle, CheckCircle, AlertTriangle, Sparkles, Link, Search, X } from 'lucide-react';
 
 interface BoostingTask {
     factor: string;
@@ -42,7 +42,7 @@ export const ConfidenceBoostingPanel: React.FC<ConfidenceBoostingPanelProps> = (
 
         const buttonConfig = {
             BATCH_GENERATE: { icon: Sparkles, color: 'purple' },
-            SPECIFY_PK: { icon: Link2, color: 'blue' },
+            SPECIFY_PK: { icon: Link, color: 'blue' },
             IDENTIFY_JSON: { icon: Search, color: 'indigo' }
         };
 

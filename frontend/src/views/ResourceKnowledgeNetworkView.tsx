@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Network, Box, Wand2, RotateCcw, Play, Save, ZoomIn, ZoomOut, ChevronDown, ChevronUp, Pencil, Trash2, Sparkles, X, Target, Grid3X3, Maximize2 } from 'lucide-react';
+import { Network, Box, Sparkles, RotateCcw, Play, Save, ZoomIn, ZoomOut, ChevronDown, ChevronUp, Pencil, Trash2, X, Target, Grid3x3, Maximize } from 'lucide-react';
 
 type ObjectType = 'entity' | 'event' | 'rule' | 'attribute' | 'state';
 type KnowledgeNode = {
@@ -751,7 +751,7 @@ const ResourceKnowledgeNetworkView = () => {
                             onClick={handleAutoLayout}
                             className="px-3 py-1.5 text-xs rounded-full border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 flex items-center gap-2"
                         >
-                            <Wand2 size={12} /> 自动布局
+                            <Sparkles size={12} /> 自动布局
                         </button>
                         <button
                             onClick={handleSaveLayout}
@@ -775,13 +775,13 @@ const ResourceKnowledgeNetworkView = () => {
                             onClick={() => setSnapToGrid(prev => !prev)}
                             className={`px-3 py-1.5 text-xs rounded-full border flex items-center gap-2 ${snapToGrid ? 'border-blue-200 bg-blue-50 text-blue-600' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'}`}
                         >
-                            <Grid3X3 size={12} /> 吸附网格
+                            <Grid3x3 size={12} /> 吸附网格
                         </button>
                         <button
                             onClick={() => setIsCanvasFullscreen(prev => !prev)}
                             className={`px-3 py-1.5 text-xs rounded-full border flex items-center gap-2 ${isCanvasFullscreen ? 'border-blue-200 bg-blue-50 text-blue-600' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'}`}
                         >
-                            <Maximize2 size={12} /> {isCanvasFullscreen ? '退出全屏' : '全屏'}
+                            <Maximize size={12} /> {isCanvasFullscreen ? '退出全屏' : '全屏'}
                         </button>
                         <button
                             onClick={handleExportJson}

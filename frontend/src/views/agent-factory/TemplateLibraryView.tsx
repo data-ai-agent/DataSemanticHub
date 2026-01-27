@@ -1,4 +1,4 @@
-import { Filter, Plus, Search, SlidersHorizontal } from 'lucide-react';
+import { Filter, Plus, Search, Sliders } from 'lucide-react';
 import { type Dispatch, type SetStateAction, useEffect, useMemo, useState } from 'react';
 import { agentFactoryMock } from '../../data/mockAgentFactory';
 import PageHeader from './components/PageHeader';
@@ -234,7 +234,7 @@ const TemplateLibraryView = ({
                             <Filter size={14} /> 高级筛选
                         </button>
                         <div className="flex items-center gap-2">
-                            <SlidersHorizontal size={14} />
+                            <Sliders size={14} />
                             <select
                                 className="px-3 py-2 rounded-lg border border-slate-200 bg-white text-xs"
                                 value={sortBy}

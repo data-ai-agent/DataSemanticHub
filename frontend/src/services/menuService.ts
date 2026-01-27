@@ -552,13 +552,17 @@ export const menuService = {
             throw await parseMenuError(response);
         }
 
+        const result = await response.json();
+        const updatedMenu: Menu = result.menu;
+        
         // 如果调用者传入的是 MenuItem 格式，返回 void（向后兼容）
+        // 但为了确保能获取到最新的 icon 字段，我们仍然返回 Menu 对象
         if (isMenuItem) {
-            return;
+            // 返回 Menu 对象，让调用者可以获取到最新的数据（包括 icon）
+            return updatedMenu;
         }
 
-        const result = await response.json();
-        return result.menu;
+        return updatedMenu;
     },
 
     /**

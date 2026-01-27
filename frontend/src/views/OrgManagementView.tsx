@@ -9,7 +9,7 @@ import {
     X,
     Users,
     MapPin,
-    BadgeCheck,
+    CheckCircle,
     EyeOff,
     Eye,
     List,
@@ -22,7 +22,6 @@ import {
     ShieldAlert,
     ArrowRight,
     Info,
-    CheckCircle,
     UserPlus,
     Settings,
     Briefcase,
@@ -1004,7 +1003,7 @@ const OrgManagementView = () => {
 
                     <div className="grid gap-3 sm:grid-cols-2">
                         {[
-                            { label: '负责人', value: activeDept?.manager ?? '-', icon: BadgeCheck },
+                            { label: '负责人', value: activeDept?.manager ?? '-', icon: CheckCircle },
                             { label: '人员规模', value: `${activeDept?.members ?? 0} 人`, icon: Users }
                         ].map((item) => (
                             <div key={item.label} className="rounded-xl border border-slate-200 p-3">
@@ -1136,7 +1135,7 @@ const OrgManagementView = () => {
                                                 <td className="px-3 py-2">
                                                     {member.isPrimary ? (
                                                         <span className="flex items-center gap-1 text-emerald-600">
-                                                            <BadgeCheck size={12} />
+                                                            <CheckCircle size={12} />
                                                             主归属
                                                         </span>
                                                     ) : (

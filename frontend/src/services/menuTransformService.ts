@@ -178,27 +178,38 @@ function getMenuIcon(menu: Menu, iconName?: string): LucideIcon {
     // 优先使用菜单中存储的图标名称（如果后端支持或从 MenuItem 传入）
     if (iconName) {
         const icon = getIconByNameUtil(iconName);
-        // 如果找到了有效的图标（不是默认的 LayoutGrid），使用它
-        if (icon) {
+        // 确保返回的是函数组件
+        if (icon && typeof icon === 'function') {
             return icon;
         }
     }
 
     // 其次使用 code 查找
     if (menu.code && ICON_MAP[menu.code]) {
-        return ICON_MAP[menu.code];
+        const icon = ICON_MAP[menu.code];
+        if (typeof icon === 'function') {
+            return icon;
+        }
     }
 
     // 再次使用 path 查找（提取路径的最后一段）
     if (menu.path) {
         const pathKey = menu.path.split('/').pop()?.replace(/[-_]/g, '_') || '';
         if (ICON_MAP[pathKey]) {
-            return ICON_MAP[pathKey];
+            const icon = ICON_MAP[pathKey];
+            if (typeof icon === 'function') {
+                return icon;
+            }
         }
     }
 
     // 默认图标
-    return ICON_MAP.default || Layout;
+    const defaultIcon = ICON_MAP.default || Layout;
+    if (typeof defaultIcon === 'function') {
+        return defaultIcon;
+    }
+    // 如果默认图标也不是函数，返回 Layout
+    return Layout;
 }
 
 /**
@@ -237,9 +248,37 @@ function convertMenuToMenuItem(menu: Menu): MenuItem {
     // 优先使用菜单中存储的图标名称（如果后端支持 icon 字段）
     // 否则使用自动查找逻辑
     const storedIconName = menu.icon;
-    const icon = storedIconName
-        ? getIconByNameUtil(storedIconName)
-        : getMenuIcon(menu, storedIconName);
+    let icon: LucideIcon;
+
+    // 检查 icon 类型：必须是字符串或不存在
+    if (storedIconName && typeof storedIconName !== 'string') {
+        // icon 值不是字符串（可能是对象），这是错误的
+        console.error(`Menu "${menu.name}" (${menu.code}) has invalid icon type (expected string, got ${typeof storedIconName}):`, storedIconName);
+        icon = getMenuIcon(menu); // 使用自动查找
+    } else if (storedIconName && typeof storedIconName === 'string' && storedIconName.trim()) {
+        // 如果存储的图标名称是分组名称（如 'data_service'），忽略它并使用自动查找
+        const isGroupName = Object.keys(GROUP_CONFIG).includes(storedIconName) ||
+            Object.values(CODE_TO_GROUP_MAP).includes(storedIconName);
+        if (isGroupName) {
+            console.warn(`Menu "${menu.name}" (${menu.code}) has group name as icon: "${storedIconName}", using auto-detect instead.`);
+            icon = getMenuIcon(menu);
+        } else {
+            icon = getIconByNameUtil(storedIconName);
+            // 验证返回的是函数组件
+            if (typeof icon !== 'function') {
+                console.warn(`Invalid icon component for menu "${menu.name}" (${menu.code}): icon name "${storedIconName}" returned non-function:`, { icon, type: typeof icon });
+                icon = getMenuIcon(menu); // 回退到自动查找
+            }
+        }
+    } else {
+        icon = getMenuIcon(menu);
+    }
+
+    // 最终验证：确保图标是函数组件
+    if (typeof icon !== 'function') {
+        console.error(`Failed to get valid icon for menu "${menu.name}" (${menu.code}):`, { icon, type: typeof icon, storedIconName });
+        icon = LayoutGrid; // 使用默认图标
+    }
 
     return {
         id: menu.code || menu.id, // 使用 code 作为 id，如果没有则使用 id
@@ -302,10 +341,47 @@ export function transformMenuTreeToMenuGroups(
             // 确定分组key
             let groupKey = menu.group_id;
             if (!groupKey && menu.code) {
-                groupKey = CODE_TO_GROUP_MAP[menu.code] || 'other';
+                groupKey = CODE_TO_GROUP_MAP[menu.code];
             }
+
+            // 如果仍然没有分组，尝试从 code 或 path 推断
+            if (!groupKey && menu.code) {
+                const codeLower = menu.code.toLowerCase();
+                // 根据 code 关键词推断分组
+                if (codeLower.includes('data') && (codeLower.includes('service') || codeLower.includes('supermarket'))) {
+                    groupKey = 'data_service';
+                } else if (codeLower.includes('governance') || codeLower.includes('semantic') || codeLower.includes('modeling')) {
+                    groupKey = 'semantic_governance';
+                } else if (codeLower.includes('asset') || codeLower.includes('term') || codeLower.includes('tag')) {
+                    groupKey = 'semantic_asset';
+                } else if (codeLower.includes('platform') || codeLower.includes('org') || codeLower.includes('user') || codeLower.includes('menu') || codeLower.includes('permission') || codeLower.includes('workflow') || codeLower.includes('audit')) {
+                    groupKey = 'platform_management';
+                } else if (codeLower.includes('connection') || codeLower.includes('connect') || codeLower.includes('scan')) {
+                    groupKey = 'data_connection';
+                } else if (codeLower.includes('scenario') || codeLower.includes('orchestration')) {
+                    groupKey = 'data_application';
+                } else if (codeLower.includes('agent')) {
+                    // 根据更具体的 agent 相关 code 判断
+                    if (codeLower.includes('tool') || codeLower.includes('knowledge') || codeLower.includes('runtime')) {
+                        groupKey = 'agent_capability';
+                    } else if (codeLower.includes('audit') || codeLower.includes('setting')) {
+                        groupKey = 'agent_governance';
+                    } else {
+                        groupKey = 'agent_factory';
+                    }
+                }
+            }
+
+            // 如果仍然无法确定分组，根据菜单类型设置默认分组
             if (!groupKey) {
-                groupKey = 'other';
+                // 根据菜单类型设置默认分组（避免显示"其他"）
+                if (menu.type === 'directory') {
+                    // 目录类型默认归类到语义治理
+                    groupKey = 'semantic_governance';
+                } else {
+                    // 其他类型默认归类到平台管理
+                    groupKey = 'platform_management';
+                }
             }
 
             if (!groupMap.has(groupKey)) {
@@ -333,7 +409,14 @@ export function transformMenuTreeToMenuGroups(
         if (menuList.length === 0) return;
 
         // 获取分组信息
-        const groupInfo = GROUP_CONFIG[groupKey] || { title: '其他', color: 'text-slate-400' };
+        const groupInfo = GROUP_CONFIG[groupKey];
+
+        // 如果没有配置的分组信息，说明是"其他"分组，跳过不显示
+        // 因为我们已经在上面的逻辑中尽量将菜单分配到正确的分组了
+        if (!groupInfo) {
+            console.warn(`未找到分组配置: ${groupKey}，跳过显示。菜单:`, menuList.map(m => m.name || m.code));
+            return;
+        }
 
         // 转换为 MenuItem
         const items = menuList

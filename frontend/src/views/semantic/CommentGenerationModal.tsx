@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Sparkles, Check, Edit3 } from 'lucide-react';
+import { X, Sparkles, Check, Edit } from 'lucide-react';
 
 interface FieldComment {
     fieldName: string;
@@ -149,7 +149,7 @@ export const CommentGenerationModal: React.FC<CommentGenerationModalProps> = ({
                                                 className="p-1.5 hover:bg-slate-100 rounded transition-colors"
                                                 title="编辑"
                                             >
-                                                <Edit3 size={14} className="text-slate-500" />
+                                                <Edit size={14} className="text-slate-500" />
                                             </button>
                                         </td>
                                     </tr>

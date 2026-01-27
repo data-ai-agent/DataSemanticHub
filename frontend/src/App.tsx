@@ -96,7 +96,7 @@ const PageLoading = () => (
 export default function SemanticLayerApp() {
     const { activeModule, setActiveModule, activeProduct, setActiveProduct } = useModuleNavigation();
     const productMeta = getProductById(activeProduct);
-    
+
     // 菜单状态管理
     const [menus, setMenus] = useState<MenuGroup[]>(productMeta.menus); // 默认使用静态配置
     const [menuLoading, setMenuLoading] = useState(false);
@@ -115,6 +115,12 @@ export default function SemanticLayerApp() {
 
     // 加载菜单数据
     const loadMenus = useCallback(async (productId: string) => {
+        // 对于 agent_factory，暂时强制使用静态菜单（数据库中还未初始化这些菜单）
+        if (productId === 'agent_factory') {
+            setMenus(AGENT_FACTORY_MENUS);
+            return;
+        }
+
         // 如果使用静态菜单，直接返回
         if (useStaticMenus) {
             const staticMenus = productId === 'governance' ? GOVERNANCE_MENUS : AGENT_FACTORY_MENUS;
@@ -133,7 +139,7 @@ export default function SemanticLayerApp() {
         // 从API加载
         setMenuLoading(true);
         setMenuError(null);
-        
+
         try {
             // 获取菜单树
             const menuTree = await menuService.getMenuTree({
@@ -161,7 +167,7 @@ export default function SemanticLayerApp() {
         } catch (error: any) {
             console.error('Failed to load menus from API:', error);
             setMenuError(error.message || '加载菜单失败');
-            
+
             // 降级到静态配置
             const staticMenus = productId === 'governance' ? GOVERNANCE_MENUS : AGENT_FACTORY_MENUS;
             setMenus(staticMenus);
@@ -180,6 +186,19 @@ export default function SemanticLayerApp() {
     useEffect(() => {
         clearExpiredCaches();
     }, []);
+
+    // 监听菜单更新事件，自动刷新菜单
+    useEffect(() => {
+        const handleMenusUpdated = () => {
+            console.log('收到菜单更新事件，刷新菜单...');
+            loadMenus(activeProduct);
+        };
+
+        window.addEventListener('menus-updated', handleMenusUpdated);
+        return () => {
+            window.removeEventListener('menus-updated', handleMenusUpdated);
+        };
+    }, [activeProduct, loadMenus]);
 
     // 确保 mockBusinessObjects 存在且不为空，避免 undefined 错误
     const [selectedBO, setSelectedBO] = useState(mockBusinessObjects && mockBusinessObjects.length > 0 ? mockBusinessObjects[0] : null);

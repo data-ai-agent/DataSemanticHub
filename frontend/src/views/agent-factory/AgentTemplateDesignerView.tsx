@@ -1,4 +1,4 @@
-import { ArrowLeft, ChevronDown, ChevronRight, Info, Play, RotateCcw, Save, Sparkles, Wand2 } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronRight, GripVertical, Info, Play, RotateCcw, Save, Sparkles } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useToast } from '../../components/ui/Toast';
 
@@ -63,12 +63,20 @@ const AgentTemplateDesignerView = ({ setActiveModule, template: initialTemplate,
         openerMode: 'auto',
         openerText: '你好，我可以帮你进行供应链指标分析与归因解释。'
     });
+    const [openerCandidates, setOpenerCandidates] = useState<string[]>([
+        '你好，我可以帮你进行供应链指标分析、归因解释与风险预警。',
+        '欢迎使用供应链智能助手，我将为你提供指标洞察与行动建议。',
+        '你好，我可以帮你分析库存、采购与供应商表现，并输出结构化结论。'
+    ]);
+    const [selectedOpenerIndex, setSelectedOpenerIndex] = useState(0);
     const [presetDraft, setPresetDraft] = useState('');
     const [presetQuestions, setPresetQuestions] = useState<string[]>([
         '近30天库存周转率下降的主要原因？',
         '供应商交付延迟对缺货率的影响？',
         '建议优先优化哪些补货策略？'
     ]);
+    const [dragIndex, setDragIndex] = useState<number | null>(null);
+    const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
     const togglePanel = (key: string) => {
         setOpenPanels(prev => prev.includes(key) ? prev.filter(item => item !== key) : [...prev, key]);
@@ -229,6 +237,38 @@ const AgentTemplateDesignerView = ({ setActiveModule, template: initialTemplate,
                                     {item.label}
                                 </button>
                             ))}
+                            <button
+                                className="ml-auto px-2 py-1 rounded-md border border-slate-200 text-xs text-slate-600 flex items-center gap-1"
+                                onClick={() => {
+                                    setExperienceConfig(prev => ({
+                                        ...prev,
+                                        openerMode: 'manual',
+                                        opener: '手动填写',
+                                        openerText: openerCandidates[selectedOpenerIndex] || prev.openerText
+                                    }));
+                                }}
+                            >
+                                <Sparkles size={12} /> AI 生成
+                            </button>
+                        </div>
+                        <div className="grid grid-cols-1 gap-2">
+                            {openerCandidates.map((candidate, idx) => (
+                                <button
+                                    key={`${candidate}-${idx}`}
+                                    className={`rounded-md border px-2 py-2 text-left text-xs ${selectedOpenerIndex === idx ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 text-slate-600'}`}
+                                    onClick={() => {
+                                        setSelectedOpenerIndex(idx);
+                                        setExperienceConfig(prev => ({
+                                            ...prev,
+                                            openerMode: 'manual',
+                                            opener: '手动填写',
+                                            openerText: candidate
+                                        }));
+                                    }}
+                                >
+                                    {candidate}
+                                </button>
+                            ))}
                         </div>
                         {experienceConfig.openerMode === 'manual' && (
                             <textarea
@@ -265,8 +305,40 @@ const AgentTemplateDesignerView = ({ setActiveModule, template: initialTemplate,
                         </div>
                         <div className="space-y-1">
                             {presetQuestions.map((q, idx) => (
-                                <div key={`${q}-${idx}`} className="flex items-center justify-between rounded-md border border-slate-200 px-2 py-1 text-xs text-slate-600">
-                                    <span className="truncate">{q}</span>
+                                <div
+                                    key={`${q}-${idx}`}
+                                    className={`flex items-center justify-between rounded-md border px-2 py-1 text-xs text-slate-600 ${dragOverIndex === idx ? 'border-slate-900 bg-slate-50' : 'border-slate-200'}`}
+                                    draggable
+                                    onDragStart={() => setDragIndex(idx)}
+                                    onDragOver={(event) => {
+                                        event.preventDefault();
+                                        setDragOverIndex(idx);
+                                    }}
+                                    onDragLeave={() => setDragOverIndex(null)}
+                                    onDrop={() => {
+                                        if (dragIndex === null || dragIndex === idx) {
+                                            setDragIndex(null);
+                                            setDragOverIndex(null);
+                                            return;
+                                        }
+                                        setPresetQuestions(prev => {
+                                            const next = [...prev];
+                                            const [moved] = next.splice(dragIndex, 1);
+                                            next.splice(idx, 0, moved);
+                                            return next;
+                                        });
+                                        setDragIndex(null);
+                                        setDragOverIndex(null);
+                                    }}
+                                    onDragEnd={() => {
+                                        setDragIndex(null);
+                                        setDragOverIndex(null);
+                                    }}
+                                >
+                                    <span className="flex items-center gap-2 truncate">
+                                        <GripVertical size={12} className="text-slate-400" />
+                                        {q}
+                                    </span>
                                     <button
                                         className="text-slate-400 hover:text-slate-600"
                                         onClick={() => setPresetQuestions(prev => prev.filter((_, i) => i !== idx))}
@@ -529,7 +601,7 @@ const AgentTemplateDesignerView = ({ setActiveModule, template: initialTemplate,
                         </div>
                         <div className="mt-3 flex items-center gap-2 text-xs text-slate-500">
                             <button className="px-2 py-1 rounded-md border border-slate-200 text-xs text-slate-600 flex items-center gap-1">
-                                <Wand2 size={12} /> 插入工具
+                                <Sparkles size={12} /> 插入工具
                             </button>
                             <button className="px-2 py-1 rounded-md border border-slate-200 text-xs text-slate-600">插入变量</button>
                             <button className="px-2 py-1 rounded-md border border-slate-200 text-xs text-slate-600">危险操作 lint</button>
