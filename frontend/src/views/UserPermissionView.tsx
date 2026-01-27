@@ -13,8 +13,8 @@ import {
     Pencil,
     Trash2,
     X,
-    SlidersHorizontal,
-    ArrowUpDown,
+    Sliders,
+    ArrowUp, ArrowDown,
     Copy,
     History,
     AlertTriangle,
@@ -22,7 +22,7 @@ import {
     UserPlus,
     FolderPlus,
     FileText,
-    Link2,
+    Link,
     MessageCircle
 } from 'lucide-react';
 import RoleChangeConfirmModal from './components/RoleChangeConfirmModal';
@@ -748,14 +748,14 @@ const UserPermissionView = () => {
                         </div>
                         <div className="flex items-center justify-between text-xs text-slate-500">
                             <div className="flex items-center gap-2">
-                                <SlidersHorizontal size={14} />
+                                <Sliders size={14} />
                                 过滤与排序
                             </div>
                             <button
                                 onClick={() => setSortBy(sortBy === 'updatedAt' ? 'members' : sortBy === 'members' ? 'risk' : 'updatedAt')}
                                 className="flex items-center gap-1 text-slate-500 hover:text-indigo-600"
                             >
-                                <ArrowUpDown size={12} />
+                                <ArrowUp size={12} />
                                 {sortBy === 'updatedAt' && '更新时间'}
                                 {sortBy === 'members' && '成员数'}
                                 {sortBy === 'risk' && '风险等级'}
@@ -934,7 +934,7 @@ const UserPermissionView = () => {
                                     { label: '角色成员', value: `${activeRole.memberCount} 人`, icon: Users },
                                     { label: '覆盖范围', value: activeRole.scope.type === 'Global' ? '全平台' : `${activeRole.scope.ids.length} 个对象`, icon: Layers },
                                     { label: '更新时间', value: activeRole.updatedAt, icon: UserCog },
-                                    { label: '继承来源', value: activeRole.parentRoleIds.length ? `${activeRole.parentRoleIds.length} 个` : '无', icon: Link2 }
+                                    { label: '继承来源', value: activeRole.parentRoleIds.length ? `${activeRole.parentRoleIds.length} 个` : '无', icon: Link }
                                 ].map((item) => (
                                     <div key={item.label} className="rounded-xl border border-slate-200 p-3">
                                         <div className="flex items-center justify-between text-xs text-slate-500">

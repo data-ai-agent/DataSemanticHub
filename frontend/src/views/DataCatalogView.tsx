@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import {
-    LayoutGrid, List, SlidersHorizontal, ArrowUpDown, Plus,
+    LayoutGrid, List, Sliders, ArrowUp, ArrowDown, Plus,
     Box, FileText, Globe, Book, Search, X
 } from 'lucide-react';
 import { Asset, FilterOptions, SavedFilter, SearchMode, SortBy, ViewMode, DetailTab, ActiveTab } from './components/data-catalog/types';
@@ -430,7 +430,7 @@ export const DataCatalogView: React.FC = () => {
 
                     <div className="flex items-center gap-3">
                         <div className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-lg">
-                            <ArrowUpDown size={14} className="text-slate-400" />
+                            <ArrowUp size={14} className="text-slate-400" />
                             <select
                                 value={sortBy}
                                 onChange={(e) => setSortBy(e.target.value as SortBy)}
@@ -452,7 +452,7 @@ export const DataCatalogView: React.FC = () => {
                                 }`}
                             title="高级筛选"
                         >
-                            <SlidersHorizontal size={20} />
+                            <Sliders size={20} />
                             {(filterOptions.owners.length > 0 || filterOptions.categories.length > 0) && (
                                 <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
                             )}

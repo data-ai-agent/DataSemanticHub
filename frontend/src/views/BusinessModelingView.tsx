@@ -2,8 +2,8 @@ import { useState } from 'react';
 import {
     Layout, Database, Search, CheckCircle, Plus, X,
     FileText, Settings, Layers, Trash2, ChevronDown, ChevronRight,
-    Folder, FolderOpen, Box, Grid, PanelLeftClose, PanelLeftOpen,
-    ChevronsDown, ChevronsUp, History, Upload, User, Zap, Tag, Link2, Sparkles, Table2, MessageSquare, Wand2, ArrowRight, Edit
+    Folder, FolderOpen, Box, Grid, PanelLeftClose, ChevronRight,
+    ChevronDown, ChevronUp, History, Upload, User, Zap, Tag, Link, Sparkles, Table, MessageSquare, ArrowRight, Edit
 } from 'lucide-react';
 import SemanticVersionPanel from './components/semantic-version/SemanticVersionPanel';
 import PublishVersionDialog from './components/semantic-version/PublishVersionDialog';
@@ -468,7 +468,7 @@ const BusinessModelingView = ({ businessObjects, setBusinessObjects, onNavigateT
                         <div className="group/mapping relative">
                             <div className="flex items-center justify-between text-xs mb-1.5">
                                 <span className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full ${getMappingProgress(bo) > 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
-                                    <Link2 size={12} />
+                                    <Link size={12} />
                                     {getMappingProgress(bo) > 0 ? '已映射' : '未映射'}
                                 </span>
                                 <span className="text-slate-400 text-[10px]">{getMappingProgress(bo)}%</span>
@@ -612,7 +612,7 @@ const BusinessModelingView = ({ businessObjects, setBusinessObjects, onNavigateT
                                                 className="w-full px-4 py-2.5 text-left flex items-center gap-3 hover:bg-emerald-50 transition-colors"
                                             >
                                                 <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600">
-                                                    <Table2 size={16} />
+                                                    <Table size={16} />
                                                 </div>
                                                 <div>
                                                     <div className="text-sm font-medium text-slate-800">从物理表提取</div>
@@ -829,7 +829,7 @@ const BusinessModelingView = ({ businessObjects, setBusinessObjects, onNavigateT
                                         className="text-slate-400 hover:text-blue-600 transition-colors"
                                         title="展开面板"
                                     >
-                                        <PanelLeftOpen size={20} />
+                                        <ChevronRight size={20} />
                                     </button>
                                 ) : (
                                     <>
@@ -845,7 +845,7 @@ const BusinessModelingView = ({ businessObjects, setBusinessObjects, onNavigateT
                                         className="p-1 text-slate-400 hover:text-blue-600 hover:bg-slate-200 rounded transition-colors"
                                         title={collapseAllDomains ? '展开全部' : '收起全部'}
                                     >
-                                        {collapseAllDomains ? <ChevronsDown size={16} /> : <ChevronsUp size={16} />}
+                                        {collapseAllDomains ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
                                     </button>
                                     <button
                                         onClick={() => setCollapseDomainPanel(true)}
@@ -1322,7 +1322,7 @@ const BusinessModelingView = ({ businessObjects, setBusinessObjects, onNavigateT
                                     </>
                                 ) : (
                                     <>
-                                        <Wand2 size={16} />
+                                        <Sparkles size={16} />
                                         开始生成
                                     </>
                                 )}
@@ -1339,7 +1339,7 @@ const BusinessModelingView = ({ businessObjects, setBusinessObjects, onNavigateT
                         {/* Header */}
                         <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                                <Table2 size={20} className="text-emerald-600" />
+                                <Table size={20} className="text-emerald-600" />
                                 <h2 className="font-bold text-slate-800">从物理表提取</h2>
                             </div>
                             <button

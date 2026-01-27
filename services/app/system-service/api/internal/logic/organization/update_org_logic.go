@@ -5,6 +5,7 @@ package organization
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/DataSemanticHub/services/app/system-service/api/internal/errorx"
@@ -72,10 +73,17 @@ func (l *UpdateOrgLogic) UpdateOrg(req *types.UpdateOrgReq) (resp *types.UpdateO
 	// 4. 更新字段（不修改 parent_id，通过 MoveOrg 接口移动）
 	now := time.Now().Format("2006-01-02 15:04:05")
 
+	// 检查是否有字段需要更新
+	// 对于 LeaderId，需要支持清空的情况（从有值到空字符串）
+	// 由于 Go 的类型系统限制，我们无法直接区分"未传递"和"空字符串"
+	// 采用约定：前端在更新负责人时总是传递 leaderId 字段
+	// 如果值为空字符串，表示清空负责人
+	leaderIdChanged := req.LeaderId != org.LeaderId
+
 	updated := req.Name != "" && req.Name != org.Name ||
 		req.Code != "" ||
 		req.SortOrder >= 0 ||
-		req.LeaderId != "" ||
+		leaderIdChanged ||
 		req.Desc != ""
 
 	if updated || req.Status != org.Status {
@@ -88,13 +96,20 @@ func (l *UpdateOrgLogic) UpdateOrg(req *types.UpdateOrgReq) (resp *types.UpdateO
 		if req.SortOrder >= 0 {
 			org.SortOrder = req.SortOrder
 		}
-		if req.LeaderId != "" {
+		// 更新 leaderId（包括清空的情况：从有值到空字符串）
+		if leaderIdChanged {
 			org.LeaderId = req.LeaderId
 		}
 		if req.Desc != "" {
 			org.Desc = req.Desc
 		}
 		org.Status = req.Status
+	}
+
+	// 修复时间格式问题 (从 DB 读出的可能是 RFC3339 格式，写回 MySQL 需要标准格式)
+	if len(org.CreatedAt) > 19 {
+		// 截取 "2006-01-02T15:04:05" 部分并替换 T 为空格
+		org.CreatedAt = strings.Replace(org.CreatedAt[:19], "T", " ", 1)
 	}
 
 	org.UpdatedAt = now

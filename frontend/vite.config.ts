@@ -11,7 +11,6 @@ export default defineConfig({
             '/api/v1/system': {
                 target: 'http://localhost:8888',
                 changeOrigin: true,
-                rewrite: (path) => path.replace(/^\/api\/v1\/system/, '/api/v1')
             },
 
             // Agent Service 代理 (对应 API Gateway 的 /api/v1/agent/)

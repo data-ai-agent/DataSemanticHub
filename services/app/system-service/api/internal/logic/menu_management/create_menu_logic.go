@@ -148,6 +148,9 @@ func (l *CreateMenuLogic) CreateMenu(req *types.CreateMenuReq) (resp *types.Crea
 	if req.PermissionKey != "" {
 		menu.PermissionKey = &req.PermissionKey
 	}
+	if req.Icon != "" {
+		menu.Icon = &req.Icon
+	}
 
 	// 9. 权限创建联动（如 create_permission=true）
 	// 注意：这里需要与权限服务联动，暂时跳过，后续可以扩展
@@ -266,6 +269,9 @@ func (l *CreateMenuLogic) recordCreateAuditLog(menu *menus.Menu) error {
 	if menu.PermissionKey != nil {
 		newValueMap["permission_key"] = *menu.PermissionKey
 	}
+	if menu.Icon != nil {
+		newValueMap["icon"] = *menu.Icon
+	}
 
 	newValueJSON, err := json.Marshal(newValueMap)
 	if err != nil {
@@ -330,6 +336,9 @@ func (l *CreateMenuLogic) convertMenuToType(menu *menus.Menu) types.Menu {
 	}
 	if menu.PermissionKey != nil {
 		menuType.PermissionKey = *menu.PermissionKey
+	}
+	if menu.Icon != nil {
+		menuType.Icon = *menu.Icon
 	}
 	if menu.CreatedBy != nil {
 		menuType.CreatedBy = *menu.CreatedBy

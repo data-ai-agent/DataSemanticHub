@@ -10,6 +10,8 @@ import (
 
 	"github.com/DataSemanticHub/services/app/system-service/api/internal/config"
 	"github.com/DataSemanticHub/services/app/system-service/api/internal/middleware"
+	"github.com/DataSemanticHub/services/app/system-service/model/system/menu_audit_logs"
+	"github.com/DataSemanticHub/services/app/system-service/model/system/menus"
 	"github.com/DataSemanticHub/services/app/system-service/model/system/organization"
 	permissiontemplates "github.com/DataSemanticHub/services/app/system-service/model/system/permission_template"
 	"github.com/DataSemanticHub/services/app/system-service/model/system/userdept"
@@ -25,17 +27,19 @@ import (
 )
 
 type ServiceContext struct {
-	Config                config.Config
-	DB                    *gorm.DB
-	RedisClient           *redis.Client
-	UserModel             users.Model
-	RoleBindingModel      rolebindings.Model
-	AuditLogModel         auditlogs.Model
-	OrgModel              organization.Model
-	OrgTreeService        organization.TreeService
-	UserDeptModel         userdept.Model
+	Config                  config.Config
+	DB                      *gorm.DB
+	RedisClient             *redis.Client
+	UserModel               users.Model
+	RoleBindingModel        rolebindings.Model
+	AuditLogModel           auditlogs.Model
+	OrgModel                organization.Model
+	OrgTreeService          organization.TreeService
+	UserDeptModel           userdept.Model
 	PermissionTemplateModel permissiontemplates.Model
-	Authority             rest.Middleware
+	MenuModel               menus.Model
+	MenuAuditLogModel       menu_audit_logs.Model
+	Authority               rest.Middleware
 }
 
 func NewServiceContext(c config.Config) *ServiceContext {
@@ -55,17 +59,19 @@ func NewServiceContext(c config.Config) *ServiceContext {
 	authority := middleware.NewAuthorityMiddleware().Handle
 
 	return &ServiceContext{
-		Config:                c,
-		DB:                    db,
-		RedisClient:           redisClient,
-		UserModel:             users.NewModel(db),
-		RoleBindingModel:      rolebindings.NewModel(db),
-		AuditLogModel:         auditlogs.NewModel(db),
-		OrgModel:              orgModel,
-		OrgTreeService:        organization.NewTreeService(orgModel),
-		UserDeptModel:         userdept.NewModel(db),
+		Config:                  c,
+		DB:                      db,
+		RedisClient:             redisClient,
+		UserModel:               users.NewModel(db),
+		RoleBindingModel:        rolebindings.NewModel(db),
+		AuditLogModel:           auditlogs.NewModel(db),
+		OrgModel:                orgModel,
+		OrgTreeService:          organization.NewTreeService(orgModel),
+		UserDeptModel:           userdept.NewModel(db),
 		PermissionTemplateModel: permissiontemplates.NewModel(db),
-		Authority:             authority,
+		MenuModel:               menus.NewModel(db),
+		MenuAuditLogModel:       menu_audit_logs.NewModel(db),
+		Authority:               authority,
 	}
 }
 

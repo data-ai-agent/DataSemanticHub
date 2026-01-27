@@ -20,6 +20,7 @@ type Menu struct {
 	ExternalUrl   *string        `gorm:"size:512" json:"external_url,omitempty"`                                                                  // 外部链接（external类型必填）
 	OpenMode      *string        `gorm:"size:20" json:"open_mode,omitempty"`                                                                      // 打开方式：new/iframe/same
 	PermissionKey *string        `gorm:"size:128;index" json:"permission_key,omitempty"`                                                          // 权限标识（可选）
+	Icon          *string        `gorm:"size:64" json:"icon,omitempty"`                                                                           // 图标名称（如 Layout, Database）
 	Visible       bool           `gorm:"default:1;not null;index" json:"visible"`                                                                 // 是否可见
 	Enabled       bool           `gorm:"default:1;not null;index" json:"enabled"`                                                                 // 是否启用
 	Order         int            `gorm:"not null;default:0" json:"order"`                                                                         // 同级排序

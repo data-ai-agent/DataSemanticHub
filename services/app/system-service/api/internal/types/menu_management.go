@@ -26,6 +26,7 @@ type CreateMenuReq struct {
 	ExternalUrl      string `json:"external_url,optional"` // external 类型必填
 	OpenMode         string `json:"open_mode,optional"`    // external 类型必填：new/iframe/same
 	PermissionKey    string `json:"permission_key,optional"`
+	Icon             string `json:"icon,optional"` // 图标名称（如 Layout, Database）
 	Visible          bool   `json:"visible,optional"`
 	Enabled          bool   `json:"enabled,optional"`
 	Order            int    `json:"order,optional"` // 默认插入同级末尾
@@ -149,6 +150,7 @@ type UpdateMenuReq struct {
 	ExternalUrl   string `json:"external_url,optional"`
 	OpenMode      string `json:"open_mode,optional"`
 	PermissionKey string `json:"permission_key,optional"`
+	Icon          string `json:"icon,optional"` // 图标名称（如 Layout, Database）
 	Visible       bool   `json:"visible,optional"`
 	Enabled       bool   `json:"enabled,optional"`
 	Order         int    `json:"order,optional"`
