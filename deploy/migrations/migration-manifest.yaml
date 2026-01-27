@@ -1,0 +1,131 @@
+# DataSemanticHub 数据库迁移配置清单
+# 此文件定义了所有服务的迁移配置和执行顺序
+# 版本: 1.0.0
+# 最后更新: 2026-01-27
+
+# ==================== 全局配置 ====================
+version: "1.0.0"
+generated_at: "2026-01-27T09:09:00+08:00"
+
+# 数据库配置（从环境变量读取）
+database:
+  type: mariadb
+  name: datasemantichub
+  host: ${DB_HOST:-localhost}
+  port: ${DB_PORT:-3306}
+  user: ${DB_USER:-root}
+  password: ${DB_PASSWORD}
+
+# ==================== 服务配置 ====================
+# 服务按依赖顺序排列，无依赖的服务优先执行
+
+services:
+  # --------------------------------------------
+  # system-service: 系统基础服务（Go）
+  # 提供用户管理、菜单管理、权限管理等核心功能
+  # --------------------------------------------
+  - name: system-service
+    display_name: "系统服务"
+    language: go
+    enabled: true
+    dependencies: []  # 无依赖，优先执行
+    
+    # 该服务包含的模块
+    modules:
+      - name: system
+        display_name: "系统管理模块"
+        path: ../../services/app/system-service/migrations/versions/system
+        description: "菜单、权限、组织架构等系统基础数据"
+        current_version: 6
+        
+      - name: user
+        display_name: "用户管理模块"
+        path: ../../services/app/system-service/migrations/versions/user
+        description: "用户、角色、审计日志等"
+        current_version: 6
+    
+    # 迁移工具配置
+    migration_tool:
+      type: golang-migrate
+      binary: migrate
+      up_command: "cd ../../services/app/system-service && make migrate-up"
+      down_command: "cd ../../services/app/system-service && make migrate-down"
+      status_command: "cd ../../services/app/system-service && make migrate-status"
+      create_command: "cd ../../services/app/system-service && make migrate-create MODULE={module} NAME={name}"
+
+  # --------------------------------------------
+  # data-connection: 数据连接服务（Java）
+  # 提供数据源连接、元数据采集等功能
+  # --------------------------------------------
+  - name: data-connection
+    display_name: "数据连接服务"
+    language: java
+    enabled: true
+    dependencies: [system-service]  # 依赖system-service（如需要用户权限）
+    
+    modules:
+      - name: mariadb
+        display_name: "MariaDB数据源模块"
+        path: ../../services/app/data-connection/migrations/mariadb
+        description: "数据源、元数据表等"
+        current_version: 0
+        
+      - name: dm8
+        display_name: "达梦数据库模块"
+        path: ../../services/app/data-connection/migrations/dm8
+        description: "达梦数据库专用表结构"
+        current_version: 0
+    
+    migration_tool:
+      type: flyway
+      binary: mvn
+      up_command: "cd ../../services/app/data-connection && mvn flyway:migrate"
+      down_command: "cd ../../services/app/data-connection && mvn flyway:clean"
+      status_command: "cd ../../services/app/data-connection && mvn flyway:info"
+      create_command: "# 手动创建 migrations/{module}/V{version}__{name}.sql"
+
+  # --------------------------------------------
+  # metadata-service: 元数据服务（Python）
+  # 提供元数据管理、血缘分析等功能（预留）
+  # --------------------------------------------
+  - name: metadata-service
+    display_name: "元数据服务"
+    language: python
+    enabled: false  # 暂未启用
+    dependencies: [system-service]
+    
+    modules:
+      - name: metadata
+        display_name: "元数据管理模块"
+        path: ../../services/app/metadata-service/migrations/metadata
+        description: "元数据、血缘关系等"
+        current_version: 0
+    
+    migration_tool:
+      type: alembic
+      binary: alembic
+      up_command: "cd ../../services/app/metadata-service && alembic upgrade head"
+      down_command: "cd ../../services/app/metadata-service && alembic downgrade -1"
+      status_command: "cd ../../services/app/metadata-service && alembic current"
+      create_command: "cd ../../services/app/metadata-service && alembic revision -m '{name}'"
+
+# ==================== 执行策略 ====================
+execution:
+  # 失败时是否停止后续迁移
+  fail_fast: true
+  
+  # 是否在事务中执行（部分工具不支持）
+  use_transaction: false
+  
+  # 超时时间（秒）
+  timeout: 300
+  
+  # 是否记录详细日志
+  verbose: true
+
+# ==================== 备注 ====================
+# 使用说明：
+# 1. 执行所有迁移: ./deploy/scripts/run-migrations.sh
+# 2. 执行单个服务: ./deploy/scripts/run-migrations.sh system-service
+# 3. 查看状态: ./deploy/scripts/check-migration-status.sh
+# 4. 生成初始化脚本: ./deploy/scripts/generate-init-schemas.sh

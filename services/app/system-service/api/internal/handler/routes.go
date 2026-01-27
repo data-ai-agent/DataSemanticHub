@@ -6,8 +6,12 @@ package handler
 import (
 	"net/http"
 
+	menu_management "github.com/DataSemanticHub/services/app/system-service/api/internal/handler/menu_management"
+	organization "github.com/DataSemanticHub/services/app/system-service/api/internal/handler/organization"
+	permission_template "github.com/DataSemanticHub/services/app/system-service/api/internal/handler/permission_template"
 	user "github.com/DataSemanticHub/services/app/system-service/api/internal/handler/user"
 	user_management "github.com/DataSemanticHub/services/app/system-service/api/internal/handler/user_management"
+	user_public "github.com/DataSemanticHub/services/app/system-service/api/internal/handler/user_public"
 	"github.com/DataSemanticHub/services/app/system-service/api/internal/svc"
 
 	"github.com/zeromicro/go-zero/rest"
@@ -28,19 +32,195 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 	server.AddRoutes(
 		[]rest.Route{
 			{
-				// 用户注册
 				Method:  http.MethodPost,
-				Path:    "/user/register",
-				Handler: user.RegisterHandler(serverCtx),
+				Path:    "/menus",
+				Handler: menu_management.CreateMenuHandler(serverCtx),
 			},
 			{
-				// 用户登录
+				Method:  http.MethodGet,
+				Path:    "/menus/:id",
+				Handler: menu_management.GetMenuHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodPut,
+				Path:    "/menus/:id",
+				Handler: menu_management.UpdateMenuHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodDelete,
+				Path:    "/menus/:id",
+				Handler: menu_management.DeleteMenuHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodGet,
+				Path:    "/menus/:id/audits",
+				Handler: menu_management.GetMenuAuditsHandler(serverCtx),
+			},
+			{
 				Method:  http.MethodPost,
-				Path:    "/user/login",
-				Handler: user.LoginHandler(serverCtx),
+				Path:    "/menus/:id/bind-permission",
+				Handler: menu_management.BindPermissionHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodPatch,
+				Path:    "/menus/:id/enabled",
+				Handler: menu_management.ToggleMenuEnabledHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodPatch,
+				Path:    "/menus/:id/move",
+				Handler: menu_management.MoveMenuHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodPatch,
+				Path:    "/menus/:id/visible",
+				Handler: menu_management.ToggleMenuVisibleHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodGet,
+				Path:    "/menus/inspection",
+				Handler: menu_management.GetMenuInspectionHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodPatch,
+				Path:    "/menus/reorder",
+				Handler: menu_management.ReorderMenusHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodGet,
+				Path:    "/menus/stats",
+				Handler: menu_management.GetMenuStatsHandler(serverCtx),
+			},
+			{
+				Method:  http.MethodGet,
+				Path:    "/menus/tree",
+				Handler: menu_management.GetMenuTreeHandler(serverCtx),
 			},
 		},
-		rest.WithPrefix("/api/v1"),
+		rest.WithPrefix("/api/v1/system"),
+	)
+
+	server.AddRoutes(
+		rest.WithMiddlewares(
+			[]rest.Middleware{serverCtx.Authority},
+			[]rest.Route{
+				{
+					// 创建组织
+					Method:  http.MethodPost,
+					Path:    "/organization",
+					Handler: organization.CreateOrgHandler(serverCtx),
+				},
+				{
+					// 获取组织详情
+					Method:  http.MethodGet,
+					Path:    "/organization/:id",
+					Handler: organization.GetOrgDetailHandler(serverCtx),
+				},
+				{
+					// 更新组织
+					Method:  http.MethodPut,
+					Path:    "/organization/:id",
+					Handler: organization.UpdateOrgHandler(serverCtx),
+				},
+				{
+					// 删除组织
+					Method:  http.MethodDelete,
+					Path:    "/organization/:id",
+					Handler: organization.DeleteOrgHandler(serverCtx),
+				},
+				{
+					// 获取部门用户
+					Method:  http.MethodGet,
+					Path:    "/organization/:id/users",
+					Handler: organization.GetOrgUsersHandler(serverCtx),
+				},
+				{
+					// 移动组织
+					Method:  http.MethodPost,
+					Path:    "/organization/move",
+					Handler: organization.MoveOrgHandler(serverCtx),
+				},
+				{
+					// 获取组织架构树
+					Method:  http.MethodGet,
+					Path:    "/organization/tree",
+					Handler: organization.GetOrgTreeHandler(serverCtx),
+				},
+				{
+					// 删除用户辅助部门
+					Method:  http.MethodDelete,
+					Path:    "/user/:userId/aux-dept/:deptId",
+					Handler: organization.RemoveUserAuxDeptHandler(serverCtx),
+				},
+				{
+					// 添加用户辅助部门
+					Method:  http.MethodPost,
+					Path:    "/user/aux-dept",
+					Handler: organization.AddUserAuxDeptHandler(serverCtx),
+				},
+				{
+					// 设置用户主部门
+					Method:  http.MethodPost,
+					Path:    "/user/primary-dept",
+					Handler: organization.SetUserPrimaryDeptHandler(serverCtx),
+				},
+			}...,
+		),
+		rest.WithPrefix("/api/v1/system"),
+	)
+
+	server.AddRoutes(
+		rest.WithMiddlewares(
+			[]rest.Middleware{serverCtx.AuthorityCheck},
+			[]rest.Route{
+				{
+					Method:  http.MethodPost,
+					Path:    "/permission-templates",
+					Handler: permission_template.CreatePermissionTemplateHandler(serverCtx),
+				},
+				{
+					Method:  http.MethodGet,
+					Path:    "/permission-templates",
+					Handler: permission_template.ListPermissionTemplatesHandler(serverCtx),
+				},
+				{
+					Method:  http.MethodPut,
+					Path:    "/permission-templates/:id",
+					Handler: permission_template.UpdatePermissionTemplateHandler(serverCtx),
+				},
+				{
+					Method:  http.MethodGet,
+					Path:    "/permission-templates/:id",
+					Handler: permission_template.GetPermissionTemplateHandler(serverCtx),
+				},
+				{
+					Method:  http.MethodDelete,
+					Path:    "/permission-templates/:id",
+					Handler: permission_template.DeletePermissionTemplateHandler(serverCtx),
+				},
+				{
+					Method:  http.MethodPost,
+					Path:    "/permission-templates/:id/clone",
+					Handler: permission_template.ClonePermissionTemplateHandler(serverCtx),
+				},
+				{
+					Method:  http.MethodPost,
+					Path:    "/permission-templates/:id/disable",
+					Handler: permission_template.DisablePermissionTemplateHandler(serverCtx),
+				},
+				{
+					Method:  http.MethodPost,
+					Path:    "/permission-templates/:id/enable",
+					Handler: permission_template.EnablePermissionTemplateHandler(serverCtx),
+				},
+				{
+					Method:  http.MethodPost,
+					Path:    "/permission-templates/:id/publish",
+					Handler: permission_template.PublishPermissionTemplateHandler(serverCtx),
+				},
+			}...,
+		),
+		rest.WithPrefix("/api/v1/system"),
 	)
 
 	server.AddRoutes(
@@ -133,5 +313,23 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 		},
 		rest.WithJwt(serverCtx.Config.Auth.AccessSecret),
 		rest.WithPrefix("/api/v1/user_management"),
+	)
+
+	server.AddRoutes(
+		[]rest.Route{
+			{
+				// 用户登录
+				Method:  http.MethodPost,
+				Path:    "/user/login",
+				Handler: user_public.LoginHandler(serverCtx),
+			},
+			{
+				// 用户注册
+				Method:  http.MethodPost,
+				Path:    "/user/register",
+				Handler: user_public.RegisterHandler(serverCtx),
+			},
+		},
+		rest.WithPrefix("/api/v1"),
 	)
 }

@@ -143,6 +143,15 @@ HTTP Request → Handler → Logic → Model → Database
 - ❌ AUTO_INCREMENT 自增主键
 - ❌ UUID v4 (无序，索引碎片)
 - ❌ 雪花算法 (需要协调)
+- ❌ 物理外键 (Foreign Key Constraint)
+
+### 数据库规范
+
+| 项 | 规则 | 说明 |
+|----|------|------|
+| **时间精度** | `datetime(3)` | 必须使用毫秒精度，避免高并发冲突 |
+| **软删除** | `deleted_at` | 必须存在。唯一索引必须包含此字段: `(code, deleted_at)` |
+| **外键** | 禁止物理外键 | 关联关系在 Service/Logic 层维护 |
 
 ### 代码示例
 
@@ -250,6 +259,9 @@ import "github.com/jinguoxing/idrm-go-base/{module}"
 | 函数 | camelCase/PascalCase | `createCategory` |
 | Handler | `{action}{resource}handler.go` | `createcategoryhandler.go` |
 | Logic | `{action}{resource}logic.go` | `createcategorylogic.go` |
+| API Group | snake_case (小写下划线) | `group: user_public` |
+
+> **注意**: API definition 中的 `group` 属性直接决定生成的目录和包名，**严禁使用连字符 `-`** (如 `user-public`)，**必须**使用下划线 `_` 或纯小写，以确保生成的 Go 包名合法。
 
 ---
 

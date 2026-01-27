@@ -7,14 +7,12 @@ import (
 	"time"
 
 	"github.com/DataSemanticHub/services/app/system-service/api/internal/config"
-	"github.com/DataSemanticHub/services/app/system-service/api/internal/errorx"
 	"github.com/DataSemanticHub/services/app/system-service/api/internal/svc"
 	"github.com/DataSemanticHub/services/app/system-service/api/internal/types"
 	auditlogs "github.com/DataSemanticHub/services/app/system-service/model/user/audit_logs"
 	"github.com/DataSemanticHub/services/app/system-service/model/user/users"
 
 	"github.com/google/uuid"
-	baseErrorx "github.com/jinguoxing/idrm-go-base/errorx"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -112,6 +110,14 @@ func (m *MockUserModelForUnlock) Trans(ctx context.Context, fn func(ctx context.
 	return args.Error(0)
 }
 
+func (m *MockUserModelForUnlock) GetStatistics(ctx context.Context) (*users.Statistics, error) {
+	args := m.Called(ctx)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*users.Statistics), args.Error(1)
+}
+
 // MockAuditLogModelForUnlock 是 auditlogs.Model 的 mock 实现
 type MockAuditLogModelForUnlock struct {
 	mock.Mock
@@ -187,7 +193,6 @@ func TestUnlockUser_ValidInput_UnlocksUser(t *testing.T) {
 		Name: "Operator",
 	}
 
-	operatorIDStr := operatorID.String()
 	changes := map[string]interface{}{
 		"status":      map[string]interface{}{"old": 3, "new": 1},
 		"lock_reason": map[string]interface{}{"old": lockReason, "new": nil},

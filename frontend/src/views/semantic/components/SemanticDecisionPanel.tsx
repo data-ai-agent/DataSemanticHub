@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Check, X, Tag, BookOpen, AlertTriangle, Wand2, ArrowRight } from 'lucide-react';
+import { Check, X, Tag, BookOpen, AlertTriangle, Sparkles, ArrowRight } from 'lucide-react';
 import { FieldSemanticProfile, SemanticRole } from '../../../types/semantic';
 
 interface Evidence {
@@ -137,7 +137,7 @@ export const SemanticDecisionPanel: React.FC<SemanticDecisionPanelProps> = ({
         <div className={`flex flex-col bg-white border border-slate-200 rounded-xl shadow-sm h-full overflow-hidden ${className}`}>
             <div className="p-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between shrink-0">
                 <h3 className="font-bold text-slate-800 flex items-center gap-2">
-                    <Wand2 size={16} className="text-purple-600" />
+                    <Sparkles size={16} className="text-purple-600" />
                     语义判定
                 </h3>
                 {isDecided ? (
@@ -162,7 +162,7 @@ export const SemanticDecisionPanel: React.FC<SemanticDecisionPanelProps> = ({
                         {(fieldProfile.roleConfidence || 0) < 60 ? (
                             <AlertTriangle size={16} className="text-amber-500 mt-0.5 shrink-0" />
                         ) : (
-                            <Wand2 size={16} className="text-purple-600 mt-0.5 shrink-0" />
+                            <Sparkles size={16} className="text-purple-600 mt-0.5 shrink-0" />
                         )}
                         <div>
                             <div className={`text-sm font-medium ${(fieldProfile.roleConfidence || 0) < 60 ? 'text-amber-900' : 'text-purple-900'

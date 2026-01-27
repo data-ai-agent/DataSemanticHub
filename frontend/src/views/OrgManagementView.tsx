@@ -9,7 +9,7 @@ import {
     X,
     Users,
     MapPin,
-    BadgeCheck,
+    CheckCircle,
     EyeOff,
     Eye,
     List,
@@ -22,14 +22,27 @@ import {
     ShieldAlert,
     ArrowRight,
     Info,
-    CheckCircle,
     UserPlus,
     Settings,
     Briefcase,
     Star,
-    Layout
+    Layout,
+    Loader2
 } from 'lucide-react';
 import { useToast } from '../components/ui/Toast';
+import {
+    organizationService,
+    OrgTreeNode,
+    GetOrgTreeReq,
+    CreateOrgReq,
+    UpdateOrgReq,
+    DeptUser,
+    SetUserPrimaryDeptReq,
+    AddUserAuxDeptReq,
+    RemoveUserAuxDeptReq
+} from '../services/organizationService';
+import { userManagementService, User } from '../services/userManagement';
+import { useEffect } from 'react';
 
 type OrgStatus = '启用' | '停用';
 
@@ -39,6 +52,7 @@ type Department = {
     code: string;
     parentId: string | null;
     manager: string;
+    leaderId?: string; // 负责人ID
     members: number;
     status: OrgStatus;
     region: string;
@@ -83,141 +97,71 @@ const CAPABILITIES = [
 // Combine for backward compatibility if needed, or migration
 const roleCatalog = [...GOVERNANCE_ROLES, ...CAPABILITIES].map(r => r.name);
 
-const initialDepartments: Department[] = [
-    {
-        id: 'dept_root',
-        name: '数据语义治理中心',
-        code: 'ds_center',
-        parentId: null,
-        manager: '王宁',
-        members: 32,
-        status: '启用',
-        region: '集团',
-        order: 1,
-        functions: ['语义治理', '版本管理'],
-        description: '负责语义治理、版本管理与统一裁决。',
-        builtIn: true,
-        updatedAt: '2024-06-26',
-        type: 'organization'
-    },
-    {
-        id: 'dept_semantic_ops',
-        name: '语义运营部',
-        code: 'semantic_ops',
-        parentId: 'dept_root',
-        manager: '陈颖',
-        members: 16,
-        status: '启用',
-        region: '集团',
-        order: 1,
-        functions: ['语义治理', '业务场景'],
-        description: '推动语义资产落地与场景编排。',
+// Map API types to Frontend types
+const mapNodeToDepartment = (node: OrgTreeNode): Department => {
+    return {
+        id: node.id,
+        name: node.name,
+        code: node.code,
+        parentId: (node.parentId === '0' || !node.parentId) ? null : node.parentId,
+        manager: node.leaderName || '-',
+        leaderId: node.leaderId || undefined,
+        members: 0, // Not returned by tree API yet
+        status: node.status === 1 ? '启用' : '停用',
+        region: '集团', // Default
+        order: node.sortOrder,
+        updatedAt: new Date().toISOString().split('T')[0], // Mock for list
+        description: '', // Not in tree
         builtIn: false,
-        updatedAt: '2024-06-21'
-    },
-    {
-        id: 'dept_version_council',
-        name: '版本委员会',
-        code: 'version_board',
-        parentId: 'dept_root',
-        manager: '刘洋',
-        members: 9,
-        status: '启用',
-        region: '集团',
-        order: 2,
-        functions: ['版本管理'],
-        description: '负责语义版本评审与发布决策。',
-        builtIn: true,
-        updatedAt: '2024-06-18'
-    },
-    {
-        id: 'dept_security',
-        name: '安全合规部',
-        code: 'security',
-        parentId: null,
-        manager: '张倩',
-        members: 12,
-        status: '启用',
-        region: '总部',
-        order: 2,
-        functions: ['数据安全'],
-        description: '负责敏感数据与合规审计。',
-        builtIn: true,
-        updatedAt: '2024-06-16'
-    },
-    {
-        id: 'dept_quality',
-        name: '数据质量中心',
-        code: 'data_quality',
-        parentId: null,
-        manager: '李晨',
-        members: 14,
-        status: '启用',
-        region: '总部',
-        order: 3,
-        functions: ['数据质量'],
-        description: '主导质量规则与异常闭环。',
-        builtIn: false,
-        updatedAt: '2024-06-14'
-    },
-    {
-        id: 'dept_data_service',
-        name: '数据服务运营部',
-        code: 'data_service_ops',
-        parentId: null,
-        manager: '赵敏',
-        members: 18,
-        status: '启用',
-        region: '华东',
-        order: 4,
-        functions: ['数据服务', '问数', '找数'],
-        description: '运营数据服务与问数找数能力。',
-        builtIn: false,
-        updatedAt: '2024-06-12'
-    },
-    {
-        id: 'dept_scene',
-        name: '业务场景推进组',
-        code: 'scene_ops',
-        parentId: 'dept_data_service',
-        manager: '周琪',
-        members: 8,
-        status: '启用',
-        region: '华东',
-        order: 1,
-        functions: ['业务场景'],
-        description: '推动业务场景上线与协同。',
-        builtIn: false,
-        updatedAt: '2024-06-08'
-    }
-];
-
-const memberMap: Record<string, Member[]> = {
-    dept_root: [
-        { id: 'm_01', name: '王宁', title: '语义治理负责人', role: '语义治理', permissions: ['manage', 'audit'], isPrimary: true, status: '在岗', joinDate: '2023-01-10' },
-        { id: 'm_02', name: '刘洋', title: '版本委员会秘书', role: '版本管理', permissions: ['audit'], isPrimary: true, status: '在岗', joinDate: '2023-03-15' },
-        { id: 'm_03', name: '孙凯', title: '语义裁决专员', role: '语义治理', permissions: ['operate'], isPrimary: true, status: '在岗', joinDate: '2023-05-20' }
-    ],
-    dept_semantic_ops: [
-        { id: 'm_11', name: '陈颖', title: '语义运营经理', role: '语义治理', permissions: ['operate'], isPrimary: true, status: '在岗', joinDate: '2023-02-01' },
-        { id: 'm_12', name: '高原', title: '场景运营', role: '业务场景', permissions: ['operate'], isPrimary: false, status: '在岗', joinDate: '2023-06-01' }
-    ],
-    dept_security: [
-        { id: 'm_21', name: '张倩', title: '安全审计负责人', role: '数据安全', permissions: ['audit'], isPrimary: true, status: '在岗', joinDate: '2023-01-15' },
-        { id: 'm_22', name: '韩雪', title: '合规专员', role: '数据安全', permissions: ['view'], isPrimary: true, status: '在岗', joinDate: '2023-04-10' }
-    ],
-    dept_data_service: [
-        { id: 'm_31', name: '赵敏', title: '服务运营经理', role: '数据服务', permissions: ['manage'], isPrimary: true, status: '在岗', joinDate: '2023-03-01' },
-        { id: 'm_32', name: '陈浩', title: '问数产品运营', role: '问数', permissions: ['operate'], isPrimary: true, status: '在岗', joinDate: '2023-07-01' }
-    ]
+        type: node.type === 1 ? 'organization' : 'department',
+        functions: [], // Mock
+    };
 };
+
+const flattenTree = (nodes: OrgTreeNode[]): Department[] => {
+    let result: Department[] = [];
+    nodes.forEach(node => {
+        result.push(mapNodeToDepartment(node));
+        if (node.children && node.children.length > 0) {
+            result = result.concat(flattenTree(node.children));
+        }
+    });
+    return result;
+};
+
 
 const formatDate = () => new Date().toISOString().split('T')[0];
 
 const OrgManagementView = () => {
     const toast = useToast();
-    const [departments, setDepartments] = useState<Department[]>(initialDepartments);
-    const [activeDeptId, setActiveDeptId] = useState(initialDepartments[0]?.id ?? '');
+    const [departments, setDepartments] = useState<Department[]>([]);
+    const [loading, setLoading] = useState(false);
+
+    // Fetch data logic
+    const fetchDepartments = async () => {
+        setLoading(true);
+        try {
+            const resp = await organizationService.getOrgTree({});
+            const flatDepts = flattenTree(resp.tree);
+            // Sort by order locally if needed, though API might already sort
+            setDepartments(flatDepts);
+
+            if (activeDeptId === '' && flatDepts.length > 0) {
+                setActiveDeptId(flatDepts[0].id);
+            }
+        } catch (error) {
+            console.error(error);
+            toast.error('获取组织架构失败');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchDepartments();
+    }, []);
+
+    const [activeDeptId, setActiveDeptId] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState<'all' | OrgStatus>('all');
     const [regionFilter, setRegionFilter] = useState('all');
@@ -242,9 +186,19 @@ const OrgManagementView = () => {
     const [memberRoleFilter, setMemberRoleFilter] = useState('all');
     const [selectedMembers, setSelectedMembers] = useState<Set<string>>(new Set());
 
+    // User Selection Modal State
+    const [showUserSelectModal, setShowUserSelectModal] = useState(false);
+    const [userList, setUserList] = useState<User[]>([]);
+    const [userListLoading, setUserListLoading] = useState(false);
+    const [userSearchTerm, setUserSearchTerm] = useState('');
+    const [userPage, setUserPage] = useState(1);
+    const [userTotal, setUserTotal] = useState(0);
+    const userPageSize = 20;
+
     // Member Form State
     const [memberForm, setMemberForm] = useState({
         id: '',
+        userIdInput: '', // Start with empty for new add
         name: '', // Display only for edit
         role: '',
         isPrimary: true,
@@ -252,21 +206,24 @@ const OrgManagementView = () => {
         status: '在岗' as Member['status']
     });
 
-    const openMemberModal = (member?: Member) => {
+    // Adapted to use DeptUser type partially
+    const openMemberModal = (member?: any) => { // Using any for transition from Member type to DeptUser
         if (member) {
             // Edit Mode
             setMemberForm({
-                id: member.id,
-                name: member.name,
-                role: member.role,
+                id: member.userId, // Map userId to id for internal form logic
+                userIdInput: member.userId,
+                name: member.userName,
+                role: '语义治理', // Mock
                 isPrimary: member.isPrimary,
-                permissions: member.permissions || [],
-                status: member.status
+                permissions: [], // Mock
+                status: '在岗'
             });
         } else {
             // Create Mode
             setMemberForm({
                 id: '',
+                userIdInput: '', // Clear input
                 name: '',
                 role: '语义治理', // Default
                 isPrimary: true,
@@ -275,13 +232,6 @@ const OrgManagementView = () => {
             });
         }
         setShowMemberModal(true);
-    };
-
-    const handleSaveMember = () => {
-        // Mock save logic
-        // In a real app, update memberMap or call API
-        toast.success(`已保存成员信息：${memberForm.name || '新成员'} (${memberForm.role})`);
-        setShowMemberModal(false);
     };
 
     const toggleExpand = (id: string) => {
@@ -305,62 +255,49 @@ const OrgManagementView = () => {
         e.dataTransfer.dropEffect = 'move';
     };
 
-    const handleDrop = (e: React.DragEvent, targetId: string) => {
+    const handleDrop = async (e: React.DragEvent, targetId: string) => {
         e.preventDefault();
         const sourceId = draggedNodeId;
         if (!sourceId || sourceId === targetId) return;
 
-        // Reorder logic:
-        // 1. Find source and target departments
-        // 2. Ensure they share the same parent (for simple reordering within same level in sorting)
-        //    OR support reparenting (moving to another folder). 
-        //    Requirement said "Drag Sort (replace display order)", usually implies sorting.
-        //    Let's support sorting within same parent for safety first, or allow reparenting if user drops ON a node?
-        //    "Drag Sort" usually means re-arranging.
+        // Find source and target
+        const source = departments.find(d => d.id === sourceId);
+        const target = departments.find(d => d.id === targetId);
+        if (!source || !target) return;
 
-        // Let's implement full re-ordering. 
-        // If dropped ON a node -> reparent? No, usually "sort" means in-between.
-        // Simplification for MVP: Swap orders if same parent.
+        // Current limitation: Only support reordering within same parent, OR reparenting if logic added.
+        // For now, let's keep the existing constraint: same parent only.
+        if (source.parentId !== target.parentId) {
+            toast.info('暂不支持跨层级移动');
+            return;
+        }
 
-        setDepartments(prev => {
-            const sourceIndex = prev.findIndex(d => d.id === sourceId);
-            const targetIndex = prev.findIndex(d => d.id === targetId);
-            if (sourceIndex === -1 || targetIndex === -1) return prev;
+        // Calculate new order
+        const siblings = departments
+            .filter(d => d.parentId === source.parentId)
+            .sort((a, b) => a.order - b.order);
 
-            const source = prev[sourceIndex];
-            const target = prev[targetIndex];
+        const sourceIndex = siblings.findIndex(s => s.id === sourceId);
+        const targetIndex = siblings.findIndex(s => s.id === targetId);
 
-            // Only allow reordering within same level for now to avoid confusion
-            if (source.parentId !== target.parentId) {
-                // Optional: Allow reparenting? 
-                // Let's stick to Requirements: "Drag Sort (substitute display order filling)"
-                // So purely order adjustment.
-                return prev;
-            }
+        const newSiblings = [...siblings];
+        const [moved] = newSiblings.splice(sourceIndex, 1);
+        newSiblings.splice(targetIndex, 0, moved);
 
-            // Swap orders? Or insert?
-            // True sort: items with same parentId should be re-indexed.
-            const siblings = prev.filter(d => d.parentId === source.parentId).sort((a, b) => a.order - b.order);
-            const sourceSiblingIndex = siblings.findIndex(s => s.id === sourceId);
-            const targetSiblingIndex = siblings.findIndex(s => s.id === targetId);
+        const sortOrders = newSiblings.map(s => s.id);
 
-            // Move source to target's position
-            const newSiblings = [...siblings];
-            const [moved] = newSiblings.splice(sourceSiblingIndex, 1);
-            newSiblings.splice(targetSiblingIndex, 0, moved);
-
-            // Re-assign orders based on new index
-            // We need to update ALL departments because we only have a flat list
-            // Map the new orders back to the full list
-            const newOrderMap = new Map(newSiblings.map((s, index) => [s.id, index + 1]));
-
-            return prev.map(dept => {
-                if (newOrderMap.has(dept.id)) {
-                    return { ...dept, order: newOrderMap.get(dept.id)! };
-                }
-                return dept;
+        try {
+            await organizationService.moveOrg({
+                id: sourceId,
+                targetParentId: source.parentId || '0',
+                sortOrders: sortOrders
             });
-        });
+            toast.success('移动成功');
+            fetchDepartments();
+        } catch (error: any) {
+            console.error(error);
+            toast.error(error.message || '移动失败');
+        }
         setDraggedNodeId(null);
     };
 
@@ -399,17 +336,136 @@ const OrgManagementView = () => {
         });
     }, [deptTree, searchTerm, statusFilter, regionFilter, hasMembersFilter, hasSubOrgFilter]);
 
-    const activeDept = departments.find((item) => item.id === activeDeptId) ?? departments[0];
+    const [members, setMembers] = useState<DeptUser[]>([]);
+    const [memberLoading, setMemberLoading] = useState(false);
+
+    const fetchMembers = async (deptId: string) => {
+        if (!deptId) return;
+        setMemberLoading(true);
+        try {
+            const resp = await organizationService.getOrgUsers(deptId, false);
+            setMembers(resp.users);
+        } catch (error) {
+            console.error(error);
+            toast.error('获取部门成员失败');
+        } finally {
+            setMemberLoading(false);
+        }
+    };
+
+    const handleRemoveMember = async (memberUserId: string, isPrimary: boolean) => {
+        if (!activeDeptId) return;
+
+        if (isPrimary) {
+            toast.warning('无法直接移除主归属成员，请先调整其主部门或删除用户');
+            return;
+        }
+
+        if (!confirm('确定要移除该辅助部门成员吗？')) return;
+
+        try {
+            await organizationService.removeUserAuxDept({
+                userId: memberUserId,
+                deptId: activeDeptId
+            });
+            toast.success('成员移除成功');
+            fetchMembers(activeDeptId);
+        } catch (error: any) {
+            console.error(error);
+            toast.error(error.message || '移除失败');
+        }
+    };
+
+    const handleSaveMember = async () => {
+        if (!activeDeptId) return;
+        // Check required fields
+        if (!memberForm.id && !memberForm.userIdInput) { // Assuming we add an input for userId if creating
+            toast.error('请选择或输入用户');
+            return;
+        }
+
+        const targetUserId = memberForm.id || memberForm.userIdInput;
+
+        try {
+            if (memberForm.isPrimary) {
+                // Set as Primary
+                await organizationService.setUserPrimaryDept({
+                    userId: targetUserId,
+                    deptId: activeDeptId
+                });
+            } else {
+                // Add as Aux (only valid for adding new aux, not updating existing aux to aux - though idempotent often)
+                // If we are editing, and it was already aux, this might be redundant but safe.
+                // If it was primary and we want to change to aux, we can't do it via AddUserAuxDept usually (need to set another primary).
+                // Let's assume this is mostly for "Add Member" or "Change to Primary".
+                await organizationService.addUserAuxDept({
+                    userId: targetUserId,
+                    deptId: activeDeptId
+                });
+            }
+
+            toast.success(memberForm.id ? '成员信息已更新' : '已添加成员');
+            setShowMemberModal(false);
+            fetchMembers(activeDeptId);
+        } catch (error: any) {
+            console.error(error);
+            toast.error(error.message || '操作失败');
+        }
+    };
+
+    const [activeDeptDetail, setActiveDeptDetail] = useState<Department | null>(null);
+
+    const fetchDeptDetail = async (id: string) => {
+        if (!id) return;
+        try {
+            const { detail } = await organizationService.getOrgDetail(id);
+            // Map OrgDetail to Department
+            const detailedDept: Department = {
+                id: detail.id,
+                name: detail.name,
+                code: detail.code,
+                parentId: detail.parentId,
+                manager: detail.leaderName,
+                leaderId: detail.leaderId || undefined,
+                members: 0, // Still not in detail
+                status: detail.status === 1 ? '启用' : '停用',
+                region: '集团',
+                order: detail.sortOrder,
+                updatedAt: detail.updatedAt,
+                description: detail.desc,
+                builtIn: false,
+                type: detail.type === 1 ? 'organization' : 'department',
+                // responsibilities not in API explicitly, maybe map from desc? 
+                // Or if 'desc' stores responsibilities? 
+                // Let's assume desc is description.
+            };
+            setActiveDeptDetail(detailedDept);
+        } catch (error) {
+            console.error('Failed to fetch detail', error);
+        }
+    };
+
+    useEffect(() => {
+        if (activeDeptId) {
+            fetchMembers(activeDeptId);
+            fetchDeptDetail(activeDeptId);
+        } else {
+            setMembers([]);
+            setActiveDeptDetail(null);
+        }
+    }, [activeDeptId]);
+
+    const activeDept = (activeDeptDetail || departments.find((item) => item.id === activeDeptId)) ?? departments[0];
 
     const filteredMembers = useMemo(() => {
         if (!activeDept) return [];
-        const members = memberMap[activeDept.id] || [];
         return members.filter(m => {
-            const matchesSearch = memberSearch ? (m.name.includes(memberSearch) || m.title?.includes(memberSearch)) : true;
-            const matchesRole = memberRoleFilter === 'all' ? true : m.role === memberRoleFilter;
+            const matchesSearch = memberSearch ? (m.userName.includes(memberSearch)) : true; // Only name available in DeptUser
+            // Role filter is not applicable as DeptUser doesn't have role yet, need to fetch detail or ignore for now
+            const matchesRole = memberRoleFilter === 'all' ? true : true; // m.role === memberRoleFilter; 
             return matchesSearch && matchesRole;
         });
-    }, [activeDept, memberSearch, memberRoleFilter]);
+    }, [activeDept, members, memberSearch, memberRoleFilter]);
 
     const handleSelectMember = (id: string, checked: boolean) => {
         const next = new Set(selectedMembers);
@@ -420,11 +476,12 @@ const OrgManagementView = () => {
 
     const handleSelectAllMembers = (checked: boolean) => {
         if (checked) {
-            setSelectedMembers(new Set(filteredMembers.map(m => m.id)));
+            setSelectedMembers(new Set(filteredMembers.map(m => m.userId)));
         } else {
             setSelectedMembers(new Set());
         }
     };
+
 
     const totalCount = departments.length;
     const enabledCount = departments.filter((item) => item.status === '启用').length;
@@ -503,6 +560,7 @@ const OrgManagementView = () => {
             code: '',
             parentId: activeDeptId || null,
             manager: '',
+            leaderId: undefined,
             members: 0,
             status: '启用',
             region: '华东',
@@ -517,9 +575,30 @@ const OrgManagementView = () => {
         setModalOpen(true);
     };
 
-    const openEditModal = (dept: Department) => {
+    const openEditModal = async (dept: Department) => {
         setModalMode('edit');
-        setDraftDept({ ...dept });
+        // If we are editing the active dept and have detail, use it.
+        // Otherwise fetch detail to ensure we have description etc.
+        let targetDept = dept;
+        if (dept.id === activeDeptDetail?.id) {
+            targetDept = activeDeptDetail;
+        } else {
+            try {
+                const { detail } = await organizationService.getOrgDetail(dept.id);
+                targetDept = {
+                    ...dept,
+                    description: detail.desc,
+                    parentId: detail.parentId,
+                    manager: detail.leaderName || dept.manager,
+                    leaderId: detail.leaderId || dept.leaderId,
+                    // functions? 
+                };
+            } catch (e) {
+                // ignore, just use list info
+            }
+        }
+
+        setDraftDept({ ...targetDept });
         setShowValidation(false);
         setErrorMessage(null);
         setModalOpen(true);
@@ -531,7 +610,7 @@ const OrgManagementView = () => {
         setCreateStep('form'); // Reset step on close
     };
 
-    const saveDepartment = () => {
+    const saveDepartment = async () => {
         if (!draftDept) {
             return;
         }
@@ -539,22 +618,42 @@ const OrgManagementView = () => {
         if (!draftDept.name.trim() || !draftDept.code.trim()) {
             return;
         }
-        if (modalMode === 'create') {
-            const newDept = {
-                ...draftDept,
-                id: `dept_${Math.random().toString(36).substr(2, 6)}`,
-                members: 0,
-                updatedAt: formatDate(),
-                builtIn: false
-            };
-            setDepartments([...departments, newDept]);
-            // Show Success Step instead of closing immediately
-            setCreateStep('success');
-        } else {
-            setDepartments(
-                departments.map((item) => (item.id === draftDept.id ? { ...draftDept, updatedAt: formatDate() } : item))
-            );
-            closeModal();
+
+        try {
+            if (modalMode === 'create') {
+                const req: CreateOrgReq = {
+                    parentId: draftDept.parentId ?? '0',
+                    name: draftDept.name,
+                    code: draftDept.code,
+                    type: draftDept.type === 'organization' ? 1 : 2,
+                    desc: draftDept.description || draftDept.responsibilities,
+                    leaderId: draftDept.leaderId,
+                    // sortOrder: 0
+                };
+                await organizationService.createOrg(req);
+                toast.success('组织创建成功');
+                // Show Success Step instead of closing immediately
+                setCreateStep('success');
+                // Refresh list
+                fetchDepartments();
+            } else {
+                const req: UpdateOrgReq = {
+                    name: draftDept.name,
+                    code: draftDept.code,
+                    desc: draftDept.description || draftDept.responsibilities,
+                    status: draftDept.status === '启用' ? 1 : 0,
+                    sortOrder: draftDept.order,
+                    // 如果 leaderId 是 undefined，传递空字符串以支持清空负责人
+                    leaderId: draftDept.leaderId || ''
+                };
+                await organizationService.updateOrg(draftDept.id, req);
+                toast.success('组织更新成功');
+                fetchDepartments();
+                closeModal();
+            }
+        } catch (error: any) {
+            console.error(error);
+            toast.error(error.message || '操作失败');
         }
     };
 
@@ -574,10 +673,50 @@ const OrgManagementView = () => {
         setDraftDept(prev => prev ? ({ ...prev, code: mockPinyin }) : null);
     };
 
-    // Helper for Manager Selection (Mock)
-    const handleSelectManager = () => {
-        // Just set a mock user for now
-        setDraftDept(prev => prev ? ({ ...prev, manager: '王宁' }) : null);
+    // Fetch Users for Selection
+    const fetchUsers = async (page: number = 1, keyword: string = '') => {
+        setUserListLoading(true);
+        try {
+            const response = await userManagementService.listUsers({
+                page,
+                page_size: userPageSize,
+                keyword: keyword.trim() || undefined,
+            });
+            setUserList(response.users);
+            setUserTotal(response.total);
+        } catch (error: any) {
+            console.error(error);
+            toast.error(error.message || '获取用户列表失败');
+        } finally {
+            setUserListLoading(false);
+        }
+    };
+
+    // Open User Selection Modal
+    const openUserSelectModal = () => {
+        setShowUserSelectModal(true);
+        setUserSearchTerm('');
+        setUserPage(1);
+        fetchUsers(1, '');
+    };
+
+    // Handle User Selection
+    const handleSelectUser = (user: User) => {
+        setDraftDept(prev => prev ? ({
+            ...prev,
+            manager: user.name,
+            leaderId: user.id
+        }) : null);
+        setShowUserSelectModal(false);
+    };
+
+    // Clear Manager
+    const handleClearManager = () => {
+        setDraftDept(prev => prev ? ({
+            ...prev,
+            manager: '',
+            leaderId: undefined
+        }) : null);
     };
 
     const toggleFunction = (func: string) => {
@@ -589,30 +728,39 @@ const OrgManagementView = () => {
         setDraftDept({ ...draftDept, functions: next });
     };
 
-    const handleDelete = (dept: Department, force = false) => {
+    const handleDelete = async (dept: Department, force = false) => {
         if (dept.builtIn && !force) {
             return;
         }
         // if (!confirm('确定要删除该组织节点吗？')) {
         //     return;
         // }
-        setDepartments((prev) => {
-            const next = prev.filter((item) => item.id !== dept.id && item.parentId !== dept.id);
+
+        try {
+            await organizationService.deleteOrg(dept.id);
+            toast.success('删除成功');
             if (activeDeptId === dept.id) {
-                setActiveDeptId(next[0]?.id ?? '');
+                setActiveDeptId(''); // Will reset to first available in fetchDepartments or effect
             }
-            return next;
-        });
+            fetchDepartments();
+        } catch (error: any) {
+            console.error(error);
+            toast.error(error.message || '删除失败');
+        }
     };
 
-    const handleToggleStatus = (dept: Department, force = false) => {
-        setDepartments((prev) =>
-            prev.map((item) =>
-                item.id === dept.id
-                    ? { ...item, status: item.status === '启用' ? '停用' : '启用', updatedAt: formatDate() }
-                    : item
-            )
-        );
+    const handleToggleStatus = async (dept: Department, force = false) => {
+        try {
+            const newStatus = dept.status === '启用' ? 0 : 1;
+            await organizationService.updateOrg(dept.id, {
+                status: newStatus
+            });
+            toast.success('状态更新成功');
+            fetchDepartments();
+        } catch (error: any) {
+            console.error(error);
+            toast.error(error.message || '更新状态失败');
+        }
     };
 
 
@@ -855,7 +1003,7 @@ const OrgManagementView = () => {
 
                     <div className="grid gap-3 sm:grid-cols-2">
                         {[
-                            { label: '负责人', value: activeDept?.manager ?? '-', icon: BadgeCheck },
+                            { label: '负责人', value: activeDept?.manager ?? '-', icon: CheckCircle },
                             { label: '人员规模', value: `${activeDept?.members ?? 0} 人`, icon: Users }
                         ].map((item) => (
                             <div key={item.label} className="rounded-xl border border-slate-200 p-3">
@@ -968,26 +1116,26 @@ const OrgManagementView = () => {
                                 <tbody className="divide-y divide-slate-100">
                                     {filteredMembers.length > 0 ? (
                                         filteredMembers.map((member) => (
-                                            <tr key={member.id} className="group hover:bg-slate-50">
+                                            <tr key={member.userId} className="group hover:bg-slate-50">
                                                 <td className="px-3 py-2">
                                                     <input
                                                         type="checkbox"
                                                         className="rounded border-slate-300"
-                                                        checked={selectedMembers.has(member.id)}
-                                                        onChange={e => handleSelectMember(member.id, e.target.checked)}
+                                                        checked={selectedMembers.has(member.userId)}
+                                                        onChange={e => handleSelectMember(member.userId, e.target.checked)}
                                                     />
                                                 </td>
                                                 <td className="px-3 py-2">
-                                                    <div className="font-medium text-slate-700">{member.name}</div>
-                                                    <div className="text-slate-400 scale-90 origin-left">{member.title}</div>
+                                                    <div className="font-medium text-slate-700">{member.userName}</div>
+                                                    <div className="text-slate-400 scale-90 origin-left">{'暂无职位'}</div>
                                                 </td>
                                                 <td className="px-3 py-2">
-                                                    <span className="px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-full">{member.role}</span>
+                                                    <span className="px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-full">{'普通成员'}</span>
                                                 </td>
                                                 <td className="px-3 py-2">
                                                     {member.isPrimary ? (
                                                         <span className="flex items-center gap-1 text-emerald-600">
-                                                            <BadgeCheck size={12} />
+                                                            <CheckCircle size={12} />
                                                             主归属
                                                         </span>
                                                     ) : (
@@ -995,24 +1143,27 @@ const OrgManagementView = () => {
                                                     )}
                                                 </td>
                                                 <td className="px-3 py-2 text-slate-500">
-                                                    {member.permissions?.join(', ') || '-'}
+                                                    {'-'}
                                                 </td>
                                                 <td className="px-3 py-2">
-                                                    <span className={`flex items-center gap-1.5 ${member.status === '在岗' ? 'text-slate-600' : 'text-amber-600'
-                                                        }`}>
-                                                        <span className={`w-1.5 h-1.5 rounded-full ${member.status === '在岗' ? 'bg-emerald-400' : 'bg-amber-400'
-                                                            }`} />
-                                                        {member.status}
+                                                    <span className={`flex items-center gap-1.5 text-slate-600`}>
+                                                        <span className={`w-1.5 h-1.5 rounded-full bg-emerald-400`} />
+                                                        {'在岗'}
                                                     </span>
                                                 </td>
                                                 <td className="px-3 py-2 text-right opacity-0 group-hover:opacity-100 transition-opacity">
                                                     <button
                                                         className="text-indigo-600 hover:text-indigo-700 mr-2"
-                                                        onClick={() => openMemberModal(member)}
+                                                        onClick={() => toast.info('编辑成员暂未实现')}
                                                     >
                                                         设置
                                                     </button>
-                                                    <button className="text-rose-600 hover:text-rose-700">移除</button>
+                                                    <button
+                                                        className="text-rose-600 hover:text-rose-700"
+                                                        onClick={() => handleRemoveMember(member.userId, member.isPrimary)}
+                                                    >
+                                                        移除
+                                                    </button>
                                                 </td>
                                             </tr>
                                         ))
@@ -1134,14 +1285,21 @@ const OrgManagementView = () => {
                                                                 <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs font-bold">
                                                                     {draftDept.manager.charAt(0)}
                                                                 </div>
-                                                                {draftDept.manager}
+                                                                <span className="flex-1">{draftDept.manager}</span>
+                                                                <button
+                                                                    onClick={handleClearManager}
+                                                                    className="text-slate-400 hover:text-slate-600 p-1"
+                                                                    title="清除负责人"
+                                                                >
+                                                                    <X size={14} />
+                                                                </button>
                                                             </>
                                                         ) : (
                                                             <span className="text-slate-400">未指定</span>
                                                         )}
                                                     </div>
                                                     <button
-                                                        onClick={() => toast.info('打开用户选择弹窗（待实现）')}
+                                                        onClick={openUserSelectModal}
                                                         className="px-3 py-2 bg-indigo-50 text-indigo-600 rounded-lg text-xs hover:bg-indigo-100"
                                                     >
                                                         选择
@@ -1316,9 +1474,13 @@ const OrgManagementView = () => {
                                             <span className="text-xs text-slate-400">不可修改</span>
                                         </div>
                                     ) : (
-                                        <div className="p-3 border border-slate-200 rounded-lg bg-white text-sm text-slate-400 hover:border-indigo-300 cursor-pointer">
-                                            点击搜索用户...
-                                        </div>
+                                        <input
+                                            type="text"
+                                            placeholder="请输入用户ID (临时)"
+                                            className="w-full p-3 border border-slate-200 rounded-lg text-sm text-slate-700 focus:border-indigo-500 focus:outline-none"
+                                            value={memberForm.userIdInput}
+                                            onChange={(e) => setMemberForm({ ...memberForm, userIdInput: e.target.value })}
+                                        />
                                     )}
                                 </div>
 
@@ -1424,6 +1586,140 @@ const OrgManagementView = () => {
                     </div>
                 )
             }
+
+            {/* User Selection Modal */}
+            {showUserSelectModal && (
+                <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/40 flex items-center justify-center p-4">
+                    <div className="w-full max-w-2xl bg-white rounded-xl shadow-2xl flex flex-col max-h-[80vh]">
+                        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+                            <h3 className="text-lg font-bold text-slate-800">选择负责人</h3>
+                            <button
+                                onClick={() => setShowUserSelectModal(false)}
+                                className="text-slate-400 hover:text-slate-600"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <div className="p-6 overflow-y-auto flex flex-col gap-4">
+                            {/* Search */}
+                            <div className="flex gap-2">
+                                <div className="relative flex-1">
+                                    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                    <input
+                                        type="text"
+                                        placeholder="搜索用户姓名、邮箱或手机号..."
+                                        value={userSearchTerm}
+                                        onChange={(e) => {
+                                            setUserSearchTerm(e.target.value);
+                                        }}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                                setUserPage(1);
+                                                fetchUsers(1, userSearchTerm);
+                                            }
+                                        }}
+                                        className="w-full pl-10 pr-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:border-indigo-500"
+                                    />
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        setUserPage(1);
+                                        fetchUsers(1, userSearchTerm);
+                                    }}
+                                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 whitespace-nowrap"
+                                >
+                                    搜索
+                                </button>
+                            </div>
+
+                            {/* User List */}
+                            <div className="flex-1 overflow-y-auto min-h-[300px]">
+                                {userListLoading ? (
+                                    <div className="flex items-center justify-center py-12">
+                                        <Loader2 size={24} className="animate-spin text-indigo-600" />
+                                        <span className="ml-2 text-sm text-slate-500">加载中...</span>
+                                    </div>
+                                ) : userList.length > 0 ? (
+                                    <div className="space-y-2">
+                                        {userList.map((user) => (
+                                            <div
+                                                key={user.id}
+                                                onClick={() => handleSelectUser(user)}
+                                                className="flex items-center gap-3 p-3 rounded-lg border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50 cursor-pointer transition-colors"
+                                            >
+                                                <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-sm font-bold">
+                                                    {user.name.charAt(0)}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="font-medium text-slate-800">{user.name}</div>
+                                                    <div className="text-xs text-slate-500 truncate">
+                                                        {user.email}
+                                                        {user.phone && ` • ${user.phone}`}
+                                                    </div>
+                                                </div>
+                                                <ChevronRight size={16} className="text-slate-400" />
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center py-12 text-slate-400">
+                                        <Users size={32} className="mb-2" />
+                                        <p className="text-sm">暂无用户数据</p>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Pagination */}
+                            {userTotal > 0 && (
+                                <div className="flex items-center justify-between pt-4 border-t border-slate-200">
+                                    <div className="text-sm text-slate-500">
+                                        共 {userTotal} 个用户，第 {userPage} / {Math.ceil(userTotal / userPageSize)} 页
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={() => {
+                                                if (userPage > 1) {
+                                                    const newPage = userPage - 1;
+                                                    setUserPage(newPage);
+                                                    fetchUsers(newPage, userSearchTerm);
+                                                }
+                                            }}
+                                            disabled={userPage <= 1}
+                                            className="px-3 py-1.5 text-sm border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            上一页
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                if (userPage < Math.ceil(userTotal / userPageSize)) {
+                                                    const newPage = userPage + 1;
+                                                    setUserPage(newPage);
+                                                    fetchUsers(newPage, userSearchTerm);
+                                                }
+                                            }}
+                                            disabled={userPage >= Math.ceil(userTotal / userPageSize)}
+                                            className="px-3 py-1.5 text-sm border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            下一页
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="flex items-center justify-end gap-3 border-t border-slate-200 px-6 py-4">
+                            <button
+                                type="button"
+                                onClick={() => setShowUserSelectModal(false)}
+                                className="rounded-lg border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:text-slate-800"
+                            >
+                                取消
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div >
     );
 };

@@ -6,6 +6,7 @@ package user
 import (
 	"context"
 
+	"github.com/DataSemanticHub/services/app/system-service/api/internal/contextkeys"
 	"github.com/DataSemanticHub/services/app/system-service/api/internal/errorx"
 	"github.com/DataSemanticHub/services/app/system-service/api/internal/svc"
 	"github.com/DataSemanticHub/services/app/system-service/api/internal/types"
@@ -31,7 +32,7 @@ func NewLogoutLogic(ctx context.Context, svcCtx *svc.ServiceContext) *LogoutLogi
 
 func (l *LogoutLogic) Logout() (resp *types.LogoutResp, err error) {
 	// 1. 从 JWT Token 中提取用户 ID
-	userIDValue := l.ctx.Value("user_id")
+	userIDValue := l.ctx.Value(contextkeys.UserIDKey)
 	if userIDValue == nil {
 		return nil, baseErrorx.New(errorx.ErrTokenInvalid, "Token 无效或已过期")
 	}

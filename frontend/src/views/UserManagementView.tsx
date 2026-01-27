@@ -11,7 +11,7 @@ import {
     Mail,
     Phone,
     Building2,
-    BadgeCheck,
+    CheckCircle,
     ChevronRight,
     ChevronDown,
     ChevronUp,

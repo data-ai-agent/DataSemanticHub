@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import {
     Layout, Search, Filter, AlertTriangle, CheckCircle, Clock,
-    ArrowRight, MoreHorizontal, Wand2, Shield, Share2,
+    ArrowRight, MoreHorizontal, Sparkles, Shield, Share2,
     ChevronDown, RefreshCw, Layers, Database, X
 } from 'lucide-react';
 import { FieldSemanticStatus, GovernanceStatus, TableSemanticStage } from '../types/semantic';
@@ -194,7 +194,7 @@ export const FieldSemanticWorkbenchView = ({ scanResults, onNavigateToField }: F
                             className={`px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors ${isBatchRunning ? 'bg-blue-100 text-blue-400 cursor-wait' : 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm'
                                 }`}
                         >
-                            {isBatchRunning ? <RefreshCw className="animate-spin" size={16} /> : <Wand2 size={16} />}
+                            {isBatchRunning ? <RefreshCw className="animate-spin" size={16} /> : <Sparkles size={16} />}
                             {isBatchRunning ? '正在生成...' : '批量生成【语义建议】'}
                         </button>
                         <button className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 flex items-center gap-2">

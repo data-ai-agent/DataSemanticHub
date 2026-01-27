@@ -42,37 +42,65 @@ if ! docker compose version &> /dev/null; then
     exit 1
 fi
 
+# Function to wait for a service to be healthy
+wait_for_healthy() {
+    local service=$1
+    local max_retries=60
+    local count=0
+    
+    echo -n "Waiting for $service to be healthy..."
+    while [ $count -lt $max_retries ]; do
+        # Check for health property (handling spacing variations)
+        if docker compose ps "$service" --format json | grep -q '"Health": *"healthy"'; then
+            echo -e " ${GREEN}OK${NC}"
+            return 0
+        fi
+        echo -n "."
+        sleep 2
+        count=$((count + 1))
+    done
+    echo -e " ${RED}Timeout${NC}"
+    echo ""
+    echo "Debug: Last status for $service:"
+    docker compose ps "$service" --format json
+    return 1
+}
+
 # Start services
-echo -e "${BLUE}Starting all services...${NC}"
+echo -e "${BLUE}Starting services...${NC}"
 echo ""
 
-# Start infrastructure services first
-echo -e "${YELLOW}Step 1/3: Starting infrastructure services...${NC}"
+# Step 1: Infrastructure
+echo -e "${YELLOW}Step 1/4: Starting infrastructure services...${NC}"
 docker compose up -d mariadb redis
 
-echo "Waiting for infrastructure services to be healthy..."
-sleep 10
+# Wait for DB before migration
+if ! wait_for_healthy "mariadb"; then
+    echo -e "${RED}Error: MariaDB failed to become healthy. Aborting.${NC}"
+    exit 1
+fi
 
-# Start middleware services
+# Step 2: Database Migration
 echo ""
-echo -e "${YELLOW}Step 2/3: Starting middleware services...${NC}"
+echo -e "${YELLOW}Step 2/4: Running database migrations...${NC}"
+# Use --rm to clean up container after run, and explicit profile
+if docker compose --profile tools run --rm migrator; then
+    echo -e "${GREEN}Migrations completed successfully.${NC}"
+else
+    echo -e "${RED}Error: Migrations failed. Check logs above.${NC}"
+    # We choose not to exit here in case it's a non-critical error, but usually we should.
+    # exit 1 
+fi
+
+# Step 3: Middleware
+echo ""
+echo -e "${YELLOW}Step 3/4: Starting middleware services...${NC}"
 docker compose up -d kafka opensearch jaeger prometheus grafana
 
-echo "Waiting for middleware services to be ready..."
-sleep 15
-
-# Start application services
+# Step 4: Application
 echo ""
-echo -e "${YELLOW}Step 3/3: Starting application services...${NC}"
+echo -e "${YELLOW}Step 4/4: Starting application services...${NC}"
 docker compose up -d system-service agent-service data-connection frontend
-
-echo ""
-echo -e "${GREEN}All services started!${NC}"
-echo ""
-
-# Wait for services to be healthy
-echo "Waiting for services to be healthy..."
-sleep 10
 
 # Check service status
 echo ""

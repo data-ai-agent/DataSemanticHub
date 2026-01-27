@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import {
     Layout, Database, GitMerge, Server, Layers,
     Search, FileText, Activity, Cpu, Link,
@@ -8,14 +8,25 @@ import {
     ScanText, Verified, Lock, History, Bookmark, LayoutGrid, Building2, UserCog, PanelLeftClose, Grip
 } from 'lucide-react';
 
-import { APP_MENUS } from '../../config/menuConfig';
+import { AppProduct, MenuGroup, ProductId } from '../../config/menuConfig';
 
 interface SidebarProps {
     activeModule: string;
     setActiveModule: (module: string) => void;
+    activeProduct: ProductId;
+    setActiveProduct: (productId: ProductId) => void;
+    menus: MenuGroup[];
+    products: AppProduct[];
 }
 
-const Sidebar = ({ activeModule, setActiveModule }: SidebarProps) => {
+const Sidebar = ({
+    activeModule,
+    setActiveModule,
+    activeProduct,
+    setActiveProduct,
+    menus,
+    products
+}: SidebarProps) => {
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [expandedItems, setExpandedItems] = useState<string[]>(['semantic_modeling']);
     const [collapsedGroups, setCollapsedGroups] = useState<string[]>([]);
@@ -33,7 +44,7 @@ const Sidebar = ({ activeModule, setActiveModule }: SidebarProps) => {
         );
     };
 
-    const menus = APP_MENUS;
+    const activeProductMeta = products.find(product => product.id === activeProduct);
 
     return (
         <aside className={`${isCollapsed ? 'w-16' : 'w-64'} bg-[#F7F8FA] flex flex-col border-r border-[#DEE0E3] z-20 transition-all duration-300 font-sans`}>
@@ -49,7 +60,7 @@ const Sidebar = ({ activeModule, setActiveModule }: SidebarProps) => {
                         <>
                             {/* App Title */}
                             <div className="ml-2 overflow-hidden transition-opacity duration-300">
-                                <h1 className="font-bold text-[#1F2329] tracking-tight whitespace-nowrap text-sm">数据语义治理</h1>
+                                <h1 className="font-bold text-[#1F2329] tracking-tight whitespace-nowrap text-sm">{activeProductMeta?.name ?? '数据语义治理'}</h1>
                                 <p className="text-[10px] text-[#8F959E] tracking-wider whitespace-nowrap">企业版</p>
                             </div>
 
@@ -74,29 +85,30 @@ const Sidebar = ({ activeModule, setActiveModule }: SidebarProps) => {
                         <div className="absolute top-12 left-4 right-4 bg-white rounded-lg shadow-xl border border-[#DEE0E3] p-4 z-40 animate-in fade-in zoom-in-95 duration-200">
                             <h3 className="text-xs font-medium text-[#8F959E] mb-3 px-1">产品导航</h3>
                             <div className="grid grid-cols-3 gap-y-4 gap-x-1">
-                                {[
-                                    { id: 'ask_data', name: '智能问数', icon: MessageCircle, color: 'text-indigo-600 bg-indigo-50' },
-                                    { id: 'data_supermarket', name: '数据超市', icon: Search, color: 'text-teal-600 bg-teal-50' },
-                                    { id: 'scenario_orchestration', name: '场景编排', icon: Layers, color: 'text-orange-600 bg-orange-50' },
-
-                                    { id: 'modeling_overview', name: '语义建模', icon: Layout, color: 'text-blue-600 bg-blue-50' },
-                                    { id: 'data_quality', name: '数据质量', icon: Verified, color: 'text-green-600 bg-green-50' },
-                                    { id: 'resource_knowledge_network', name: '知识网络', icon: Network, color: 'text-purple-600 bg-purple-50' },
-
-                                    { id: 'term_mgmt', name: '资产管理', icon: Book, color: 'text-pink-600 bg-pink-50' },
-                                    { id: 'bu_connect', name: '数据源', icon: Database, color: 'text-emerald-600 bg-emerald-50' },
-                                    { id: 'org_mgmt', name: '平台管理', icon: Building2, color: 'text-slate-600 bg-slate-100' },
-                                ].map((app, i) => (
+                                {products.map((app, i) => (
                                     <div
                                         key={i}
-                                        className="flex flex-col items-center gap-2 p-2 rounded-lg hover:bg-[#F2F3F5] cursor-pointer transition-colors group"
+                                        className={`flex flex-col items-center gap-2 p-2 rounded-lg hover:bg-[#F2F3F5] cursor-pointer transition-colors group ${activeProduct === app.id ? 'bg-[#F2F3F5]' : ''}`}
                                         onClick={() => {
-                                            setActiveModule(app.id);
+                                            setActiveProduct(app.id);
                                             setShowAppMenu(false);
                                         }}
                                     >
                                         <div className={`w-10 h-10 rounded-xl ${app.color} flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform`}>
-                                            <app.icon size={20} strokeWidth={1.5} />
+                                            {(() => {
+                                                const IconComponent = app.icon;
+                                                if (!IconComponent) return null;
+                                                if (typeof IconComponent === 'string') return null;
+                                                try {
+                                                    return React.createElement(IconComponent, {
+                                                        size: 20,
+                                                        strokeWidth: 1.5
+                                                    });
+                                                } catch (e) {
+                                                    console.error('Error rendering app icon:', e, IconComponent);
+                                                    return null;
+                                                }
+                                            })()}
                                         </div>
                                         <span className="text-[10px] text-[#1F2329] font-medium text-center leading-tight">{app.name}</span>
                                     </div>
@@ -150,7 +162,51 @@ const Sidebar = ({ activeModule, setActiveModule }: SidebarProps) => {
                                                     : 'text-[#646A73] hover:bg-[#EBEDF0] hover:text-[#1F2329]'
                                                     }`}
                                             >
-                                                <item.icon size={18} strokeWidth={1.5} className={`shrink-0 ${isActive ? 'text-[#1F2329]' : 'text-[#646A73] group-hover/item:text-[#1F2329]'}`} />
+                                                {(() => {
+                                                    const IconComponent = item.icon;
+
+                                                    // Comprehensive validation
+                                                    if (!IconComponent) {
+                                                        console.warn('Icon is null/undefined for item:', item.id, item.label);
+                                                        return null;
+                                                    }
+
+                                                    if (typeof IconComponent === 'string') {
+                                                        console.warn('Icon is a string for item:', item.id, item.label, IconComponent);
+                                                        return null;
+                                                    }
+
+                                                    // Check if it's a valid React component
+                                                    const isFunction = typeof IconComponent === 'function';
+                                                    const isObject = typeof IconComponent === 'object';
+                                                    const hasRenderProp = isObject && 'render' in IconComponent;
+                                                    const hasTypeof = isObject && '$$typeof' in IconComponent;
+
+                                                    if (!isFunction && !hasRenderProp && !hasTypeof) {
+                                                        console.error('Invalid icon component for item:', item.id, item.label, {
+                                                            type: typeof IconComponent,
+                                                            keys: Object.keys(IconComponent || {}),
+                                                            IconComponent
+                                                        });
+                                                        return null;
+                                                    }
+
+                                                    // Use createElement for safer rendering
+                                                    try {
+                                                        return React.createElement(IconComponent, {
+                                                            size: 18,
+                                                            strokeWidth: 1.5,
+                                                            className: `shrink-0 ${isActive ? 'text-[#1F2329]' : 'text-[#646A73] group-hover/item:text-[#1F2329]'}`
+                                                        });
+                                                    } catch (e) {
+                                                        console.error('Error rendering icon for item:', item.id, item.label, e, {
+                                                            IconComponent,
+                                                            type: typeof IconComponent,
+                                                            keys: Object.keys(IconComponent || {})
+                                                        });
+                                                        return null;
+                                                    }
+                                                })()}
                                                 {!isCollapsed && <span className="truncate flex-1 text-left">{item.label}</span>}
                                                 {!isCollapsed && hasChildren && (
                                                     <ChevronRight

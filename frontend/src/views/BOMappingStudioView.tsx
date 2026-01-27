@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import {
     Layout, Database, GitMerge, CheckCircle, AlertCircle,
-    Cpu, Plus, Link, Settings, Sparkles, X, ArrowLeft, ArrowRight, Wand2, Search, Filter,
+    Cpu, Plus, Link, Settings, Sparkles, X, ArrowLeft, ArrowRight, Sparkles, Search, Filter,
     Eye, Bot, Code, Info
 } from 'lucide-react';
 
@@ -685,7 +685,7 @@ const BOMappingStudioView = ({ selectedBO, showRuleEditor, setShowRuleEditor, bu
                                 onClick={handleSmartMap}
                                 className="px-3 py-1.5 bg-white/90 backdrop-blur border border-indigo-200 text-indigo-600 rounded-full shadow-sm hover:bg-indigo-50 hover:shadow-md transition-all flex items-center gap-1.5 text-xs font-medium"
                             >
-                                <Wand2 size={12} />
+                                <Sparkles size={12} />
                                 智能匹配
                             </button>
                         </div>

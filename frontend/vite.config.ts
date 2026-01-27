@@ -11,7 +11,6 @@ export default defineConfig({
             '/api/v1/system': {
                 target: 'http://localhost:8888',
                 changeOrigin: true,
-                rewrite: (path) => path.replace(/^\/api\/v1\/system/, '/api/v1')
             },
 
             // Agent Service 代理 (对应 API Gateway 的 /api/v1/agent/)
@@ -38,6 +37,18 @@ export default defineConfig({
             '/ai': {
                 target: 'http://localhost:8891',
                 changeOrigin: true,
+            }
+        }
+    },
+    build: {
+        rollupOptions: {
+            output: {
+                manualChunks: {
+                    'react-vendor': ['react', 'react-dom'],
+                    'ui-vendor': ['lucide-react'],
+                    'antv-vendor': ['@antv/gpt-vis'],
+                    'editor-vendor': ['@tiptap/react', '@tiptap/starter-kit', '@tiptap/extension-mention']
+                }
             }
         }
     }

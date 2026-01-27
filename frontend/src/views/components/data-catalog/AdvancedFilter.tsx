@@ -5,7 +5,7 @@
 import React from 'react';
 import {
     X, Gauge, Database, Layers, Lock, Clock, Sparkles, Key, Activity,
-    SlidersHorizontal
+    Sliders
 } from 'lucide-react';
 import { FilterOptions, SavedFilter } from './types';
 
@@ -171,7 +171,7 @@ export const AdvancedFilter: React.FC<AdvancedFilterProps> = ({
             <div className="flex items-center justify-between mb-4 pb-4 border-b border-slate-200">
                 <div className="flex items-center gap-3">
                     <div className="p-2 bg-blue-100 rounded-lg">
-                        <SlidersHorizontal size={20} className="text-blue-600" />
+                        <Sliders size={20} className="text-blue-600" />
                     </div>
                     <div>
                         <h3 className="font-bold text-slate-800">高级筛选</h3>
@@ -209,7 +209,7 @@ export const AdvancedFilter: React.FC<AdvancedFilterProps> = ({
                         className="px-2 py-1 text-xs text-blue-600 hover:bg-blue-50 rounded transition-colors flex items-center gap-1"
                         title="保存当前筛选条件"
                     >
-                        <SlidersHorizontal size={12} />
+                        <Sliders size={12} />
                         保存筛选
                     </button>
                     <button

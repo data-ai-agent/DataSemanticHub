@@ -6,7 +6,7 @@
 import React, { useRef, useState } from 'react';
 import {
     Layers, Plus, Search, Box, MousePointer, Move, ZoomIn, ZoomOut,
-    Play, Save, Settings, MoreHorizontal, CheckCircle, RefreshCw, X, Link, Network, Maximize2, Minimize2
+    Play, Save, Settings, MoreHorizontal, CheckCircle, RefreshCw, X, Link, Network, Maximize, Minimize
 } from 'lucide-react';
 import { BusinessObject } from '../types/semantic';
 
@@ -535,7 +535,7 @@ const ScenarioOrchestrationView: React.FC<ScenarioOrchestrationViewProps> = ({ b
                     onClick={() => setIsCanvasFull(prev => !prev)}
                     className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 text-slate-700 text-sm rounded-lg shadow-sm hover:bg-slate-50"
                 >
-                    {isFull ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+                    {isFull ? <Minimize size={14} /> : <Maximize size={14} />}
                     {isFull ? '退出全屏' : '全屏'}
                 </button>
             </div>

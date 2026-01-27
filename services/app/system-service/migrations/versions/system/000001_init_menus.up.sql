@@ -1,0 +1,39 @@
+-- system模块初始化 - 菜单表
+-- 创建时间: 2026-01-27
+-- 说明: 创建菜单管理相关表结构
+
+-- 菜单表
+CREATE TABLE IF NOT EXISTS `menus` (
+    `id` CHAR(36) NOT NULL COMMENT 'ID (UUID v7)',
+    `name` VARCHAR(128) NOT NULL COMMENT '菜单名称',
+    `code` VARCHAR(128) NOT NULL COMMENT '菜单编码（全局唯一）',
+    `type` VARCHAR(20) NOT NULL COMMENT '类型：directory/page/external/button',
+    `group_id` VARCHAR(36) DEFAULT NULL COMMENT '菜单分组ID',
+    `parent_id` VARCHAR(36) DEFAULT NULL COMMENT '父菜单ID（根节点为空）',
+    `path` VARCHAR(255) DEFAULT NULL COMMENT '路由路径（page/directory使用）',
+    `route_name` VARCHAR(128) DEFAULT NULL COMMENT '路由名称',
+    `component_key` VARCHAR(128) DEFAULT NULL COMMENT '页面组件标识',
+    `external_url` VARCHAR(512) DEFAULT NULL COMMENT '外部链接（external类型必填）',
+    `open_mode` VARCHAR(20) DEFAULT NULL COMMENT '打开方式：new/iframe/same（external类型必填）',
+    `permission_key` VARCHAR(128) DEFAULT NULL COMMENT '权限标识（可选，未绑定时产生风险标记）',
+    `visible` TINYINT(1) NOT NULL DEFAULT 1 COMMENT '是否可见',
+    `enabled` TINYINT(1) NOT NULL DEFAULT 1 COMMENT '是否启用',
+    `order` INT NOT NULL DEFAULT 0 COMMENT '同级排序（同级唯一）',
+    `show_in_nav` TINYINT(1) NOT NULL DEFAULT 1 COMMENT '是否在导航中显示',
+    `cacheable` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '是否可缓存（前端keepAlive）',
+    `created_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间',
+    `created_by` VARCHAR(36) DEFAULT NULL COMMENT '创建人ID',
+    `updated_at` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3) COMMENT '更新时间',
+    `updated_by` VARCHAR(36) DEFAULT NULL COMMENT '更新人ID',
+    `deleted_at` DATETIME(3) DEFAULT NULL COMMENT '删除时间（软删除）',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_code_deleted` (`code`, `deleted_at`),
+    KEY `idx_parent_id` (`parent_id`),
+    KEY `idx_type` (`type`),
+    KEY `idx_enabled` (`enabled`),
+    KEY `idx_visible` (`visible`),
+    KEY `idx_permission_key` (`permission_key`),
+    KEY `idx_group_id` (`group_id`),
+    KEY `idx_path` (`path`),
+    KEY `idx_route_name` (`route_name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='菜单表';

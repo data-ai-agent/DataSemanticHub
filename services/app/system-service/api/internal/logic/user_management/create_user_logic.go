@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/DataSemanticHub/services/app/system-service/api/internal/contextkeys"
 	"github.com/DataSemanticHub/services/app/system-service/api/internal/errorx"
 	"github.com/DataSemanticHub/services/app/system-service/api/internal/svc"
 	"github.com/DataSemanticHub/services/app/system-service/api/internal/types"
@@ -72,7 +73,7 @@ func (l *CreateUserLogic) CreateUser(req *types.CreateUserReq) (resp *types.Crea
 	}
 
 	// 5. 密码复杂度校验（仅对 local 账号）
-	if req.AccountSource == "local" {
+	if req.AccountSource == errorx.AccountSourceLocal {
 		if err := l.validatePassword(initialPassword); err != nil {
 			return nil, err
 		}
@@ -80,7 +81,7 @@ func (l *CreateUserLogic) CreateUser(req *types.CreateUserReq) (resp *types.Crea
 
 	// 6. 密码加密（仅对 local 账号）
 	var passwordHash string
-	if req.AccountSource == "local" {
+	if req.AccountSource == errorx.AccountSourceLocal {
 		hash, err := bcrypt.GenerateFromPassword([]byte(initialPassword), 10)
 		if err != nil {
 			l.Errorf("密码加密失败: %v", err)
@@ -101,7 +102,7 @@ func (l *CreateUserLogic) CreateUser(req *types.CreateUserReq) (resp *types.Crea
 
 	// 8. 获取当前操作人信息（从 context 中获取，如果可用）
 	var createdBy *string
-	if operatorIDValue := l.ctx.Value("user_id"); operatorIDValue != nil {
+	if operatorIDValue := l.ctx.Value(contextkeys.UserIDKey); operatorIDValue != nil {
 		if operatorIDStr, ok := operatorIDValue.(string); ok {
 			createdBy = &operatorIDStr
 		}
@@ -270,7 +271,6 @@ func (l *CreateUserLogic) generateInitialPassword() string {
 		all     = letters + digits
 	)
 
-	rand.Seed(time.Now().UnixNano())
 	length := 12 // 默认12位
 
 	// 确保至少包含一个字母和一个数字

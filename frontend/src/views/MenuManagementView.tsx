@@ -14,7 +14,7 @@ import {
     ChevronDown,
     List,
     GitBranch,
-    Link2,
+    Link,
     FileText,
     Folder,
     AlertTriangle,
@@ -22,10 +22,15 @@ import {
     Copy,
     Check,
     RefreshCw,
-    Loader2
+    Loader2,
+    GripVertical
 } from 'lucide-react';
 import { useToast } from '../components/ui/Toast';
-import { menuService, MenuItem, MenuType, MenuStatus, PermissionItem } from '../services/menuService';
+import { menuService, MenuItem, MenuStatus, PermissionItem, GetMenuStatsResp, convertMenuToMenuItem } from '../services/menuService';
+import { IconSelector } from '../components/menu/IconSelector';
+import { getIconByName } from '../utils/iconUtils';
+import { clearCachedMenus } from '../services/menuCacheService';
+import { recommendIconByName } from '../utils/iconRecommendation';
 
 const formatDate = () => new Date().toISOString().split('T')[0];
 const groups = ['语义治理', '语义资产管理', '数据连接', '数据服务', '平台管理'];
@@ -38,7 +43,7 @@ const MenuManagementView = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState<'all' | MenuStatus>('all');
     const [groupFilter, setGroupFilter] = useState('all');
-    const [typeFilter, setTypeFilter] = useState<'all' | MenuType>('all');
+    const [typeFilter, setTypeFilter] = useState<'all' | MenuItem['type']>('all');
     const [modalOpen, setModalOpen] = useState(false);
     const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
     const [draftMenu, setDraftMenu] = useState<MenuItem | null>(null);
@@ -49,10 +54,17 @@ const MenuManagementView = () => {
     const [expandedMenuIds, setExpandedMenuIds] = useState<Set<string>>(new Set(['menu_semantic_modeling']));
     const [permissions, setPermissions] = useState<PermissionItem[]>([]);
     const [isPermissionLoading, setIsPermissionLoading] = useState(false);
+    const [menuStats, setMenuStats] = useState<GetMenuStatsResp | null>(null);
+
+    // 拖拽排序相关状态
+    const [draggedMenuId, setDraggedMenuId] = useState<string | null>(null);
+    const [dragOverMenuId, setDragOverMenuId] = useState<string | null>(null);
+    const [dragOverType, setDragOverType] = useState<'same-level' | 'cross-level' | null>(null); // 拖拽类型：同级或跨层级
 
     // Fetch menus on mount
     useEffect(() => {
         fetchMenus();
+        fetchMenuStats();
     }, []);
 
     const fetchMenus = async () => {
@@ -82,7 +94,18 @@ const MenuManagementView = () => {
         }
     };
 
+    const fetchMenuStats = async () => {
+        try {
+            const data = await menuService.getMenuStats();
+            setMenuStats(data);
+        } catch (error) {
+            console.error('Fetch menu stats error:', error);
+        }
+    };
+
     const getMenuRisk = (menu: MenuItem) => {
+        if (menu.riskFlags?.includes('UNBOUND_PERMISSION')) return 'high';
+        if (menu.riskFlags?.includes('ROUTE_CONFLICT') || menu.riskFlags?.includes('ORDER_CONFLICT')) return 'medium';
         if (menu.type === '页面' && !menu.permission) return 'high';
         if (menu.type === '页面' && !menu.path) return 'medium';
         return 'none';
@@ -96,6 +119,173 @@ const MenuManagementView = () => {
             next.add(menuId);
         }
         setExpandedMenuIds(next);
+    };
+
+    // 拖拽排序处理函数
+    const handleDragStart = (e: React.DragEvent, menuId: string) => {
+        setDraggedMenuId(menuId);
+        e.dataTransfer.setData('text/plain', menuId);
+        e.dataTransfer.effectAllowed = 'move';
+        // 设置拖拽时的视觉效果
+        if (e.dataTransfer) {
+            e.dataTransfer.dropEffect = 'move';
+        }
+    };
+
+    const handleDragEnd = () => {
+        setDraggedMenuId(null);
+        setDragOverMenuId(null);
+        setDragOverType(null);
+    };
+
+    const handleDragOver = (e: React.DragEvent, menuId: string) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.dataTransfer) {
+            e.dataTransfer.dropEffect = 'move';
+        }
+        if (draggedMenuId && draggedMenuId !== menuId) {
+            setDragOverMenuId(menuId);
+            
+            // 判断是同级排序还是跨层级移动
+            const sourceMenu = menus.find(m => m.id === draggedMenuId);
+            const targetMenu = menus.find(m => m.id === menuId);
+            
+            if (sourceMenu && targetMenu) {
+                const sourceParentId = sourceMenu.parentId || null;
+                const targetParentId = targetMenu.parentId || null;
+                
+                if (sourceParentId === targetParentId) {
+                    setDragOverType('same-level'); // 同级排序
+                } else {
+                    setDragOverType('cross-level'); // 跨层级移动
+                }
+            }
+        }
+    };
+
+    const handleDragLeave = (e: React.DragEvent) => {
+        // 只有当离开当前元素时才清除 dragOver 状态
+        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+        const x = e.clientX;
+        const y = e.clientY;
+        if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+            setDragOverMenuId(null);
+            setDragOverType(null);
+        }
+    };
+
+    const handleDrop = async (e: React.DragEvent, targetMenuId: string) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setDragOverMenuId(null);
+        setDragOverType(null);
+
+        const sourceMenuId = draggedMenuId;
+        if (!sourceMenuId || sourceMenuId === targetMenuId) {
+            setDraggedMenuId(null);
+            setDragOverType(null);
+            return;
+        }
+
+        // 查找源菜单和目标菜单
+        const sourceMenu = menus.find(m => m.id === sourceMenuId);
+        const targetMenu = menus.find(m => m.id === targetMenuId);
+
+        if (!sourceMenu || !targetMenu) {
+            setDraggedMenuId(null);
+            setDragOverType(null);
+            return;
+        }
+
+        // 检查是否尝试移动到自己的子菜单下（防止循环）
+        const isDescendant = (menuId: string, ancestorId: string): boolean => {
+            const menu = menus.find(m => m.id === menuId);
+            if (!menu || !menu.parentId) return false;
+            if (menu.parentId === ancestorId) return true;
+            return isDescendant(menu.parentId, ancestorId);
+        };
+
+        if (isDescendant(targetMenuId, sourceMenuId)) {
+            toast.error('不能将菜单移动到自己的子菜单下');
+            setDraggedMenuId(null);
+            setDragOverType(null);
+            return;
+        }
+
+        // 判断是同级排序还是跨层级移动
+        const sourceParentId = sourceMenu.parentId || null;
+        const targetParentId = targetMenu.parentId || null;
+
+        if (sourceParentId === targetParentId) {
+            // 同级排序：使用 reorderMenus API
+            const siblings = menus
+                .filter(m => {
+                    const mParentId = m.parentId || null;
+                    return mParentId === sourceParentId;
+                })
+                .sort((a, b) => a.order - b.order);
+
+            const sourceIndex = siblings.findIndex(m => m.id === sourceMenuId);
+            const targetIndex = siblings.findIndex(m => m.id === targetMenuId);
+
+            if (sourceIndex === -1 || targetIndex === -1) {
+                setDraggedMenuId(null);
+                setDragOverType(null);
+                return;
+            }
+
+            // 计算新的顺序
+            const newSiblings = [...siblings];
+            const [moved] = newSiblings.splice(sourceIndex, 1);
+            newSiblings.splice(targetIndex, 0, moved);
+
+            // 构建批量更新请求
+            const updates = newSiblings.map((menu, index) => ({
+                id: menu.id,
+                order: index + 1
+            }));
+
+            try {
+                await menuService.reorderMenus({ updates });
+                toast.success('菜单顺序已更新');
+                await fetchMenus();
+                // 清除菜单缓存，让侧边栏立即刷新
+                clearCachedMenus();
+                // 触发全局事件，通知 App.tsx 刷新菜单
+                window.dispatchEvent(new CustomEvent('menus-updated'));
+            } catch (error: any) {
+                console.error('Reorder menus error:', error);
+                toast.error(error.message || '更新菜单顺序失败');
+            } finally {
+                setDraggedMenuId(null);
+                setDragOverType(null);
+            }
+        } else {
+            // 跨层级移动：使用 moveMenu API
+            // 将源菜单移动到目标菜单的父级下，作为目标菜单的兄弟
+            const newParentId = targetParentId; // 目标菜单的父级ID（null 表示根节点）
+            const newOrder = targetMenu.order; // 使用目标菜单的 order
+
+            try {
+                await menuService.moveMenu(sourceMenuId, {
+                    new_parent_id: newParentId || undefined, // 如果是 null，传 undefined
+                    new_order: newOrder
+                });
+                toast.success('菜单已移动到新位置');
+                await fetchMenus();
+                // 清除菜单缓存，让侧边栏立即刷新
+                clearCachedMenus();
+                // 触发全局事件，通知 App.tsx 刷新菜单
+                window.dispatchEvent(new CustomEvent('menus-updated'));
+            } catch (error: any) {
+                console.error('Move menu error:', error);
+                toast.error(error.message || '移动菜单失败');
+            } finally {
+                setDraggedMenuId(null);
+                setDragOverType(null);
+            }
+        }
     };
 
     // Flattened tree for rendering
@@ -146,16 +336,16 @@ const MenuManagementView = () => {
     }, [menuTree, menus, searchTerm, statusFilter, groupFilter, typeFilter, permissionFilter, visibilityFilter]);
 
     const activeMenu = menus.find((item) => item.id === activeMenuId) ?? menus[0];
-    const totalCount = menus.length;
-    const enabledCount = menus.filter((item) => item.status === '启用').length; // Keeping status for now
-    const hiddenCount = menus.filter((item) => item.visibility === '隐藏').length;
-    const permissionCount = new Set(menus.map((item) => item.permission).filter(Boolean)).size;
-    const unlinkedCount = menus.filter(item => item.type === '页面' && !item.permission).length;
+    const totalCount = menuStats?.total ?? menus.length;
+    const enabledCount = menuStats?.enabled ?? menus.filter((item) => item.status === '启用').length;
+    const hiddenCount = menuStats?.hidden ?? menus.filter((item) => item.visibility === '隐藏').length;
+    const unlinkedCount = menuStats?.unbound_permission ?? menus.filter(item => item.type === '页面' && !item.permission).length;
 
     const parentOptions = menus.filter((item) => item.type === '目录');
 
     const openCreateModal = () => {
         setModalMode('create');
+        // 初始时没有名称，使用默认图标，后续会根据名称自动推荐
         setDraftMenu({
             id: '',
             name: '',
@@ -168,7 +358,7 @@ const MenuManagementView = () => {
             status: '启用',
             parentId: null,
             order: menus.length + 1,
-            icon: 'LayoutGrid',
+            icon: 'LayoutGrid', // 默认图标，会根据名称自动推荐
             permission: '',
             owner: '平台管理员',
             builtIn: false,
@@ -179,9 +369,18 @@ const MenuManagementView = () => {
         fetchPermissions();
     };
 
-    const openEditModal = (menu: MenuItem) => {
+    const openEditModal = async (menu: MenuItem) => {
         setModalMode('edit');
-        setDraftMenu({ ...menu });
+        // 从后端重新获取菜单详情，确保获取最新的 icon 字段
+        try {
+            const menuDetail = await menuService.getMenu(menu.id);
+            const updatedMenuItem = convertMenuToMenuItem(menuDetail.menu);
+            setDraftMenu({ ...updatedMenuItem });
+        } catch (error) {
+            console.error('获取菜单详情失败，使用本地数据:', error);
+            // 如果获取失败，使用本地数据
+            setDraftMenu({ ...menu });
+        }
         setFormError(null);
         setModalOpen(true);
         fetchPermissions();
@@ -225,13 +424,35 @@ const MenuManagementView = () => {
 
         try {
             if (modalMode === 'create') {
-                const newMenu = await menuService.createMenu(draftMenu);
+                const newMenu = await menuService.createMenu(draftMenu) as MenuItem;
+                // 确保使用后端返回的完整数据（包括 icon 字段）
                 setMenus(prev => [newMenu, ...prev]);
                 setActiveMenuId(newMenu.id);
             } else {
-                await menuService.updateMenu(draftMenu.id, draftMenu);
-                setMenus(prev => prev.map(item => (item.id === draftMenu.id ? draftMenu : item)));
+                // 更新菜单
+                const updatedMenu = await menuService.updateMenu(draftMenu.id, draftMenu);
+                // 如果后端返回了更新后的菜单，使用返回的数据（包含最新的 icon 字段）
+                if (updatedMenu) {
+                    const updatedMenuItem = convertMenuToMenuItem(updatedMenu);
+                    setMenus(prev => prev.map(item => (item.id === draftMenu.id ? updatedMenuItem : item)));
+                } else {
+                    // 如果后端没有返回数据，重新获取菜单详情
+                    try {
+                        const menuDetail = await menuService.getMenu(draftMenu.id);
+                        const updatedMenuItem = convertMenuToMenuItem(menuDetail.menu);
+                        setMenus(prev => prev.map(item => (item.id === draftMenu.id ? updatedMenuItem : item)));
+                    } catch (error) {
+                        console.error('获取更新后的菜单详情失败，使用本地数据:', error);
+                        // 如果获取失败，使用本地数据
+                        setMenus(prev => prev.map(item => (item.id === draftMenu.id ? draftMenu : item)));
+                    }
+                }
             }
+            await fetchMenuStats();
+            // 清除菜单缓存，让侧边栏立即刷新
+            clearCachedMenus();
+            // 触发全局事件，通知 App.tsx 刷新菜单
+            window.dispatchEvent(new CustomEvent('menus-updated'));
             closeModal();
         } catch (error: any) {
             setFormError(error.message || '保存失败');
@@ -239,14 +460,18 @@ const MenuManagementView = () => {
     };
 
     const handleToggleStatus = async (menu: MenuItem) => {
-        const nextStatus: MenuStatus = menu.status === '启用' ? '隐藏' : '启用';
+        const nextVisible = menu.visibility !== '显示';
         try {
-            await menuService.updateMenu(menu.id, { ...menu, status: nextStatus, updatedAt: formatDate() });
+            const updatedMenu = await menuService.toggleMenuVisible(menu.id, nextVisible);
+            const updatedItem = convertMenuToMenuItem(updatedMenu);
             setMenus((prev) =>
-                prev.map((item) =>
-                    item.id === menu.id ? { ...item, status: nextStatus, updatedAt: formatDate() } : item
-                )
+                prev.map((item) => (item.id === menu.id ? { ...item, ...updatedItem } : item))
             );
+            await fetchMenuStats();
+            // 清除菜单缓存，让侧边栏立即刷新（因为 visible 状态影响菜单显示）
+            clearCachedMenus();
+            // 触发全局事件，通知 App.tsx 刷新菜单
+            window.dispatchEvent(new CustomEvent('menus-updated'));
         } catch (error) {
             toast.error('操作失败');
         }
@@ -265,6 +490,12 @@ const MenuManagementView = () => {
                 }
                 return next;
             });
+            await fetchMenuStats();
+            // 清除菜单缓存，让侧边栏立即刷新
+            clearCachedMenus();
+            // 触发全局事件，通知 App.tsx 刷新菜单
+            window.dispatchEvent(new CustomEvent('menus-updated'));
+            toast.success('菜单已删除');
         } catch (error) {
             toast.error('删除失败');
         }
@@ -364,14 +595,54 @@ const MenuManagementView = () => {
                         {filteredMenus.map(({ item, level, hasChildren }) => {
                             const isActive = item.id === activeMenuId;
                             const riskLevel = getMenuRisk(item);
+                            const isDragging = draggedMenuId === item.id;
+                            const isDragOver = dragOverMenuId === item.id;
+                            const dragType = isDragOver ? dragOverType : null;
+
                             return (
                                 <div
                                     key={item.id}
-                                    className={`group flex items-center gap-2 rounded-lg p-2 text-sm cursor-pointer transition-colors ${isActive ? 'bg-indigo-50' : 'hover:bg-slate-50'
+                                    draggable={!item.builtIn}
+                                    onDragStart={(e) => {
+                                        if (!item.builtIn) {
+                                            handleDragStart(e, item.id);
+                                        }
+                                    }}
+                                    onDragEnd={handleDragEnd}
+                                    onDragOver={(e) => {
+                                        if (draggedMenuId && draggedMenuId !== item.id && !item.builtIn) {
+                                            handleDragOver(e, item.id);
+                                        }
+                                    }}
+                                    onDragLeave={handleDragLeave}
+                                    onDrop={(e) => {
+                                        if (!item.builtIn) {
+                                            handleDrop(e, item.id);
+                                        }
+                                    }}
+                                    className={`group flex items-center gap-2 rounded-lg p-2 text-sm transition-all ${isActive ? 'bg-indigo-50' : 'hover:bg-slate-50'
+                                        } ${isDragging ? 'opacity-40 cursor-grabbing' : 'cursor-pointer'
+                                        } ${isDragOver && dragType === 'same-level' ? 'ring-2 ring-indigo-400 bg-indigo-50 border-2 border-indigo-300' : ''
+                                        } ${isDragOver && dragType === 'cross-level' ? 'ring-2 ring-emerald-400 bg-emerald-50 border-2 border-emerald-300' : ''
+                                        } ${item.builtIn ? 'cursor-default' : ''
                                         }`}
                                     style={{ paddingLeft: level * 16 + 8 }}
                                     onClick={() => setActiveMenuId(item.id)}
                                 >
+                                    {/* 拖拽手柄 - 只在非内置菜单时显示 */}
+                                    {!item.builtIn && (
+                                        <div
+                                            className="p-0.5 rounded hover:bg-slate-100 cursor-grab active:cursor-grabbing text-slate-400 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                            onMouseDown={(e) => {
+                                                e.stopPropagation();
+                                            }}
+                                            title="拖拽排序"
+                                        >
+                                            <GripVertical size={12} />
+                                        </div>
+                                    )}
+
+                                    {/* 展开/收起按钮 */}
                                     <div
                                         className={`p-0.5 rounded hover:bg-black/5 cursor-pointer text-slate-400 shrink-0 ${hasChildren ? 'visible' : 'invisible'}`}
                                         onClick={(e) => {
@@ -384,10 +655,11 @@ const MenuManagementView = () => {
 
                                     <div className="flex-1 min-w-0 flex items-center justify-between gap-2">
                                         <div className="flex items-center gap-2 min-w-0">
-                                            {/* Type Icon */}
-                                            {item.type === '目录' && <Folder size={14} className="text-amber-400 shrink-0" />}
-                                            {item.type === '页面' && <FileText size={14} className="text-slate-400 shrink-0" />}
-                                            {item.type === '外链' && <Link2 size={14} className="text-blue-400 shrink-0" />}
+                                            {/* Menu Icon */}
+                                            {(() => {
+                                                const IconComponent = getIconByName(item.icon, LayoutGrid);
+                                                return <IconComponent size={14} className="text-slate-500 shrink-0" />;
+                                            })()}
 
                                             <span className={`truncate font-medium ${isActive ? 'text-indigo-700' : 'text-slate-700'}`}>
                                                 {item.name}
@@ -428,6 +700,12 @@ const MenuManagementView = () => {
                             <div className="px-6 py-5 border-b border-slate-100 flex items-start justify-between bg-slate-50/30">
                                 <div>
                                     <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 flex items-center justify-center border border-slate-200 rounded-lg bg-white">
+                                            {(() => {
+                                                const IconComponent = getIconByName(activeMenu.icon, LayoutGrid);
+                                                return <IconComponent size={18} className="text-slate-600" />;
+                                            })()}
+                                        </div>
                                         <h3 className="text-xl font-bold text-slate-800">{activeMenu.name}</h3>
                                         <span className={`px-2 py-0.5 rounded text-xs border ${activeMenu.type === '目录' ? 'bg-amber-50 text-amber-600 border-amber-100' :
                                             activeMenu.type === '外链' ? 'bg-blue-50 text-blue-600 border-blue-100' :
@@ -481,6 +759,12 @@ const MenuManagementView = () => {
                                     <div className="grid grid-cols-3 gap-6">
                                         {[
                                             { label: '菜单编码', value: activeMenu.code },
+                                            { 
+                                                label: '菜单图标', 
+                                                value: activeMenu.icon || 'Layout', 
+                                                color: 'text-indigo-600',
+                                                isIcon: true // 标记这是图标字段，需要特殊渲染
+                                            },
                                             { label: '菜单分组', value: activeMenu.group },
                                             { label: '排序权重', value: activeMenu.order },
                                             { label: '父级节点', value: activeMenu.parentId ? menus.find(m => m.id === activeMenu.parentId)?.name : '顶级菜单' },
@@ -489,7 +773,19 @@ const MenuManagementView = () => {
                                         ].map(f => (
                                             <div key={f.label}>
                                                 <div className="text-xs text-slate-400 mb-1">{f.label}</div>
-                                                <div className={`text-sm font-medium ${f.color || 'text-slate-700'}`}>{f.value}</div>
+                                                {f.isIcon ? (
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-6 h-6 flex items-center justify-center border border-slate-200 rounded bg-white">
+                                                            {(() => {
+                                                                const IconComponent = getIconByName(f.value as string, LayoutGrid);
+                                                                return <IconComponent size={14} className="text-slate-600" />;
+                                                            })()}
+                                                        </div>
+                                                        <span className={`text-sm font-medium ${f.color || 'text-slate-700'}`}>{f.value}</span>
+                                                    </div>
+                                                ) : (
+                                                    <div className={`text-sm font-medium ${f.color || 'text-slate-700'}`}>{f.value}</div>
+                                                )}
                                             </div>
                                         ))}
                                     </div>
@@ -498,7 +794,7 @@ const MenuManagementView = () => {
                                 {/* Routing Card */}
                                 <div className="bg-white rounded-xl border border-slate-100 p-4 shadow-sm">
                                     <h4 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
-                                        <Link2 size={16} className="text-indigo-500" /> 路由配置
+                                        <Link size={16} className="text-indigo-500" /> 路由配置
                                     </h4>
                                     <div className="grid grid-cols-2 gap-6">
                                         <div>
@@ -606,7 +902,7 @@ const MenuManagementView = () => {
                                         <label className="text-xs font-semibold text-slate-700">菜单类型 <span className="text-rose-500">*</span></label>
                                         <select
                                             value={draftMenu.type}
-                                            onChange={(e) => setDraftMenu({ ...draftMenu, type: e.target.value as MenuType })}
+                                            onChange={(e) => setDraftMenu({ ...draftMenu, type: e.target.value as MenuItem['type'] })}
                                             className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 outline-none"
                                         >
                                             <option value="目录">目录 (Folder)</option>
@@ -629,7 +925,21 @@ const MenuManagementView = () => {
                                         <label className="text-xs font-semibold text-slate-700">菜单名称 <span className="text-rose-500">*</span></label>
                                         <input
                                             value={draftMenu.name}
-                                            onChange={(e) => setDraftMenu({ ...draftMenu, name: e.target.value })}
+                                            onChange={(e) => {
+                                                const newName = e.target.value;
+                                                // 如果当前图标是默认图标或为空，根据名称自动推荐图标
+                                                const currentIcon = draftMenu.icon || 'LayoutGrid';
+                                                const shouldRecommend = !draftMenu.icon || currentIcon === 'LayoutGrid' || currentIcon === 'Layout';
+                                                const recommendedIcon = shouldRecommend && newName.trim()
+                                                    ? recommendIconByName(newName, draftMenu.code, draftMenu.type)
+                                                    : draftMenu.icon;
+                                                
+                                                setDraftMenu({ 
+                                                    ...draftMenu, 
+                                                    name: newName,
+                                                    icon: recommendedIcon
+                                                });
+                                            }}
                                             className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 outline-none"
                                             placeholder="如：系统设置"
                                         />
@@ -638,9 +948,30 @@ const MenuManagementView = () => {
                                         <label className="text-xs font-semibold text-slate-700">编码 (Code) <span className="text-rose-500">*</span></label>
                                         <input
                                             value={draftMenu.code}
-                                            onChange={(e) => setDraftMenu({ ...draftMenu, code: e.target.value })}
+                                            onChange={(e) => {
+                                                const newCode = e.target.value;
+                                                // 如果当前图标是默认图标或为空，根据编码自动推荐图标
+                                                const currentIcon = draftMenu.icon || 'LayoutGrid';
+                                                const shouldRecommend = !draftMenu.icon || currentIcon === 'LayoutGrid' || currentIcon === 'Layout';
+                                                const recommendedIcon = shouldRecommend && (newCode.trim() || draftMenu.name.trim())
+                                                    ? recommendIconByName(draftMenu.name, newCode, draftMenu.type)
+                                                    : draftMenu.icon;
+                                                
+                                                setDraftMenu({ 
+                                                    ...draftMenu, 
+                                                    code: newCode,
+                                                    icon: recommendedIcon
+                                                });
+                                            }}
                                             className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-indigo-500 outline-none font-mono"
                                             placeholder="system_settings"
+                                        />
+                                    </div>
+                                    <div className="col-span-2">
+                                        <IconSelector
+                                            value={draftMenu.icon || 'Layout'}
+                                            onChange={(iconName) => setDraftMenu({ ...draftMenu, icon: iconName })}
+                                            label="菜单图标"
                                         />
                                     </div>
                                 </div>

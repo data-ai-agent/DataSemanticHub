@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/DataSemanticHub/services/app/system-service/api/internal/config"
+	"github.com/DataSemanticHub/services/app/system-service/api/internal/contextkeys"
 	"github.com/DataSemanticHub/services/app/system-service/api/internal/svc"
 	"github.com/DataSemanticHub/services/app/system-service/model/user/users"
 
@@ -32,7 +33,7 @@ func setupGetUserInfoTestLogic(mockModel *MockUserModel) (*GetUserInfoLogic, *sv
 	}
 
 	// 创建带 user_id 的 context
-	ctx := context.WithValue(context.Background(), "user_id", "test-user-id")
+	ctx := context.WithValue(context.Background(), contextkeys.UserIDKey, "test-user-id")
 	logic := NewGetUserInfoLogic(ctx, svcCtx)
 	return logic, svcCtx, ctx
 }
@@ -54,7 +55,7 @@ func TestGetUserInfo_ValidToken_ReturnsUserInfo(t *testing.T) {
 	}
 
 	// 创建带 user_id 的 context
-	ctx := context.WithValue(context.Background(), "user_id", userID.String())
+	ctx := context.WithValue(context.Background(), contextkeys.UserIDKey, userID.String())
 	logic.ctx = ctx
 
 	// 设置 mock 期望
@@ -100,7 +101,7 @@ func TestGetUserInfo_ExpiredToken_ReturnsError(t *testing.T) {
 	logic, _, _ := setupGetUserInfoTestLogic(mockModel)
 
 	// 创建带 nil user_id 的 context（模拟 Token 过期）
-	logic.ctx = context.WithValue(context.Background(), "user_id", nil)
+	logic.ctx = context.WithValue(context.Background(), contextkeys.UserIDKey, nil)
 
 	// 执行获取用户信息
 	resp, err := logic.GetUserInfo()
@@ -118,7 +119,7 @@ func TestGetUserInfo_UserNotFound_ReturnsError(t *testing.T) {
 
 	// 准备测试数据
 	userID, _ := uuid.NewV7()
-	ctx := context.WithValue(context.Background(), "user_id", userID.String())
+	ctx := context.WithValue(context.Background(), contextkeys.UserIDKey, userID.String())
 	logic.ctx = ctx
 
 	// 设置 mock 期望：返回用户不存在（nil user 和错误）
@@ -143,7 +144,7 @@ func TestGetUserInfo_UserIsNil_ReturnsError(t *testing.T) {
 
 	// 准备测试数据
 	userID, _ := uuid.NewV7()
-	ctx := context.WithValue(context.Background(), "user_id", userID.String())
+	ctx := context.WithValue(context.Background(), contextkeys.UserIDKey, userID.String())
 	logic.ctx = ctx
 
 	// 设置 mock 期望：返回 nil user 和 nil 错误
@@ -176,7 +177,7 @@ func TestGetUserInfo_UserDisabled_ReturnsError(t *testing.T) {
 		Status:    0, // 禁用
 	}
 
-	ctx := context.WithValue(context.Background(), "user_id", userID.String())
+	ctx := context.WithValue(context.Background(), contextkeys.UserIDKey, userID.String())
 	logic.ctx = ctx
 
 	// 设置 mock 期望

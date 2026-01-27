@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import {
     Plus,
     Search,
@@ -12,27 +12,23 @@ import {
     Sparkles,
     X
 } from 'lucide-react';
+import {
+    permissionTemplateService,
+    convertBackendToFrontendTemplate,
+    convertBackendToFrontendTemplateItem,
+    convertFrontendToCreateRequest,
+    convertFrontendToUpdateRequest,
+    mapFrontendToBackendStatus,
+    mapBackendToFrontendStatus,
+    type FrontendTemplate,
+    type FrontendPermissionItem,
+} from '../services/permissionTemplateService';
 
 type TemplateStatus = '草稿' | '已发布' | '停用';
 
-type PermissionItem = {
-    module: string;
-    actions: string[];
-    operationPoints?: string[];
-    note: string;
-};
-
-type Template = {
-    id: string;
-    name: string;
-    code: string;
-    description: string;
-    status: TemplateStatus;
-    moduleCount: number;
-    updatedAt: string;
-    scopeHint: string;
-    permissions: PermissionItem[];
-};
+// Using imported types from service
+type Template = FrontendTemplate;
+type PermissionItem = FrontendPermissionItem;
 
 const actionLabels = ['查看', '编辑', '发布', '管理'];
 
@@ -62,55 +58,6 @@ const operationPointDefinitions: Record<string, { label: string; key: string; pa
 
 const scopeHintOptions = ['全平台', '组织级', '数据域', '租户'];
 
-const initialTemplates: Template[] = [
-    {
-        id: 'tpl_admin',
-        name: '平台管理员模板',
-        code: 'tpl_platform_admin',
-        description: '覆盖全平台治理与配置能力。',
-        status: '已发布',
-        moduleCount: 6,
-        updatedAt: '2024-06-26',
-        scopeHint: '全平台',
-        permissions: [
-            { module: '语义资产', actions: ['查看', '编辑', '发布', '管理'], note: '全量可操作' },
-            { module: '语义版本', actions: ['查看', '编辑', '发布', '管理'], note: '版本策略配置' },
-            { module: '数据安全', actions: ['查看', '管理'], note: '策略与审计' },
-            { module: '数据服务', actions: ['查看', '编辑', '发布', '管理'], note: '服务配置与路由' }
-        ]
-    },
-    {
-        id: 'tpl_governance',
-        name: '语义治理负责人模板',
-        code: 'tpl_semantic_owner',
-        description: '聚焦语义资产裁决、版本发布与质量治理。',
-        status: '已发布',
-        moduleCount: 5,
-        updatedAt: '2024-06-22',
-        scopeHint: '组织级',
-        permissions: [
-            { module: '语义资产', actions: ['查看', '编辑', '发布'], note: '裁决与发布' },
-            { module: '语义版本', actions: ['查看', '编辑', '发布'], note: '版本评审' },
-            { module: '数据质量', actions: ['查看', '管理'], note: '质量规则' },
-            { module: '业务场景', actions: ['查看', '编辑'], note: '编排确认' }
-        ]
-    },
-    {
-        id: 'tpl_ops',
-        name: '数据服务运营模板',
-        code: 'tpl_data_ops',
-        description: '保障问数/找数与服务运营。',
-        status: '草稿',
-        moduleCount: 4,
-        updatedAt: '2024-06-20',
-        scopeHint: '数据域',
-        permissions: [
-            { module: '数据服务', actions: ['查看', '编辑', '发布'], note: '服务运营' },
-            { module: '问数/找数', actions: ['查看', '编辑'], note: '模板与词典' }
-        ]
-    }
-];
-
 const statusStyles: Record<TemplateStatus, string> = {
     草稿: 'bg-amber-100 text-amber-700',
     已发布: 'bg-emerald-100 text-emerald-700',
@@ -131,8 +78,8 @@ const normalizePermissions = (existing?: PermissionItem[]) => {
 };
 
 const PermissionTemplatesView = () => {
-    const [templates, setTemplates] = useState<Template[]>(initialTemplates);
-    const [activeTemplateId, setActiveTemplateId] = useState(initialTemplates[0]?.id ?? '');
+    const [templates, setTemplates] = useState<Template[]>([]);
+    const [activeTemplateId, setActiveTemplateId] = useState('');
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState<'all' | TemplateStatus>('all');
     const [showAdvanced, setShowAdvanced] = useState(false);
@@ -151,6 +98,12 @@ const PermissionTemplatesView = () => {
     const [actionTarget, setActionTarget] = useState<Template | null>(null);
     const [actionReason, setActionReason] = useState('');
 
+    // API integration states
+    const [isLoading, setIsLoading] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
+    const [isActioning, setIsActioning] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
     const filteredTemplates = useMemo(() => {
         return templates.filter((template) => {
             const matchesSearch = `${template.name}${template.code}${template.description}`
@@ -162,6 +115,85 @@ const PermissionTemplatesView = () => {
     }, [templates, searchTerm, statusFilter]);
 
     const activeTemplate = templates.find((template) => template.id === activeTemplateId) ?? templates[0];
+
+    // Load templates on mount
+    useEffect(() => {
+        loadTemplates();
+    }, []);
+
+    const loadTemplates = async (filterStatus?: 'all' | TemplateStatus) => {
+        setIsLoading(true);
+        setError(null);
+        try {
+            const backendStatus = filterStatus === 'all' || !filterStatus
+                ? undefined
+                : mapFrontendToBackendStatus(filterStatus);
+            const result = await permissionTemplateService.listPermissionTemplates({
+                page: 1,
+                page_size: 100,
+                status: backendStatus,
+                keyword: searchTerm || undefined,
+            });
+            const frontendTemplates = result.data.map(item =>
+                convertBackendToFrontendTemplateItem(item)
+            );
+            setTemplates(frontendTemplates);
+            if (frontendTemplates.length > 0 && !activeTemplateId) {
+                setActiveTemplateId(frontendTemplates[0].id);
+            }
+        } catch (err) {
+            const message = err instanceof Error ? err.message : '加载模板列表失败';
+            setError(message);
+            console.error('Failed to load templates:', err);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    // Load template detail when selection changes
+    useEffect(() => {
+        if (activeTemplateId && activeTemplateId !== activeTemplate?.id) {
+            loadTemplateDetail(activeTemplateId);
+        }
+    }, [activeTemplateId]);
+
+    const loadTemplateDetail = async (id: string) => {
+        setIsLoading(true);
+        setError(null);
+        try {
+            const detail = await permissionTemplateService.getPermissionTemplate(id);
+            const frontendTemplate = convertBackendToFrontendTemplate(
+                detail,
+                permissionCatalog
+            );
+            setTemplates(prev =>
+                prev.map(t => t.id === id ? frontendTemplate : t)
+            );
+        } catch (err) {
+            const message = err instanceof Error ? err.message : '加载模板详情失败';
+            setError(message);
+            console.error('Failed to load template detail:', err);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    // Debounced search
+    useEffect(() => {
+        const timeoutId = setTimeout(() => {
+            if (templates.length > 0) {
+                loadTemplates(statusFilter);
+            }
+        }, 500);
+        return () => clearTimeout(timeoutId);
+    }, [searchTerm]);
+
+    // Update when status filter changes
+    useEffect(() => {
+        if (templates.length > 0) {
+            loadTemplates(statusFilter);
+        }
+    }, [statusFilter]);
 
     const openCreateModal = () => {
         const draft: Template = {
@@ -200,32 +232,62 @@ const PermissionTemplatesView = () => {
         setDrawerTemplate(null);
     };
 
-    const saveNewTemplate = () => {
+    const saveNewTemplate = async () => {
         if (!draftTemplate) return;
-        const permissions = draftPermissions.filter((item) => item.actions.length > 0);
-        const nextTemplate = {
-            ...draftTemplate,
-            updatedAt: new Date().toISOString().split('T')[0],
-            moduleCount: permissions.length,
-            permissions
-        };
-        setTemplates((prev) => [nextTemplate, ...prev]);
-        setActiveTemplateId(nextTemplate.id);
-        closeModal();
+
+        setIsSaving(true);
+        setError(null);
+
+        try {
+            const templateWithPermissions: Template = {
+                ...draftTemplate,
+                permissions: draftPermissions.filter((item) => item.actions.length > 0),
+            };
+
+            const createReq = convertFrontendToCreateRequest(templateWithPermissions);
+            const result = await permissionTemplateService.createPermissionTemplate(createReq);
+
+            // Reload the list to get the full data
+            await loadTemplates();
+            setActiveTemplateId(result.id);
+            closeModal();
+        } catch (err) {
+            const message = err instanceof Error ? err.message : '创建模板失败';
+            setError(message);
+            console.error('Failed to create template:', err);
+        } finally {
+            setIsSaving(false);
+        }
     };
 
-    const saveDrawerTemplate = () => {
+    const saveDrawerTemplate = async () => {
         if (!drawerTemplate) return;
-        const permissions = drawerPermissions.filter((item) => item.actions.length > 0);
-        const nextTemplate = {
-            ...drawerTemplate,
-            updatedAt: new Date().toISOString().split('T')[0],
-            moduleCount: permissions.length,
-            permissions
-        };
-        setTemplates((prev) => prev.map((item) => (item.id === nextTemplate.id ? nextTemplate : item)));
-        setActiveTemplateId(nextTemplate.id);
-        closeDrawer();
+
+        setIsSaving(true);
+        setError(null);
+
+        try {
+            const templateWithPermissions: Template = {
+                ...drawerTemplate,
+                permissions: drawerPermissions.filter((item) => item.actions.length > 0),
+            };
+
+            const updateReq = convertFrontendToUpdateRequest(templateWithPermissions);
+            await permissionTemplateService.updatePermissionTemplate(
+                drawerTemplate.id,
+                updateReq
+            );
+
+            // Reload the list to get the updated data
+            await loadTemplates();
+            closeDrawer();
+        } catch (err) {
+            const message = err instanceof Error ? err.message : '保存模板失败';
+            setError(message);
+            console.error('Failed to update template:', err);
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const openTemplateAction = (type: 'publish' | 'disable', template: Template) => {
@@ -241,19 +303,82 @@ const PermissionTemplatesView = () => {
         setActionReason('');
     };
 
-    const confirmTemplateAction = () => {
+    const confirmTemplateAction = async () => {
         if (!actionTarget) return;
-        const nextStatus: TemplateStatus = actionType === 'publish' ? '已发布' : '停用';
-        const updatedAt = new Date().toISOString().split('T')[0];
-        setTemplates((prev) => prev.map((item) => (
-            item.id === actionTarget.id
-                ? { ...item, status: nextStatus, updatedAt }
-                : item
-        )));
-        if (drawerTemplate?.id === actionTarget.id) {
-            setDrawerTemplate({ ...drawerTemplate, status: nextStatus, updatedAt });
+
+        setIsActioning(true);
+        setError(null);
+
+        try {
+            if (actionType === 'publish') {
+                await permissionTemplateService.publishPermissionTemplate(actionTarget.id);
+            } else {
+                await permissionTemplateService.disablePermissionTemplate(actionTarget.id);
+            }
+
+            // Reload the list to get the updated status
+            await loadTemplates();
+            closeActionModal();
+        } catch (err) {
+            const message = err instanceof Error
+                ? err.message
+                : (actionType === 'publish' ? '发布模板失败' : '停用模板失败');
+            setError(message);
+            console.error('Failed to perform template action:', err);
+        } finally {
+            setIsActioning(false);
         }
-        closeActionModal();
+    };
+
+    const handleCloneTemplate = async (template: Template) => {
+        setIsActioning(true);
+        setError(null);
+
+        try {
+            const cloneName = `${template.name} (副本)`;
+            const cloneCode = `${template.code}_copy_${Date.now()}`;
+
+            await permissionTemplateService.clonePermissionTemplate(template.id, {
+                name: cloneName,
+                code: cloneCode,
+            });
+
+            // Reload the list
+            await loadTemplates();
+        } catch (err) {
+            const message = err instanceof Error ? err.message : '复制模板失败';
+            setError(message);
+            console.error('Failed to clone template:', err);
+        } finally {
+            setIsActioning(false);
+        }
+    };
+
+    const handleDeleteTemplate = async (id: string) => {
+        if (!confirm('确定要删除此模板吗？此操作不可恢复。')) {
+            return;
+        }
+
+        setIsActioning(true);
+        setError(null);
+
+        try {
+            await permissionTemplateService.deletePermissionTemplate(id);
+
+            // Reload the list
+            await loadTemplates();
+
+            // If deleted template was active, clear selection
+            if (activeTemplateId === id) {
+                setActiveTemplateId('');
+            }
+        } catch (err) {
+            const message = err instanceof Error ? err.message : '删除模板失败';
+            setError(message);
+            console.error('Failed to delete template:', err);
+        } finally {
+            setIsActioning(false);
+        }
     };
 
     const navigateToRoleCreate = (templateId: string) => {
@@ -328,6 +453,35 @@ const PermissionTemplatesView = () => {
 
     return (
         <div className="space-y-6 h-full flex flex-col pt-6 pb-2 px-1">
+            {/* Loading Overlay */}
+            {isLoading && (
+                <div className="fixed inset-0 bg-white/80 flex items-center justify-center z-50">
+                    <div className="text-center">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+                        <p className="text-slate-600">加载中...</p>
+                    </div>
+                </div>
+            )}
+
+            {/* Error Banner */}
+            {error && (
+                <div className="fixed top-4 right-4 bg-red-50 border border-red-200 rounded-lg p-4 shadow-lg z-50 max-w-md">
+                    <div className="flex items-start gap-3">
+                        <div className="text-red-600 mt-0.5">⚠</div>
+                        <div className="flex-1">
+                            <div className="font-semibold text-red-800">操作失败</div>
+                            <div className="text-sm text-red-700 mt-1">{error}</div>
+                        </div>
+                        <button
+                            onClick={() => setError(null)}
+                            className="text-red-400 hover:text-red-600"
+                        >
+                            ✕
+                        </button>
+                    </div>
+                </div>
+            )}
+
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between px-1">
                 <div>
                     <div className="text-xs text-slate-400">平台管理 / 权限模板</div>
@@ -434,7 +588,11 @@ const PermissionTemplatesView = () => {
                                     >
                                         <Pencil size={14} /> 编辑
                                     </button>
-                                    <button className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs text-slate-600 hover:text-slate-800 flex items-center gap-1">
+                                    <button
+                                        onClick={() => handleCloneTemplate(activeTemplate)}
+                                        disabled={isActioning}
+                                        className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs text-slate-600 hover:text-slate-800 flex items-center gap-1 disabled:opacity-50"
+                                    >
                                         <Copy size={14} /> 复制
                                     </button>
                                     {activeTemplate.status === '已发布' ? (
@@ -452,7 +610,11 @@ const PermissionTemplatesView = () => {
                                             <PlayCircle size={14} /> 发布
                                         </button>
                                     )}
-                                    <button className="px-3 py-1.5 rounded-lg border border-rose-200 text-xs text-rose-600 hover:text-rose-700 flex items-center gap-1">
+                                    <button
+                                        onClick={() => handleDeleteTemplate(activeTemplate.id)}
+                                        disabled={isActioning}
+                                        className="px-3 py-1.5 rounded-lg border border-rose-200 text-xs text-rose-600 hover:text-rose-700 flex items-center gap-1 disabled:opacity-50"
+                                    >
                                         <Trash2 size={14} /> 删除
                                     </button>
                                 </div>
@@ -692,9 +854,10 @@ const PermissionTemplatesView = () => {
                                 <button
                                     type="button"
                                     onClick={saveNewTemplate}
-                                    className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+                                    disabled={isSaving}
+                                    className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
                                 >
-                                    创建模板
+                                    {isSaving ? '创建中...' : '创建模板'}
                                 </button>
                             </div>
                         </div>
@@ -984,10 +1147,10 @@ const PermissionTemplatesView = () => {
                             </button>
                             <button
                                 onClick={confirmTemplateAction}
-                                disabled={actionType === 'disable' && !actionReason.trim()}
+                                disabled={isActioning || (actionType === 'disable' && !actionReason.trim())}
                                 className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500"
                             >
-                                {actionType === 'publish' ? '确认发布' : '确认停用'}
+                                {isActioning ? '处理中...' : (actionType === 'publish' ? '确认发布' : '确认停用')}
                             </button>
                         </div>
                     </div>

@@ -1,4 +1,4 @@
-USE adp;
+USE datasemantichub;
 
 CREATE TABLE IF NOT EXISTS `data_source` (
     `id` char(36) NOT NULL COMMENT '主键，生成规则:36位uuid',

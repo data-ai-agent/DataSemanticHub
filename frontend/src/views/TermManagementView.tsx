@@ -18,7 +18,7 @@ import {
     Send,
     Archive,
     FileText,
-    Link2,
+    Link,
     GitBranch,
     History,
     MessageCircle,
@@ -193,8 +193,8 @@ const TermManagementView: React.FC = () => {
     const tabs: Array<{ id: DetailTab; label: string; icon: React.ElementType }> = [
         { id: 'overview', label: '概览', icon: Book },
         { id: 'definition', label: '定义与口径', icon: FileText },
-        { id: 'relations', label: '关系', icon: Link2 },
-        { id: 'references', label: '引用', icon: Link2 },
+        { id: 'relations', label: '关系', icon: Link },
+        { id: 'references', label: '引用', icon: Link },
         { id: 'workflow', label: '流程', icon: GitBranch },
         { id: 'versions', label: '版本与变更', icon: History },
         { id: 'comments', label: '评论', icon: MessageCircle }
