@@ -109,6 +109,19 @@ export interface Connector {
 }
 
 /**
+ * 数据源统计信息（后端返回）
+ */
+export interface DataSourceStatisticsVo {
+    data_source_id: string;
+    data_source_name: string;
+    table_count: number;
+    field_count: number;
+    scanned_table_count: number;
+    scanning_table_count: number;
+    unscanned_table_count: number;
+}
+
+/**
  * 后端返回的连接器数据结构
  */
 interface BackendConnector {
@@ -347,6 +360,7 @@ const mapStatus = (status?: string): DataSource['status'] => {
 const DATASOURCE_ENDPOINTS = {
     DATASOURCES: '/datasource',
     DATASOURCE_DETAIL: (id: string) => `/datasource/${id}`,
+    DATASOURCE_STATISTICS: (id: string) => `/datasource/${id}/statistics`,
     TEST_CONNECTION: '/datasource/test',
     CONNECTORS: '/datasource/connectors',
 };
@@ -618,6 +632,34 @@ export const dataSourceService = {
             return connectors;
         } catch (error) {
             console.error('Failed to fetch connectors:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * 获取数据源统计信息
+     */
+    async getDataSourceStatistics(id: string): Promise<DataSourceStatisticsVo> {
+        try {
+            const response = await dataConnectionServiceClient(DATASOURCE_ENDPOINTS.DATASOURCE_STATISTICS(id), {
+                method: 'GET',
+            });
+
+            if (!response.ok) {
+                throw await parseDataSourceError(response);
+            }
+
+            const result = await response.json();
+
+            // 检查业务状态码
+            if (result.code && result.code !== 0 && result.code !== 200) {
+                const errorMsg = result.msg || result.description || '获取数据源统计信息失败';
+                throw new Error(errorMsg);
+            }
+
+            return result.data || result;
+        } catch (error) {
+            console.error('Failed to fetch data source statistics:', error);
             throw error;
         }
     },

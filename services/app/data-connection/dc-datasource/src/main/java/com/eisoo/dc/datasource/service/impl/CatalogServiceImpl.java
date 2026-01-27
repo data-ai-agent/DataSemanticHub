@@ -29,6 +29,9 @@ import com.eisoo.dc.common.util.CommonUtil;
 import com.eisoo.dc.common.util.LockUtil;
 import com.eisoo.dc.common.util.RSAUtil;
 import com.eisoo.dc.common.util.StringUtils;
+import com.eisoo.dc.common.util.jdbc.db.DbClientInterface;
+import com.eisoo.dc.common.util.jdbc.db.DbConnectionStrategyFactory;
+import com.eisoo.dc.common.util.jdbc.db.DataSourceConfig;
 import com.eisoo.dc.common.util.http.ExcelHttpUtils;
 import com.eisoo.dc.common.util.http.TingYunHttpUtils;
 import com.eisoo.dc.common.vo.CatalogDto;
@@ -38,6 +41,8 @@ import com.eisoo.dc.datasource.domain.vo.*;
 import com.eisoo.dc.datasource.enums.DsBuiltInStatus;
 import com.eisoo.dc.datasource.enums.MetadataObtainLevel;
 import com.eisoo.dc.datasource.service.CatalogService;
+import com.eisoo.dc.common.metadata.mapper.TableScanMapper;
+import com.eisoo.dc.common.metadata.mapper.FieldScanMapper;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.hc.client5.http.auth.AuthScope;
 import org.apache.hc.client5.http.auth.UsernamePasswordCredentials;
@@ -443,19 +448,100 @@ public class CatalogServiceImpl implements CatalogService {
     }
 
     private Boolean tryConnectCatalog(String type, BinDataVo binData) {
-//        String typeWithUnderscore = type.replace("-", "_");
-//        String randomString = RandomStringUtils.randomAlphanumeric(8).toLowerCase();
-//        String catalogName = CatalogConstant.TEST_CATALOG_PREFIX + typeWithUnderscore + "_" + randomString;
-//        CatalogDto catalogDto = buildCatalogDto(null, type, binData, catalogName);
-//        catalogDto.getProperties().set(CatalogConstant.USE_CONNECTION_POOL, false);
-//        String schemaName = StringUtils.isNotBlank(binData.getSchema()) ? binData.getSchema() : binData.getDatabaseName();
-//        try {
-//            Calculate.testCatalog(serviceEndpoints.getVegaCalculateCoordinator(), catalogDto, schemaName);
-//        } catch (Exception e) {
-//            log.error("catalogName:{},测试连接失败!", catalogDto.getCatalogName(), e);
-//            throw e;
-//        }
+        // 对于支持新扫描的数据源类型，使用元数据扫描的驱动连接逻辑
+        if (DbConnectionStrategyFactory.supportNewScan(type)) {
+            return tryConnectCatalogWithDriver(type, binData);
+        }
+
+        // 对于不支持新扫描的数据源类型，暂时返回 true
+        // TODO: 后续可以为其他数据源类型实现专门的测试连接逻辑
+        log.warn("数据源类型 {} 暂不支持使用驱动测试连接，跳过连接测试", type);
         return true;
+    }
+
+    /**
+     * 使用 JDBC 驱动测试连接（共用元数据扫描的驱动逻辑）
+     */
+    private Boolean tryConnectCatalogWithDriver(String type, BinDataVo binData) {
+        // 解密密码
+        String password = decryptPassword(binData.getPassword());
+
+        // 构建临时 DataSourceEntity 用于测试连接
+        DataSourceEntity tempDataSource = new DataSourceEntity();
+        tempDataSource.setFType(type);
+        tempDataSource.setFHost(binData.getHost());
+        tempDataSource.setFPort(binData.getPort());
+        tempDataSource.setFDatabase(binData.getDatabaseName());
+        tempDataSource.setFSchema(binData.getSchema());
+        tempDataSource.setFAccount(binData.getAccount());
+        tempDataSource.setFPassword(password);
+        tempDataSource.setFToken(binData.getToken());
+        tempDataSource.setFConnectProtocol(binData.getConnectProtocol());
+
+        log.info("【测试连接】数据源类型:{}, 主机:{}, 端口:{}, 数据库:{}, 用户:{}",
+                type, binData.getHost(), binData.getPort(), binData.getDatabaseName(), binData.getAccount());
+
+        java.sql.Connection connection = null;
+        try {
+            // 使用与元数据扫描相同的连接策略
+            DbClientInterface dbClient = DbConnectionStrategyFactory.getStrategy(type);
+
+            // 构建连接配置
+            String driverClass = DbConnectionStrategyFactory.DRIVER_CLASS_MAP.get(type);
+            String jdbcUrl = DbConnectionStrategyFactory.getDriverURL(tempDataSource);
+
+            log.info("【测试连接】驱动类:{}, JDBC URL:{}", driverClass, jdbcUrl);
+
+            DataSourceConfig dataSourceConfig = new DataSourceConfig(
+                    type,
+                    driverClass,
+                    jdbcUrl,
+                    tempDataSource.getFAccount(),
+                    password,
+                    tempDataSource.getFToken()
+            );
+
+            // 尝试获取连接（如果连接失败会抛出异常）
+            long startTime = System.currentTimeMillis();
+            connection = dbClient.getConnection(dataSourceConfig);
+            long connectionTime = System.currentTimeMillis() - startTime;
+
+            // 验证连接是否有效
+            if (connection != null && connection.isValid(5)) {
+                log.info("【测试连接】成功! 连接耗时: {}ms", connectionTime);
+                return true;
+            } else {
+                log.error("【测试连接】失败: 连接无效或超时");
+                return false;
+            }
+        } catch (ClassNotFoundException e) {
+            log.error("【测试连接】失败: 驱动类未找到 - {}", e.getMessage());
+            throw new AiShuException(ErrorCodeEnum.BadRequest,
+                    Description.CONNECT_FAILED,
+                    "数据源驱动类未找到: " + type,
+                    Message.MESSAGE_PARAM_ERROR_SOLUTION);
+        } catch (java.sql.SQLException e) {
+            log.error("【测试连接】失败: 数据库连接异常", e);
+            throw new AiShuException(ErrorCodeEnum.BadRequest,
+                    Description.CONNECT_FAILED,
+                    "数据库连接失败: " + e.getMessage(),
+                    Message.MESSAGE_PARAM_ERROR_SOLUTION);
+        } catch (Exception e) {
+            log.error("【测试连接】失败: 未知异常", e);
+            throw new AiShuException(ErrorCodeEnum.BadRequest,
+                    Description.CONNECT_FAILED,
+                    "连接测试失败: " + e.getMessage(),
+                    Message.MESSAGE_PARAM_ERROR_SOLUTION);
+        } finally {
+            // 关闭连接
+            if (connection != null) {
+                try {
+                    connection.close();
+                } catch (Exception e) {
+                    log.warn("【测试连接】关闭连接时出现异常", e);
+                }
+            }
+        }
     }
 
     private Boolean tryConnectOpenSearch(BinDataVo binData) {
@@ -705,6 +791,60 @@ public class CatalogServiceImpl implements CatalogService {
         entry.set("updated_by_username", userInfosMap.get(entity.getFUpdatedByUid()) != null ? userInfosMap.get(entity.getFUpdatedByUid())[1] : "");
         entry.set("updated_at", entity.getFUpdatedAt().atZone(ZoneId.of("Asia/Shanghai")).toInstant().toEpochMilli());
         return ResponseEntity.ok(entry);
+    }
+
+    @Override
+    public ResponseEntity<?> getDatasourceStatistics(String id, String userId, String userType) {
+        // 验证数据源是否存在
+        DataSourceEntity entity = dataSourceMapper.selectById(id);
+        if (entity == null) {
+            throw new AiShuException(ErrorCodeEnum.BadRequest, Description.DATASOURCE_NOT_EXIST, Detail.ID_NOT_EXISTS, Message.MESSAGE_DATANOTEXIST_ERROR_SOLUTION);
+        }
+
+        if (StringUtils.isBlank(userId)) {
+            throw new AiShuException(ErrorCodeEnum.UnauthorizedError);
+        }
+
+        // 判断是否有查看数据源的权限
+        boolean isOk = Authorization.checkResourceOperation(
+                serviceEndpoints.getAuthorizationPrivate(),
+                userId,
+                userType,
+                new ResourceAuthVo(id, ResourceAuthConstant.RESOURCE_TYPE_DATA_SOURCE),
+                ResourceAuthConstant.RESOURCE_OPERATION_TYPE_VIEW_DETAIL);
+        if (!isOk) {
+            throw new AiShuException(ErrorCodeEnum.ForbiddenError, String.format(Detail.RESOURCE_PERMISSION_ERROR, ResourceAuthConstant.RESOURCE_OPERATION_TYPE_VIEW_DETAIL));
+        }
+
+        // 统计表总数
+        long tableCount = tableScanMapper.selectCount(id, null);
+
+        // 统计字段总数
+        long fieldCount = fieldScanMapper.countByDataSourceId(id);
+
+        // 统计不同扫描状态的表数量
+        List<TableScanEntity> tables = tableScanMapper.selectByDsId(id);
+        long scannedTableCount = tables.stream()
+                .filter(t -> t.getFStatus() == ScanStatusEnum.FINISHED.getCode())
+                .count();
+        long scanningTableCount = tables.stream()
+                .filter(t -> t.getFStatus() == ScanStatusEnum.RUNNING.getCode())
+                .count();
+        long unscannedTableCount = tables.stream()
+                .filter(t -> t.getFStatus() == ScanStatusEnum.UNSCANNED.getCode())
+                .count();
+
+        // 构建返回结果
+        DataSourceStatisticsVo statistics = new DataSourceStatisticsVo();
+        statistics.setDataSourceId(id);
+        statistics.setDataSourceName(entity.getFName());
+        statistics.setTableCount(tableCount);
+        statistics.setFieldCount(fieldCount);
+        statistics.setScannedTableCount(scannedTableCount);
+        statistics.setScanningTableCount(scanningTableCount);
+        statistics.setUnscannedTableCount(unscannedTableCount);
+
+        return ResponseEntity.ok(statistics);
     }
 
     @Override

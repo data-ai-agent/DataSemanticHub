@@ -16,7 +16,7 @@ import {
     ScanTaskType,
     ScanStrategy,
 } from '../services/scanService';
-import { dataSourceService, type DataSource } from '../services/dataSourceService';
+import { dataSourceService, type DataSource, type DataSourceStatisticsVo } from '../services/dataSourceService';
 
 const AssetScanningView = ({ onNavigate }: { onNavigate?: (moduleId: string) => void } = {}) => {
     // Tab 切换
@@ -69,16 +69,15 @@ const AssetScanningView = ({ onNavigate }: { onNavigate?: (moduleId: string) => 
     const [tablesLoading, setTablesLoading] = useState(false);
     const [tableSearchKeyword, setTableSearchKeyword] = useState('');
 
-    // 保存每个任务的扫描策略（因为后端API不返回这个字段）
-    const [taskScanStrategies, setTaskScanStrategies] = useState<Record<string, ('insert' | 'update' | 'delete')[]>>({});
-    // 保存每个任务的状态（因为后端API可能不立即返回更新的状态）
-    const [taskStatuses, setTaskStatuses] = useState<Record<string, 'enable' | 'disable'>>({});
-
     // 字段信息相关
     const [showFieldModal, setShowFieldModal] = useState(false);
     const [selectedTableForFields, setSelectedTableForFields] = useState<TableScan | null>(null);
     const [tableFields, setTableFields] = useState<FieldInfo[]>([]);
     const [fieldsLoading, setFieldsLoading] = useState(false);
+
+    // 数据源统计信息
+    const [dataSourceStatistics, setDataSourceStatistics] = useState<DataSourceStatisticsVo | null>(null);
+    const [statisticsLoading, setStatisticsLoading] = useState(false);
 
     // 加载数据源
     useEffect(() => {
@@ -108,6 +107,25 @@ const AssetScanningView = ({ onNavigate }: { onNavigate?: (moduleId: string) => 
         }
     };
 
+    // 加载数据源统计信息
+    const loadDataSourceStatistics = async (dataSourceId: string) => {
+        if (!dataSourceId) {
+            setDataSourceStatistics(null);
+            return;
+        }
+
+        setStatisticsLoading(true);
+        try {
+            const stats = await dataSourceService.getDataSourceStatistics(dataSourceId);
+            setDataSourceStatistics(stats);
+        } catch (error) {
+            console.error('Failed to load data source statistics:', error);
+            setDataSourceStatistics(null);
+        } finally {
+            setStatisticsLoading(false);
+        }
+    };
+
     const loadInstantTasks = async () => {
         setInstantLoading(true);
         try {
@@ -128,16 +146,7 @@ const AssetScanningView = ({ onNavigate }: { onNavigate?: (moduleId: string) => 
             const tasks = await scanService.getScanTasks();
             // 过滤出定时扫描任务（有 schedule_id 的）
             const scheduled = tasks.filter(t => t.isScheduled);
-            // 合并保存的扫描策略和状态
-            const scheduledWithCache = scheduled.map(task => {
-                const scheduleId = task.scheduleId || '';
-                return {
-                    ...task,
-                    scanStrategy: taskScanStrategies[scheduleId] || task.scanStrategy || [],
-                    taskStatus: taskStatuses[scheduleId] || task.taskStatus,
-                };
-            });
-            setScheduledTasks(scheduledWithCache);
+            setScheduledTasks(scheduled);
         } catch (error) {
             console.error('Failed to load scheduled scan tasks:', error);
         } finally {
@@ -377,36 +386,12 @@ const AssetScanningView = ({ onNavigate }: { onNavigate?: (moduleId: string) => 
                 status: editingScheduledTask.status,
             });
 
-            // 保存扫描策略到本地状态（因为后端API不返回这个字段）
-            setTaskScanStrategies(prev => ({
-                ...prev,
-                [editingScheduledTask.scheduleId]: editingScheduledTask.scanStrategy || [],
-            }));
-
-            // 保存任务状态到本地状态（因为后端API可能不立即返回更新的状态）
-            const taskStatus: 'enable' | 'disable' = editingScheduledTask.status === 'open' ? 'enable' : 'disable';
-            setTaskStatuses(prev => ({
-                ...prev,
-                [editingScheduledTask.scheduleId]: taskStatus,
-            }));
-
-            // 更新本地状态：在 scheduledTasks 中找到对应的任务并更新 scanStrategy 和 taskStatus
-            setScheduledTasks(prevTasks =>
-                prevTasks.map(task =>
-                    task.scheduleId === editingScheduledTask.scheduleId
-                        ? {
-                            ...task,
-                            scanStrategy: editingScheduledTask.scanStrategy,
-                            taskStatus: taskStatus,
-                          }
-                        : task
-                )
-            );
+            // 更新成功后重新加载后端数据
+            await loadScheduledTasks();
 
             // 更新成功后关闭弹窗
             alert('保存成功');
             setShowScheduledDetailModal(false);
-            // 不需要调用 loadScheduledTasks()，因为我们已经更新了本地状态
         } catch (error) {
             console.error('Failed to update scheduled task:', error);
             alert('保存失败：' + (error as Error).message);
@@ -795,6 +780,8 @@ const AssetScanningView = ({ onNavigate }: { onNavigate?: (moduleId: string) => 
                                         if (newTask.type === ScanTaskType.TableInstant) {
                                             loadTablesForDataSource(e.target.value, dsType);
                                         }
+                                        // 加载数据源统计信息
+                                        loadDataSourceStatistics(e.target.value);
                                     }}
                                     className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white text-sm"
                                 >
@@ -803,6 +790,52 @@ const AssetScanningView = ({ onNavigate }: { onNavigate?: (moduleId: string) => 
                                         <option key={ds.id} value={ds.id}>{ds.name} ({ds.type})</option>
                                     ))}
                                 </select>
+
+                                {/* 数据源统计信息 */}
+                                {newTask.dataSourceId && dataSourceStatistics && (
+                                    <div className="mt-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <Database size={16} className="text-blue-600" />
+                                            <h4 className="text-sm font-medium text-blue-800">数据源统计信息</h4>
+                                        </div>
+                                        <div className="grid grid-cols-3 gap-3 text-xs">
+                                            <div className="bg-white p-2 rounded border border-blue-100">
+                                                <div className="text-slate-500 mb-1">表总数</div>
+                                                <div className="text-lg font-bold text-slate-700">{dataSourceStatistics.table_count || 0}</div>
+                                            </div>
+                                            <div className="bg-white p-2 rounded border border-blue-100">
+                                                <div className="text-slate-500 mb-1">字段总数</div>
+                                                <div className="text-lg font-bold text-slate-700">{dataSourceStatistics.field_count || 0}</div>
+                                            </div>
+                                            <div className="bg-white p-2 rounded border border-blue-100">
+                                                <div className="text-slate-500 mb-1">已扫描表</div>
+                                                <div className="text-lg font-bold text-emerald-600">{dataSourceStatistics.scanned_table_count || 0}</div>
+                                            </div>
+                                        </div>
+                                        {(dataSourceStatistics.scanning_table_count > 0 || dataSourceStatistics.unscanned_table_count > 0) && (
+                                            <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
+                                                {dataSourceStatistics.scanning_table_count > 0 && (
+                                                    <div className="flex items-center gap-1 text-blue-600">
+                                                        <RefreshCw size={12} className="animate-spin" />
+                                                        <span>扫描中: {dataSourceStatistics.scanning_table_count} 表</span>
+                                                    </div>
+                                                )}
+                                                {dataSourceStatistics.unscanned_table_count > 0 && (
+                                                    <div className="flex items-center gap-1 text-slate-500">
+                                                        <Clock size={12} />
+                                                        <span>未扫描: {dataSourceStatistics.unscanned_table_count} 表</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                                {newTask.dataSourceId && statisticsLoading && (
+                                    <div className="mt-3 flex items-center justify-center p-4 bg-slate-50 rounded-lg border border-slate-200">
+                                        <RefreshCw size={16} className="text-slate-400 animate-spin mr-2" />
+                                        <span className="text-sm text-slate-500">加载统计信息中...</span>
+                                    </div>
+                                )}
                             </div>
 
                             {/* 表即时扫描时显示表选择器 */}

@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Plus, Database, Edit, Trash2, Zap, X, CheckCircle, RefreshCw, Server, Building2, Tag, ChevronDown, MoreHorizontal, FileText, List, Activity, Loader2 } from 'lucide-react';
-import { dataSourceService, type DataSource, type Connector } from '../services/dataSourceService';
+import { Plus, Database, Edit, Trash2, Zap, X, CheckCircle, RefreshCw, Server, Building2, Tag, ChevronDown, MoreHorizontal, FileText, List, Activity, Loader2, Eye, Clock, Layers, Table as TableIcon } from 'lucide-react';
+import { dataSourceService, type DataSource, type Connector, type DataSourceStatisticsVo } from '../services/dataSourceService';
+import { scanService, type TableInfo } from '../services/scanService';
 
 const MOCK_SYSTEMS = ['营销中心(CRM)', '供应链系统(ERP)', '人口基础库', '政务服务平台', '数据仓库'];
 const MOCK_OWNERS = ['张三 (Data Owner)', '李四 (System Owner)', '王五 (DevOps)'];
@@ -288,6 +289,48 @@ const DataSourceManagementView = () => {
         setIsModalOpen(true);
     };
 
+    // Detail Modal State
+    const [showDetailModal, setShowDetailModal] = useState(false);
+    const [detailDS, setDetailDS] = useState<DataSource | null>(null);
+    const [detailStatistics, setDetailStatistics] = useState<DataSourceStatisticsVo | null>(null);
+    const [detailStatisticsLoading, setDetailStatisticsLoading] = useState(false);
+    const [detailTables, setDetailTables] = useState<TableInfo[]>([]);
+    const [detailTablesLoading, setDetailTablesLoading] = useState(false);
+    const [activeDetailTab, setActiveDetailTab] = useState<'overview' | 'tables'>('overview');
+
+    const handleViewDetail = async (ds: DataSource) => {
+        setDetailDS(ds);
+        setShowDetailModal(true);
+        setDetailStatisticsLoading(true);
+        setDetailTablesLoading(true);
+        setActiveDetailTab('overview');
+
+        // Load statistics
+        try {
+            const stats = await dataSourceService.getDataSourceStatistics(ds.id);
+            setDetailStatistics(stats);
+        } catch (error) {
+            console.error('Failed to load data source statistics:', error);
+            setDetailStatistics(null);
+        } finally {
+            setDetailStatisticsLoading(false);
+        }
+
+        // Load tables
+        try {
+            const result = await scanService.getTablesByDataSourceId({
+                dataSourceId: ds.id,
+                limit: 100,
+            });
+            setDetailTables(result.tables);
+        } catch (error) {
+            console.error('Failed to load tables:', error);
+            setDetailTables([]);
+        } finally {
+            setDetailTablesLoading(false);
+        }
+    };
+
     return (
         <div className="space-y-6 p-6 animate-fade-in">
             {/* Header */}
@@ -503,7 +546,10 @@ const DataSourceManagementView = () => {
                                             {activeDropdownId === ds.id && (
                                                 <div className="absolute right-0 bottom-full mb-2 w-40 bg-white border border-slate-200 rounded-lg shadow-xl z-10 overflow-hidden animate-fade-in origin-bottom-right">
                                                     <div className="py-1">
-                                                        <button className="w-full text-left px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 hover:text-blue-600 flex items-center gap-2">
+                                                        <button
+                                                            onClick={() => handleViewDetail(ds)}
+                                                            className="w-full text-left px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 hover:text-blue-600 flex items-center gap-2"
+                                                        >
                                                             <List size={14} /> 资产清单
                                                         </button>
                                                         <button className="w-full text-left px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 hover:text-blue-600 flex items-center gap-2">
@@ -709,6 +755,280 @@ const DataSourceManagementView = () => {
                             >
                                 {editingDS ? '更新' : '保存'}
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Detail Modal */}
+            {showDetailModal && detailDS && (
+                <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[85vh]">
+                        {/* Header */}
+                        <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
+                            <div className="flex items-center gap-3">
+                                <div className={`w-10 h-10 rounded-lg ${typeConfigs[detailDS.type]?.bgColor || 'bg-slate-100'} flex items-center justify-center font-bold ${typeConfigs[detailDS.type]?.color || 'text-slate-600'} text-sm`}>
+                                    {detailDS.type.substring(0, 2).toUpperCase()}
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-lg text-slate-800">{detailDS.name}</h3>
+                                    <p className="text-xs text-slate-500 mt-0.5">{detailDS.type} · {detailDS.host}:{detailDS.port}</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setShowDetailModal(false)}
+                                className="text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded p-1"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        {/* Tabs */}
+                        <div className="flex gap-1 px-6 pt-4 bg-slate-50 border-b border-slate-100">
+                            <button
+                                onClick={() => setActiveDetailTab('overview')}
+                                className={`px-4 py-2 text-sm font-medium rounded-t transition-all flex items-center gap-2 ${
+                                    activeDetailTab === 'overview'
+                                        ? 'bg-white text-blue-600 border-t-2 border-x border-blue-600 border-b-0 -mb-px'
+                                        : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'
+                                }`}
+                            >
+                                <Database size={16} />
+                                概览信息
+                            </button>
+                            <button
+                                onClick={() => setActiveDetailTab('tables')}
+                                className={`px-4 py-2 text-sm font-medium rounded-t transition-all flex items-center gap-2 ${
+                                    activeDetailTab === 'tables'
+                                        ? 'bg-white text-blue-600 border-t-2 border-x border-blue-600 border-b-0 -mb-px'
+                                        : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'
+                                }`}
+                            >
+                                <TableIcon size={16} />
+                                表清单
+                                {detailTables.length > 0 && (
+                                    <span className="ml-1 px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 text-xs">
+                                        {detailTables.length}
+                                    </span>
+                                )}
+                            </button>
+                        </div>
+
+                        {/* Content */}
+                        <div className="flex-1 overflow-hidden">
+                            {/* Overview Tab */}
+                            {activeDetailTab === 'overview' && (
+                                <div className="p-6 overflow-y-auto custom-scrollbar h-full">
+                                    {/* Basic Info */}
+                                    <div className="mb-6">
+                                        <h4 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+                                            <Server size={16} className="text-blue-500" />
+                                            基本信息
+                                        </h4>
+                                        <div className="grid grid-cols-3 gap-4">
+                                            <div className="bg-slate-50 p-3 rounded-lg">
+                                                <div className="text-xs text-slate-500 mb-1">数据库类型</div>
+                                                <div className="text-sm font-medium text-slate-700">{detailDS.type}</div>
+                                            </div>
+                                            <div className="bg-slate-50 p-3 rounded-lg">
+                                                <div className="text-xs text-slate-500 mb-1">主机地址</div>
+                                                <div className="text-sm font-mono text-slate-700">{detailDS.host}:{detailDS.port}</div>
+                                            </div>
+                                            <div className="bg-slate-50 p-3 rounded-lg">
+                                                <div className="text-xs text-slate-500 mb-1">数据库名</div>
+                                                <div className="text-sm font-medium text-slate-700 truncate" title={detailDS.dbName}>
+                                                    {detailDS.dbName}
+                                                    {detailDS.schemaName && <span className="text-slate-400 text-xs ml-1">({detailDS.schemaName})</span>}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Governance Info */}
+                                    {(detailDS.system || detailDS.env || detailDS.owner) && (
+                                        <div className="mb-6">
+                                            <h4 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+                                                <Building2 size={16} className="text-purple-500" />
+                                                治理信息
+                                            </h4>
+                                            <div className="grid grid-cols-3 gap-4">
+                                                {detailDS.system && (
+                                                    <div className="bg-slate-50 p-3 rounded-lg">
+                                                        <div className="text-xs text-slate-500 mb-1">所属系统</div>
+                                                        <div className="text-sm font-medium text-slate-700">{detailDS.system}</div>
+                                                    </div>
+                                                )}
+                                                {detailDS.env && (
+                                                    <div className="bg-slate-50 p-3 rounded-lg">
+                                                        <div className="text-xs text-slate-500 mb-1">环境类型</div>
+                                                        <div className="text-sm font-medium text-slate-700">{getEnvConfig(detailDS.env).label}</div>
+                                                    </div>
+                                                )}
+                                                {detailDS.owner && (
+                                                    <div className="bg-slate-50 p-3 rounded-lg">
+                                                        <div className="text-xs text-slate-500 mb-1">数据负责人</div>
+                                                        <div className="text-sm font-medium text-slate-700">{detailDS.owner}</div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Statistics */}
+                                    <div className="mb-6">
+                                        <h4 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+                                            <Activity size={16} className="text-emerald-500" />
+                                            统计信息
+                                        </h4>
+                                        {detailStatisticsLoading ? (
+                                            <div className="flex items-center justify-center p-8 bg-slate-50 rounded-lg">
+                                                <RefreshCw size={24} className="text-slate-400 animate-spin mr-2" />
+                                                <span className="text-sm text-slate-500">加载统计信息中...</span>
+                                            </div>
+                                        ) : detailStatistics ? (
+                                            <div className="grid grid-cols-3 gap-4">
+                                                <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
+                                                    <div className="flex items-center justify-between mb-2">
+                                                        <span className="text-xs text-blue-600">表总数</span>
+                                                        <Server size={16} className="text-blue-500" />
+                                                    </div>
+                                                    <div className="text-2xl font-bold text-blue-700">{detailStatistics.table_count || 0}</div>
+                                                </div>
+                                                <div className="bg-purple-50 p-4 rounded-lg border border-purple-100">
+                                                    <div className="flex items-center justify-between mb-2">
+                                                        <span className="text-xs text-purple-600">字段总数</span>
+                                                        <Layers size={16} className="text-purple-500" />
+                                                    </div>
+                                                    <div className="text-2xl font-bold text-purple-700">{detailStatistics.field_count || 0}</div>
+                                                </div>
+                                                <div className="bg-emerald-50 p-4 rounded-lg border border-emerald-100">
+                                                    <div className="flex items-center justify-between mb-2">
+                                                        <span className="text-xs text-emerald-600">已扫描表</span>
+                                                        <CheckCircle size={16} className="text-emerald-500" />
+                                                    </div>
+                                                    <div className="text-2xl font-bold text-emerald-700">{detailStatistics.scanned_table_count || 0}</div>
+                                                </div>
+                                                {(detailStatistics.scanning_table_count > 0 || detailStatistics.unscanned_table_count > 0) && (
+                                                    <>
+                                                        {detailStatistics.scanning_table_count > 0 && (
+                                                            <div className="bg-orange-50 p-4 rounded-lg border border-orange-100">
+                                                                <div className="flex items-center justify-between mb-2">
+                                                                    <span className="text-xs text-orange-600">扫描中</span>
+                                                                    <RefreshCw size={16} className="text-orange-500 animate-spin" />
+                                                                </div>
+                                                                <div className="text-2xl font-bold text-orange-700">{detailStatistics.scanning_table_count}</div>
+                                                            </div>
+                                                        )}
+                                                        {detailStatistics.unscanned_table_count > 0 && (
+                                                            <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                                                                <div className="flex items-center justify-between mb-2">
+                                                                    <span className="text-xs text-slate-600">未扫描</span>
+                                                                    <Clock size={16} className="text-slate-500" />
+                                                                </div>
+                                                                <div className="text-2xl font-bold text-slate-700">{detailStatistics.unscanned_table_count}</div>
+                                                            </div>
+                                                        )}
+                                                    </>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <div className="text-center py-8 bg-slate-50 rounded-lg border border-slate-200">
+                                                <Activity size={32} className="text-slate-300 mx-auto mb-2" />
+                                                <p className="text-sm text-slate-500">暂无统计信息</p>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Description */}
+                                    {detailDS.desc && (
+                                        <div>
+                                            <h4 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+                                                <FileText size={16} className="text-slate-500" />
+                                                描述信息
+                                            </h4>
+                                            <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                                                <p className="text-sm text-slate-600">{detailDS.desc}</p>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Tables Tab */}
+                            {activeDetailTab === 'tables' && (
+                                <div className="p-6 overflow-y-auto custom-scrollbar h-full">
+                                    {detailTablesLoading ? (
+                                        <div className="flex items-center justify-center py-12">
+                                            <RefreshCw size={32} className="text-slate-400 animate-spin" />
+                                        </div>
+                                    ) : detailTables.length === 0 ? (
+                                        <div className="text-center py-12">
+                                            <TableIcon size={48} className="text-slate-300 mx-auto mb-4" />
+                                            <h3 className="text-lg font-medium text-slate-600 mb-2">暂无表数据</h3>
+                                            <p className="text-sm text-slate-400">该数据源下还没有已扫描的表</p>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-3">
+                                            <div className="flex items-center justify-between mb-4">
+                                                <h4 className="text-sm font-semibold text-slate-700">
+                                                    表列表 ({detailTables.length})
+                                                </h4>
+                                            </div>
+                                            <div className="border border-slate-200 rounded-lg overflow-hidden">
+                                                <table className="w-full text-sm">
+                                                    <thead className="bg-slate-50 border-b border-slate-200">
+                                                        <tr>
+                                                            <th className="px-4 py-3 text-left font-medium text-slate-600">表名</th>
+                                                            <th className="px-4 py-3 text-left font-medium text-slate-600">数据库类型</th>
+                                                            <th className="px-4 py-3 text-left font-medium text-slate-600">注释</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {detailTables.map((table, index) => (
+                                                            <tr key={table.id} className={`border-b border-slate-100 hover:bg-slate-50 ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}`}>
+                                                                <td className="px-4 py-3 font-medium text-slate-700">{table.tableName}</td>
+                                                                <td className="px-4 py-3 text-slate-600">{table.dbType}</td>
+                                                                <td className="px-4 py-3 text-slate-500 truncate max-w-xs" title={table.tableComment}>
+                                                                    {table.tableComment || '-'}
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Footer */}
+                        <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-between items-center shrink-0">
+                            <div className="text-xs text-slate-500">
+                                {detailDS.lastScan && (
+                                    <span className="flex items-center gap-1">
+                                        <Clock size={12} />
+                                        最近扫描: {detailDS.lastScan}
+                                    </span>
+                                )}
+                            </div>
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => handleTestConnection(detailDS.id)}
+                                    className="px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded-md transition-colors border border-blue-200"
+                                >
+                                    测试连接
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setShowDetailModal(false);
+                                        handleEdit(detailDS);
+                                    }}
+                                    className="px-4 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors shadow-sm"
+                                >
+                                    编辑配置
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

@@ -580,7 +580,7 @@ const parseScanError = async (response: Response): Promise<Error> => {
 /**
  * 后端扫描任务 → 前端扫描任务
  */
-export const fromBackendScanTask = (backend: ScanTaskVo): ScanTask => {
+export const fromBackendScanTask = (backend: any): ScanTask => {
     return {
         id: backend.id,
         scheduleId: backend.schedule_id,
@@ -591,6 +591,7 @@ export const fromBackendScanTask = (backend: ScanTaskVo): ScanTask => {
         status: backend.scan_status,
         taskStatus: backend.task_status === 'enable' ? 'enable' : 'disable',
         startTime: backend.start_time,
+        scanStrategy: backend.scan_strategy || [],
         processInfo: backend.task_process_info ? {
             tableCount: backend.task_process_info.table_count,
             successCount: backend.task_process_info.success_count,

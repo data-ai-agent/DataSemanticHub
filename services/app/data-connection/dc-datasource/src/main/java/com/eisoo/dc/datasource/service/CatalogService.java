@@ -22,5 +22,11 @@ public interface CatalogService {
     ResponseEntity<?> deleteDatasource(HttpServletRequest request, String id);
 
     ResponseEntity<?> testDataSource(HttpServletRequest request, TestDataSourceVo catalogDto);
+
     ResponseEntity<?> connectorList(String type);
+
+    /**
+     * 获取数据源详细信息（包括表和字段的统计信息）
+     */
+    ResponseEntity<?> getDatasourceStatistics(String id, String userId, String userType);
 }

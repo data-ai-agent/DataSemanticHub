@@ -75,4 +75,14 @@
                              FROM t_table_scan
                              WHERE f_data_source_id = #{id})
     </delete>
+
+    <select id="countByDataSourceId" resultType="long">
+        SELECT COUNT(*)
+        FROM t_table_field_scan
+        WHERE f_table_id IN (SELECT f_id
+                             FROM t_table_scan
+                             WHERE f_data_source_id = #{dataSourceId}
+                               AND f_operation_type != 1)
+          AND f_operation_type != 1
+    </select>
 </mapper>

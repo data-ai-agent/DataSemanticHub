@@ -43,6 +43,8 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.ResponseEntity;
 
 
+
+
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.scheduling.config.CronTask;
 import org.springframework.scheduling.support.CronExpression;
@@ -325,13 +327,32 @@ public class TaskScanServiceImpl extends ServiceImpl<TaskScanMapper, TaskScanEnt
             Integer typeTask = t.getType();
             String taskStatus = ScheduleJobStatusEnum.OPEN.getDesc();
             String scheduleId = null;
+            List<String> scanStrategy = null;
+
             if (typeTask == ScanTaskEnm.SCHEDULE_DS.getCode()) {
                 TaskScanScheduleEntity taskScanScheduleEntity = taskScanScheduleService.getById(t.getScheduleId());
                 if (taskScanScheduleEntity != null) {
                     taskStatus = ScheduleJobStatusEnum.fromCode(taskScanScheduleEntity.getTaskStatus());
                     scheduleId = t.getScheduleId();
+                    // 从定时扫描任务中获取 scan_strategy
+                    if (CommonUtil.isNotEmpty(taskScanScheduleEntity.getScanStrategy())) {
+                        scanStrategy = Arrays.asList(taskScanScheduleEntity.getScanStrategy().split(","));
+                    }
                 }
             }
+
+            // 从 task_params_info 中解析 scan_strategy
+            if (scanStrategy == null && CommonUtil.isNotEmpty(t.getTaskParamsInfo())) {
+                try {
+                    TaskScanEntity.TaskParamsInfo taskParamsInfo = JSON.parseObject(t.getTaskParamsInfo(), TaskScanEntity.TaskParamsInfo.class);
+                    if (taskParamsInfo.getScanStrategy() != null && !taskParamsInfo.getScanStrategy().isEmpty()) {
+                        scanStrategy = taskParamsInfo.getScanStrategy();
+                    }
+                } catch (Exception e) {
+                    log.warn("Failed to parse task_params_info for task: {}", t.getId(), e);
+                }
+            }
+
             return new TaskScanDto(
                     t.getId(),
                     scheduleId,
@@ -344,7 +365,8 @@ public class TaskScanServiceImpl extends ServiceImpl<TaskScanMapper, TaskScanEnt
                     taskStatus,
                     t.getStartTime(),
                     t.getTaskProcessInfo(),
-                    t.getTaskResultInfo()
+                    t.getTaskResultInfo(),
+                    scanStrategy
             );
         }).collect(Collectors.toList());
         response.put("entries", results);

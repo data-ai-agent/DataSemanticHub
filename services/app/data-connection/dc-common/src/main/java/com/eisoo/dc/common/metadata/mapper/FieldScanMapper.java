@@ -35,4 +35,9 @@ public interface FieldScanMapper extends MPJBaseMapper<FieldScanEntity> {
     int deleteByTableId(@Param("tableId") String tableId, @Param("operationTime") Date operationTime);
     int deleteByDsId(@Param("id") String id);
     List<FieldScanEntity> getAllFieldListByTableId(Set<String> includeIds);
+
+    /**
+     * 统计指定数据源下的字段总数
+     */
+    long countByDataSourceId(@Param("dataSourceId") String dataSourceId);
 }

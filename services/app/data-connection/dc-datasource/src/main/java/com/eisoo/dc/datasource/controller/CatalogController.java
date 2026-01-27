@@ -140,5 +140,14 @@ public class CatalogController {
         return catalogService.connectorList(type);
     }
 
+    @ApiOperation(value = "获取数据源统计信息", notes = "获取数据源的表和字段统计信息")
+    @GetMapping("/data-connection/v1/datasource/{id}/statistics")
+    public ResponseEntity<?> getDatasourceStatistics(HttpServletRequest request,
+                                                      @PathVariable("id") @Size(max = 36) String id) {
+        IntrospectInfo introspectInfo = CommonUtil.getOrCreateIntrospectInfo(request);
+        String userId = StringUtils.defaultString(introspectInfo.getSub());
+        String userType = introspectInfo.getAccountType();
+        return catalogService.getDatasourceStatistics(id, userId, userType);
+    }
 
 }

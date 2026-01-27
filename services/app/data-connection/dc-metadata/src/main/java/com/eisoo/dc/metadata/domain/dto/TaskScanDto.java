@@ -9,6 +9,7 @@ import lombok.Data;
 
 import java.io.Serializable;
 import java.util.Date;
+import java.util.List;
 
 /**
  * @author Tian.lan
@@ -43,5 +44,7 @@ public class TaskScanDto implements Serializable {
     private String taskProcessInfo;
     @JsonProperty(value = "task_result_info")
     private String taskResultInfo;
+    @JsonProperty(value = "scan_strategy")
+    private List<String> scanStrategy;
 
 }
