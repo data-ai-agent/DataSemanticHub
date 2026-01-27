@@ -11,12 +11,16 @@ export * from './userManagement';
 // ==================== Agent Service ====================
 export * from './agent/agentService';
 
+// ==================== Data Connection Service ====================
+export * from './dataSourceService';
+
 // ==================== Service Clients ====================
 export {
     systemServiceClient,
     agentServiceClient,
     metadataServiceClient,
     dataServiceClient,
+    dataConnectionServiceClient,
     createServiceClient,
     createServiceJsonClient,
     batchRequest,

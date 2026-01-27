@@ -122,12 +122,47 @@ export const metadataServiceClient = createServiceClient('METADATA', {
 });
 
 /**
- * Data Connection Service 客户端（预留）
+ * Data Service 客户端（预留）
  * 用于数据源连接管理
  */
 export const dataServiceClient = createServiceClient('DATA', {
     timeout: API_CONFIG.TIMEOUT,
 });
+
+/**
+ * Data Connection Service 客户端
+ * 用于数据源连接管理（独立路由，不使用 BASE_URL）
+ * Nginx Route: /api/data-connection/v1/* -> http://data-connection-service:8890/api/data-connection/v1/*
+ */
+export const dataConnectionServiceClient = async (
+    endpoint: string,
+    options?: RequestInit
+): Promise<Response> => {
+    // 使用自定义基础路径：/api/data-connection/v1（不经过 httpClient，避免重复添加 /api/v1）
+    const basePath = '/api/data-connection/v1';
+    const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+    const fullPath = `${basePath}${normalizedEndpoint}`;
+
+    // 获取存储的 token（需要复用 httpClient 的认证逻辑）
+    const token = localStorage.getItem('auth_token');
+
+    const headers = new Headers({
+        'Content-Type': 'application/json',
+        ...(options?.headers as Record<string, string>),
+    });
+
+    // 如果有 token，添加到 Authorization 头
+    if (token) {
+        headers.set('Authorization', `Bearer ${token}`);
+    }
+
+    const response = await fetch(fullPath, {
+        ...options,
+        headers,
+    });
+
+    return response;
+};
 
 /**
  * 批量请求工具（跨服务聚合）

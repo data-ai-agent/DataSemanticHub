@@ -38,6 +38,12 @@ export const API_CONFIG = {
          * Nginx Route: /api/v1/data/* -> http://data-connection:8890/api/v1/*
          */
         DATA: '/data',
+
+        /**
+         * Data Connection Service - 数据源连接管理
+         * Nginx Route: /api/data-connection/v1/* -> http://data-connection-service:8890/api/data-connection/v1/*
+         */
+        DATA_CONNECTION: '/data-connection/v1',
     },
 
     // 向后兼容的旧路由（逐步废弃）
@@ -145,5 +151,28 @@ export const API_ENDPOINTS = {
     DATA: {
         CONNECTIONS: getApiPath('DATA', '/connections'),
         CONNECTION_TEST: getApiPath('DATA', '/connections/test'),
+    },
+
+    // Data Connection Service 端点
+    DATA_CONNECTION: {
+        DATASOURCES: '/api/data-connection/v1/datasource',
+        DATASOURCE_DETAIL: (id: string) => `/api/data-connection/v1/datasource/${id}`,
+        TEST_CONNECTION: '/api/data-connection/v1/datasource/test',
+        CONNECTORS: '/api/data-connection/v1/datasource/connectors',
+    },
+
+    // Metadata Scan 端点
+    METADATA_SCAN: {
+        // 扫描任务管理
+        SCAN_TASKS: '/api/data-connection/v1/metadata/scan',
+        SCAN_TASK_DETAIL: (taskId: string) => `/api/data-connection/v1/metadata/scan/${taskId}`,
+        SCAN_TABLES: (taskId: string) => `/api/data-connection/v1/metadata/scan/info/${taskId}`,
+        SCAN_BATCH: '/api/data-connection/v1/metadata/scan/batch',
+
+        // 定时扫描管理
+        SCHEDULE_UPDATE: '/api/data-connection/v1/metadata/scan/schedule',
+        SCHEDULE_STATUS: (scheduleId: string) => `/api/data-connection/v1/metadata/scan/schedule/${scheduleId}`,
+        SCHEDULE_TASKS: (scheduleId: string) => `/api/data-connection/v1/metadata/scan/schedule/task/${scheduleId}`,
+        SCHEDULE_EXECUTIONS: (scheduleId: string) => `/api/data-connection/v1/metadata/scan/schedule/exec/${scheduleId}`,
     },
 } as const;

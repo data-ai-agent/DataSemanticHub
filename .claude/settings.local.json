@@ -1,7 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "Bash(docker-compose up:*)"
+      "Bash(docker-compose up:*)",
+      "mcp__ide__getDiagnostics",
+      "Bash(docker-compose config:*)",
+      "Bash(docker-compose exec:*)",
+      "Bash(docker-compose logs:*)"
     ]
   }
 }

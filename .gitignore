@@ -1,5 +1,77 @@
+# 操作系统文件
 .DS_Store
-frontend/node_modules
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# IDE 配置
 .idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+*~
+
+# 前端依赖
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/build/
+frontend/.turbo/
+
+# 后端依赖
+services/**/target/
+services/**/node_modules/
+**/*.class
+**/*.jar
+**/*.war
+
+# 日志文件
+*.log
+logs/
+log/
+
+# 临时文件
+*.tmp
+*.temp
+*.cache
+.npm/
+.eslintcache
+
+# 环境变量
+.env
+.env.local
+.env.*.local
+*.env
+
+# 测试数据
 test-data/
-deploy/release/
+test_data/
+
+# 构建产物
+dist/
+build/
+out/
+
+# Coverage 覆盖率报告
+coverage/
+*.lcov
+
+# 依赖锁文件（可选，如果团队需要锁定依赖版本则去掉注释）
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
+
+# SSH 密钥（安全考虑）
+*.pem
+!services/app/data-connection/**/public_key.pem
+!services/app/data-connection/**/private_key.pem
+
+# 其他
+.history/
+*.bak
+nul

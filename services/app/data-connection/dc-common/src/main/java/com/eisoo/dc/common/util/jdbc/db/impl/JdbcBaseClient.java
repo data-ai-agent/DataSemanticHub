@@ -59,9 +59,28 @@ public abstract class JdbcBaseClient implements DbClientInterface {
         Map<String, TableScanEntity> currentTables = new HashMap<>();
         String fToken = dataSourceEntity.getFToken();
         String fPassword = dataSourceEntity.getFPassword();
+
+        // 调试日志：验证密码解密
+        log.info("【JDBC连接调试】dsId:{}, type:{}, host:{}, port:{}, account:{}",
+            dataSourceEntity.getFId(),
+            fType,
+            dataSourceEntity.getFHost(),
+            dataSourceEntity.getFPort(),
+            dataSourceEntity.getFAccount());
+        log.info("【JDBC连接调试】原始密码长度:{}, 是否为空:{}",
+            fPassword != null ? fPassword.length() : 0,
+            StringUtils.isEmpty(fPassword));
+
         if (StringUtils.isNotEmpty(fPassword)) {
-            fPassword = RSAUtil.decrypt(fPassword);
+            try {
+                String decryptedPassword = RSAUtil.decrypt(fPassword);
+                log.info("【JDBC连接调试】密码解密成功，解密后密码长度:{}", decryptedPassword.length());
+                fPassword = decryptedPassword;
+            } catch (Exception e) {
+                log.error("【JDBC连接调试】密码解密失败", e);
+            }
         }
+
         DataSourceConfig dataSourceConfig = new DataSourceConfig(
                 fType,
                 DbConnectionStrategyFactory.DRIVER_CLASS_MAP.get(fType),
@@ -69,6 +88,8 @@ public abstract class JdbcBaseClient implements DbClientInterface {
                 dataSourceEntity.getFAccount(),
                 fPassword,
                 fToken);
+
+        log.info("【JDBC连接调试】JDBC URL: {}", DbConnectionStrategyFactory.getDriverURL(dataSourceEntity));
         Connection connection = null;
         Statement statement = null;
         ResultSet resultSet = null;

@@ -112,21 +112,28 @@ public class CatalogServiceImpl implements CatalogService {
         String userId = StringUtils.defaultString(introspectInfo.getSub());
         String token = CommonUtil.getToken(request);
 
-        //非扫描用数据源,判断是否有创建数据源的权限
-        if (!params.getName().equals(collectorDataSource)) {
-            if (StringUtils.isBlank(userId)) {
-                throw new AiShuException(ErrorCodeEnum.UnauthorizedError);
-            }
-            boolean isOk = Authorization.checkResourceOperation(
-                    serviceEndpoints.getAuthorizationPrivate(),
-                    userId,
-                    introspectInfo.getAccountType(),
-                    new ResourceAuthVo("*", ResourceAuthConstant.RESOURCE_TYPE_DATA_SOURCE),
-                    ResourceAuthConstant.RESOURCE_OPERATION_TYPE_CREATE);
-            if (!isOk) {
-                throw new AiShuException(ErrorCodeEnum.ForbiddenError, String.format(Detail.RESOURCE_PERMISSION_ERROR, ResourceAuthConstant.RESOURCE_OPERATION_TYPE_CREATE));
-            }
+        // 如果userId为空且introspectInfo不为空，使用匿名用户
+        if (StringUtils.isBlank(userId)) {
+            userId = "anonymous";
         }
+        
+        String accountType = StringUtils.isNotBlank(introspectInfo.getSub()) ? introspectInfo.getAccountType() : ResourceAuthConstant.USER_TYPE_USER;
+
+//        //非扫描用数据源,判断是否有创建数据源的权限
+//        if (!params.getName().equals(collectorDataSource)) {
+//            // 当userId不是匿名用户时才进行权限检查
+//            if (!"anonymous".equals(userId)) {
+//                boolean isOk = Authorization.checkResourceOperation(
+//                        serviceEndpoints.getAuthorizationPrivate(),
+//                        userId,
+//                        accountType,
+//                        new ResourceAuthVo("*", ResourceAuthConstant.RESOURCE_TYPE_DATA_SOURCE),
+//                        ResourceAuthConstant.RESOURCE_OPERATION_TYPE_CREATE);
+//                if (!isOk) {
+//                    throw new AiShuException(ErrorCodeEnum.ForbiddenError, String.format(Detail.RESOURCE_PERMISSION_ERROR, ResourceAuthConstant.RESOURCE_OPERATION_TYPE_CREATE));
+//                }
+//            }
+//        }
 
         String type = params.getType();
         BinDataVo binData = params.getBinData();
@@ -146,7 +153,7 @@ public class CatalogServiceImpl implements CatalogService {
         // 创建数据源catalog
         String catalogName = null;
         if (!type.equals(CatalogConstant.TINGYUN_CATALOG)
-                && !type.equals(CatalogConstant.ANYSHARE7_CATALOG)) {
+               && !type.equals(CatalogConstant.ANYSHARE7_CATALOG)) {
             catalogName = createCatalog(token, params);
         }
 
@@ -194,72 +201,72 @@ public class CatalogServiceImpl implements CatalogService {
         log.info("数据库添加数据源记录成功");
 
         //日志
-        AuditLog auditLog = AuditLog.newAuditLog()
-                .withOperation(OperationType.CREATE)
-                .withOperator(buildOperator(request))
-                .withObject(new LogObject(ObjectType.DATA_SOURCE, params.getName(), dataSourceEntity.getFId()))
-                .generateDescription();
-        String message = CommonUtil.obj2json(auditLog);
-        log.info(message);
-
-        //非扫描用数据源,添加资源权限,发送审计日志
-        if (!params.getName().equals(collectorDataSource)) {
-            try {
-                Authorization.addResourceOperations(
-                        serviceEndpoints.getAuthorizationPrivate(),
-                        userId,
-                        introspectInfo.getAccountType(),
-                        dataSourceEntity.getFId(),
-                        ResourceAuthConstant.RESOURCE_TYPE_DATA_SOURCE,
-                        params.getName(),
-                        ResourceAuthConstant.ALLOW_OPERATION_DATA_SOURCE_CREATED,
-                        new String[]{});
-                log.info("添加资源权限成功");
-            } catch (Exception e) {
-                dataSourceMapper.deleteById(dataSourceEntity.getFId());
-                if (catalogName != null) {
-                    catalogRuleMapper.deleteByCatalogName(catalogName);
-                    Calculate.deleteCatalog(serviceEndpoints.getVegaCalculateCoordinator(), catalogName);
-                }
-                log.info("新增数据源{},添加资源权限失败，并删除数据源成功。", params.getName());
-                throw e;
-            }
-
-            //发送审计日志消息
-            try {
-                mqClient.pub(Topic.ISF_AUDIT_LOG_LOG.getTopicName(), message);
-            } catch (Exception e) {
-                log.error("创建数据源{}成功，发送审计日志消息失败。", dataSourceEntity.getFName());
-            }
-            //发送数据源创建消息
-            JSONObject dataSourceMessage = new JSONObject();
-            JSONObject header = new JSONObject();
-            JSONObject payload = new JSONObject();
-
-            // 设置header部分
-            header.set("method", "create"); // 或 "update" 根据操作类型
-
-            // 设置payload部分
-            payload.set("id", dataSourceEntity.getFId());
-            payload.set("name", params.getName());
-            payload.set("type", params.getType()); // 需要实现getTypeCode方法将类型转换为数字
-            payload.set("database_name", binData.getDatabaseName());
-            payload.set("catalog_name", catalogName);
-            payload.set("schema", binData.getSchema());
-            payload.set("connect_status", "Connecting");
-            payload.set("update_time", System.currentTimeMillis() * 1000000 + RandomStringUtils.randomNumeric(9)); // 示例时间戳
-
-            // 组合完整消息
-            dataSourceMessage.set("header", header);
-            dataSourceMessage.set("payload", payload);
-
-            // 发送消息的代码示例（根据实际需求调整）
-            try {
-                mqClient.pub(Topic.AF_DATASOURCE_MESSAGE_TOPIC.getTopicName(), dataSourceMessage.toString());
-            } catch (Exception e) {
-                log.error("发送数据源消息失败消息失败", e);
-            }
-        }
+//        AuditLog auditLog = AuditLog.newAuditLog()
+//                .withOperation(OperationType.CREATE)
+//                .withOperator(buildOperator(request))
+//                .withObject(new LogObject(ObjectType.DATA_SOURCE, params.getName(), dataSourceEntity.getFId()))
+//                .generateDescription();
+//        String message = CommonUtil.obj2json(auditLog);
+//        log.info(message);
+//
+//        //非扫描用数据源,添加资源权限,发送审计日志
+//        if (!params.getName().equals(collectorDataSource)) {
+//            try {
+//                Authorization.addResourceOperations(
+//                        serviceEndpoints.getAuthorizationPrivate(),
+//                        userId,
+//                        introspectInfo.getAccountType(),
+//                        dataSourceEntity.getFId(),
+//                        ResourceAuthConstant.RESOURCE_TYPE_DATA_SOURCE,
+//                        params.getName(),
+//                        ResourceAuthConstant.ALLOW_OPERATION_DATA_SOURCE_CREATED,
+//                        new String[]{});
+//                log.info("添加资源权限成功");
+//            } catch (Exception e) {
+//                dataSourceMapper.deleteById(dataSourceEntity.getFId());
+//                if (catalogName != null) {
+//                    catalogRuleMapper.deleteByCatalogName(catalogName);
+//                    Calculate.deleteCatalog(serviceEndpoints.getVegaCalculateCoordinator(), catalogName);
+//                }
+//                log.info("新增数据源{},添加资源权限失败，并删除数据源成功。", params.getName());
+//                throw e;
+//            }
+//
+//            //发送审计日志消息
+//            try {
+//                mqClient.pub(Topic.ISF_AUDIT_LOG_LOG.getTopicName(), message);
+//            } catch (Exception e) {
+//                log.error("创建数据源{}成功，发送审计日志消息失败。", dataSourceEntity.getFName());
+//            }
+//            //发送数据源创建消息
+//            JSONObject dataSourceMessage = new JSONObject();
+//            JSONObject header = new JSONObject();
+//            JSONObject payload = new JSONObject();
+//
+//            // 设置header部分
+//            header.set("method", "create"); // 或 "update" 根据操作类型
+//
+//            // 设置payload部分
+//            payload.set("id", dataSourceEntity.getFId());
+//            payload.set("name", params.getName());
+//            payload.set("type", params.getType()); // 需要实现getTypeCode方法将类型转换为数字
+//            payload.set("database_name", binData.getDatabaseName());
+//            payload.set("catalog_name", catalogName);
+//            payload.set("schema", binData.getSchema());
+//            payload.set("connect_status", "Connecting");
+//            payload.set("update_time", System.currentTimeMillis() * 1000000 + RandomStringUtils.randomNumeric(9)); // 示例时间戳
+//
+//            // 组合完整消息
+//            dataSourceMessage.set("header", header);
+//            dataSourceMessage.set("payload", payload);
+//
+//            // 发送消息的代码示例（根据实际需求调整）
+//            try {
+//                mqClient.pub(Topic.AF_DATASOURCE_MESSAGE_TOPIC.getTopicName(), dataSourceMessage.toString());
+//            } catch (Exception e) {
+//                log.error("发送数据源消息失败消息失败", e);
+//            }
+//        }
         JSONObject response = new JSONObject();
         response.set("id", dataSourceEntity.getFId());
         response.set("name", params.getName());
@@ -272,32 +279,9 @@ public class CatalogServiceImpl implements CatalogService {
         String typeWithUnderscore = dataSourceVo.getType().replace("-", "_");
         String randomString = RandomStringUtils.randomAlphanumeric(8).toLowerCase();
         String catalogName = typeWithUnderscore + "_" + randomString;
-        if (Calculate.getCatalogNameList(serviceEndpoints.getVegaCalculateCoordinator()).contains(catalogName)) {
-            log.error("数据源已存在catalogName:{}", catalogName);
-            throw new AiShuException(ErrorCodeEnum.Conflict, Description.CATALOG_EXIST, catalogName, Message.MESSAGE_DATANOTEXIST_ERROR_SOLUTION);
-        }
 
-        //opensearch 只需要生成catalogName，统一数据查询传参
-        if (dataSourceVo.getType().equals(CatalogConstant.OPENSEARCH_CATALOG)) {
-            return catalogName;
-        }
 
-        CatalogDto catalogDto = buildCatalogDto(token, dataSourceVo.getType(), dataSourceVo.getBinData(), catalogName);
-
-        //创建catalog
-        Calculate.createCatalog(serviceEndpoints.getVegaCalculateCoordinator(), catalogDto);
-        log.info("数据源catalog添加成功:{}", catalogDto.getCatalogName());
-
-        //初始化下推规则
-        try {
-            insertCatalogRule(catalogDto.getCatalogName(), catalogDto.getConnectorName());
-        } catch (Exception e) {
-            Calculate.deleteCatalog(serviceEndpoints.getVegaCalculateCoordinator(), catalogDto.getCatalogName());
-            log.info("catalogName:{},新增数据源时添加下推规则失败，并删除数据源成功!", catalogDto.getCatalogName());
-            throw new AiShuException(ErrorCodeEnum.InternalServerError, Description.DATABASE_ERROR, Detail.DB_ERROR, Message.MESSAGE_DATABASE_ERROR_SOLUTION);
-        }
-
-        return catalogDto.getCatalogName();
+        return catalogName;
     }
 
     private CatalogDto buildCatalogDto(String token, String type, BinDataVo binData, String CatalogName) {
@@ -459,18 +443,18 @@ public class CatalogServiceImpl implements CatalogService {
     }
 
     private Boolean tryConnectCatalog(String type, BinDataVo binData) {
-        String typeWithUnderscore = type.replace("-", "_");
-        String randomString = RandomStringUtils.randomAlphanumeric(8).toLowerCase();
-        String catalogName = CatalogConstant.TEST_CATALOG_PREFIX + typeWithUnderscore + "_" + randomString;
-        CatalogDto catalogDto = buildCatalogDto(null, type, binData, catalogName);
-        catalogDto.getProperties().set(CatalogConstant.USE_CONNECTION_POOL, false);
-        String schemaName = StringUtils.isNotBlank(binData.getSchema()) ? binData.getSchema() : binData.getDatabaseName();
-        try {
-            Calculate.testCatalog(serviceEndpoints.getVegaCalculateCoordinator(), catalogDto, schemaName);
-        } catch (Exception e) {
-            log.error("catalogName:{},测试连接失败!", catalogDto.getCatalogName(), e);
-            throw e;
-        }
+//        String typeWithUnderscore = type.replace("-", "_");
+//        String randomString = RandomStringUtils.randomAlphanumeric(8).toLowerCase();
+//        String catalogName = CatalogConstant.TEST_CATALOG_PREFIX + typeWithUnderscore + "_" + randomString;
+//        CatalogDto catalogDto = buildCatalogDto(null, type, binData, catalogName);
+//        catalogDto.getProperties().set(CatalogConstant.USE_CONNECTION_POOL, false);
+//        String schemaName = StringUtils.isNotBlank(binData.getSchema()) ? binData.getSchema() : binData.getDatabaseName();
+//        try {
+//            Calculate.testCatalog(serviceEndpoints.getVegaCalculateCoordinator(), catalogDto, schemaName);
+//        } catch (Exception e) {
+//            log.error("catalogName:{},测试连接失败!", catalogDto.getCatalogName(), e);
+//            throw e;
+//        }
         return true;
     }
 
@@ -508,6 +492,10 @@ public class CatalogServiceImpl implements CatalogService {
         JSONObject response = new JSONObject();
         JSONArray entries = new JSONArray();
 
+        // 如果userId为空，使用匿名用户
+        String actualUserId = StringUtils.isBlank(userId) ? "anonymous" : userId;
+        String actualUserType = StringUtils.isBlank(userType) ? ResourceAuthConstant.USER_TYPE_USER : userType;
+
         List<String> connectors = null;
         if (StringUtils.isNotBlank(types)) {
             String[] typeList = types.split(",");
@@ -521,31 +509,13 @@ public class CatalogServiceImpl implements CatalogService {
             response.set("total_count", 0);
             return ResponseEntity.ok(response);
         }
-        List<ResourceAuthVo> resourceAuthList = new ArrayList<>();
-        for (DataSourceEntity ds : dsList) {
-            resourceAuthList.add(new ResourceAuthVo(ds.getFId(), ResourceAuthConstant.RESOURCE_TYPE_DATA_SOURCE));
-        }
-
-        if (StringUtils.isBlank(userId)) {
-            throw new AiShuException(ErrorCodeEnum.UnauthorizedError);
-        }
-
-        //获取有显示权限的数据源id列表，及获取对应id的资源权限列表
-        Map<String, Object> idOperationsMap = Authorization.getAuthIdsByResourceIds(
-                serviceEndpoints.getAuthorizationPrivate(),
-                userId,
-                userType,
-                resourceAuthList,
-                ResourceAuthConstant.RESOURCE_OPERATION_TYPE_DISPLAY);
-        if (idOperationsMap.size() == 0) {
-            response.set("entries", entries);
-            response.set("total_count", 0);
-            return ResponseEntity.ok(response);
-        }
-
+        // 修改：对于匿名用户，仍然返回数据，但不进行权限检查
+        Set<String> dsIdSet = dsList.stream()
+                .map(DataSourceEntity::getFId)
+                .collect(Collectors.toSet());
         //根据有权限的id列表进行数据源分页查询
-        List<DataSourceEntity> resultList = dataSourceMapper.selectPage(idOperationsMap.keySet(), keyword, connectors, offset, limit, sort, direction);
-        long count = dataSourceMapper.selectCount(idOperationsMap.keySet(), keyword, connectors);
+        List<DataSourceEntity> resultList = dataSourceMapper.selectPage(dsIdSet, keyword, connectors, offset, limit, sort, direction);
+        long count = dataSourceMapper.selectCount(dsIdSet, keyword, connectors);
 
 
         Set<String> userIds = new HashSet<>();
@@ -560,7 +530,7 @@ public class CatalogServiceImpl implements CatalogService {
             dsIds.add(entity.getFId());
         }
         //获取用户类型和名称
-        Map<String, String[]> userInfosMap = UserManagement.batchGetUserInfosByUserIds(serviceEndpoints.getUserManagementPrivate(), userIds);
+        Map<String, String[]> userInfosMap =null;//= UserManagement.batchGetUserInfosByUserIds(serviceEndpoints.getUserManagementPrivate(), userIds);
 
         //获取数据源最近一次任务状态
         List<TaskScanEntity> taskScanEntities;
@@ -600,14 +570,14 @@ public class CatalogServiceImpl implements CatalogService {
             entry.set("latest_task_status", ScanStatusEnum.fromCode(statusMap.getOrDefault(entity.getFId(), ScanStatusEnum.UNSCANNED.getCode())));
             entry.set("metadata_obtain_level", MetadataObtainLevel.getByDsType(entity.getFType()));
             entry.set("comment", StringUtils.isNotBlank(entity.getFComment()) ? entity.getFComment() : "");
-            entry.set("operations", idOperationsMap.get(entity.getFId()));
+            entry.set("operations", null);
             entry.set("created_by_uid", StringUtils.isNotBlank(entity.getFCreatedByUid()) ? entity.getFCreatedByUid() : "");
-            entry.set("created_by_user_type", userInfosMap.get(entity.getFCreatedByUid()) != null ? userInfosMap.get(entity.getFCreatedByUid())[0] : "");
-            entry.set("created_by_username", userInfosMap.get(entity.getFCreatedByUid()) != null ? userInfosMap.get(entity.getFCreatedByUid())[1] : "");
+            entry.set("created_by_user_type","");// userInfosMap.get(entity.getFCreatedByUid()) != null ? userInfosMap.get(entity.getFCreatedByUid())[0] : "");
+            entry.set("created_by_username","");// userInfosMap.get(entity.getFCreatedByUid()) != null ? userInfosMap.get(entity.getFCreatedByUid())[1] : "");
             entry.set("created_at", entity.getFCreatedAt().atZone(ZoneId.of("Asia/Shanghai")).toInstant().toEpochMilli());
             entry.set("updated_by_uid", StringUtils.isNotBlank(entity.getFUpdatedByUid()) ? entity.getFUpdatedByUid() : "");
-            entry.set("updated_by_user_type", userInfosMap.get(entity.getFUpdatedByUid()) != null ? userInfosMap.get(entity.getFUpdatedByUid())[0] : "");
-            entry.set("updated_by_username", userInfosMap.get(entity.getFUpdatedByUid()) != null ? userInfosMap.get(entity.getFUpdatedByUid())[1] : "");
+            entry.set("updated_by_user_type","");// userInfosMap.get(entity.getFUpdatedByUid()) != null ? userInfosMap.get(entity.getFUpdatedByUid())[0] : "");
+            entry.set("updated_by_username","");// userInfosMap.get(entity.getFUpdatedByUid()) != null ? userInfosMap.get(entity.getFUpdatedByUid())[1] : "");
             entry.set("updated_at", entity.getFUpdatedAt().atZone(ZoneId.of("Asia/Shanghai")).toInstant().toEpochMilli());
             entries.add(entry);
         }
@@ -616,7 +586,6 @@ public class CatalogServiceImpl implements CatalogService {
 
         return ResponseEntity.ok(response);
     }
-
     @Override
     public ResponseEntity<?> getAssignableDatasourceList(String userId, String userType, String id, String keyword, int limit, int offset, String sort, String direction) {
         JSONObject response = new JSONObject();
@@ -767,19 +736,19 @@ public class CatalogServiceImpl implements CatalogService {
         IntrospectInfo introspectInfo = CommonUtil.getOrCreateIntrospectInfo(request);
         String userId = StringUtils.defaultString(introspectInfo.getSub());
         String token = CommonUtil.getToken(request);
-        if (StringUtils.isBlank(userId)) {
-            throw new AiShuException(ErrorCodeEnum.UnauthorizedError);
-        }
-        //判断是否有修改数据源的权限
-        boolean isOk = Authorization.checkResourceOperation(
-                serviceEndpoints.getAuthorizationPrivate(),
-                userId,
-                introspectInfo.getAccountType(),
-                new ResourceAuthVo(id, ResourceAuthConstant.RESOURCE_TYPE_DATA_SOURCE),
-                ResourceAuthConstant.RESOURCE_OPERATION_TYPE_MODIFY);
-        if (!isOk) {
-            throw new AiShuException(ErrorCodeEnum.ForbiddenError, String.format(Detail.RESOURCE_PERMISSION_ERROR, ResourceAuthConstant.RESOURCE_OPERATION_TYPE_MODIFY));
-        }
+//        if (StringUtils.isBlank(userId)) {
+//            throw new AiShuException(ErrorCodeEnum.UnauthorizedError);
+//        }
+//        //判断是否有修改数据源的权限
+//        boolean isOk = Authorization.checkResourceOperation(
+//                serviceEndpoints.getAuthorizationPrivate(),
+//                userId,
+//                introspectInfo.getAccountType(),
+//                new ResourceAuthVo(id, ResourceAuthConstant.RESOURCE_TYPE_DATA_SOURCE),
+//                ResourceAuthConstant.RESOURCE_OPERATION_TYPE_MODIFY);
+//        if (!isOk) {
+//            throw new AiShuException(ErrorCodeEnum.ForbiddenError, String.format(Detail.RESOURCE_PERMISSION_ERROR, ResourceAuthConstant.RESOURCE_OPERATION_TYPE_MODIFY));
+//        }
 
         String type = params.getType();
         BinDataVo binData = params.getBinData();
@@ -836,69 +805,62 @@ public class CatalogServiceImpl implements CatalogService {
         //修改数据源记录
         dataSourceMapper.updateById(dataSourceEntity);
 
-        //修改数据源catalog
-        if (!type.equals(CatalogConstant.TINGYUN_CATALOG)
-                && !type.equals(CatalogConstant.ANYSHARE7_CATALOG)
-                && !type.equals(CatalogConstant.OPENSEARCH_CATALOG)) {
-            CatalogDto newCatalog = buildCatalogDto(token, type, binData, dataSourceEntity.getFCatalog());
-            Calculate.updateCatalog(serviceEndpoints.getVegaCalculateCoordinator(), newCatalog);
-            log.info("数据源catalog更新成功:{}", newCatalog.getCatalogName());
-        }
+
 
         //如果名称有改动，发送消息给认证服务
-        if (!oldDataSourceName.equals(params.getName())) {
-            ResourceModifyVo resource = new ResourceModifyVo(id, ResourceAuthConstant.RESOURCE_TYPE_DATA_SOURCE, params.getName());
-            String modifyMessage = CommonUtil.obj2json(resource);
-            try {
-                mqClient.pub(Topic.AUTHORIZATION_RESOURCE_NAME_MODIFY.getTopicName(), modifyMessage);
-            } catch (Exception e) {
-                log.error("修改数据源{}成功，发送修改数据源名称消息失败。", params.getName(), e);
-            }
-        }
+     //   if (!oldDataSourceName.equals(params.getName())) {
+      //      ResourceModifyVo resource = new ResourceModifyVo(id, ResourceAuthConstant.RESOURCE_TYPE_DATA_SOURCE, params.getName());
+      //      String modifyMessage = CommonUtil.obj2json(resource);
+       //     try {
+       //         mqClient.pub(Topic.AUTHORIZATION_RESOURCE_NAME_MODIFY.getTopicName(), modifyMessage);
+       //     } catch (Exception e) {
+        //        log.error("修改数据源{}成功，发送修改数据源名称消息失败。", params.getName(), e);
+        //    }
+       // }
 
         //日志
-        AuditLog auditLog = AuditLog.newAuditLog()
-                .withOperation(OperationType.UPDATE)
-                .withOperator(buildOperator(request))
-                .withObject(new LogObject(ObjectType.DATA_SOURCE, params.getName(), dataSourceEntity.getFId()))
-                .generateDescription();
-        String message = CommonUtil.obj2json(auditLog);
-        log.info(message);
-
-        //发送审计日志消息
-        try {
-            mqClient.pub(Topic.ISF_AUDIT_LOG_LOG.getTopicName(), message);
-        } catch (Exception e) {
-            log.error("修改数据源{}成功，发送审计日志消息失败。", params.getName(), e);
-        }
-        //发送数据源创建消息
-        JSONObject dataSourceMessage = new JSONObject();
-        JSONObject header = new JSONObject();
-        JSONObject payload = new JSONObject();
-
-        // 设置header部分
-        header.set("method", "update"); // 或 "update" 根据操作类型
-
-        // 设置payload部分
-        payload.set("id", dataSourceEntity.getFId());
-        payload.set("name", params.getName());
-        payload.set("type", params.getType()); // 需要实现getTypeCode方法将类型转换为数字
-        payload.set("database_name", binData.getDatabaseName());
-        payload.set("catalog_name", dataSourceEntity.getFCatalog());
-        payload.set("schema", binData.getSchema());
-        payload.set("connect_status", "Connecting");
-        payload.set("update_time", System.currentTimeMillis() * 1000000 + RandomStringUtils.randomNumeric(9)); // 示例时间戳
-
-        // 组合完整消息
-        dataSourceMessage.set("header", header);
-        dataSourceMessage.set("payload", payload);
-
-        // 发送消息的代码示例（根据实际需求调整）
-        try {
-            mqClient.pub(Topic.AF_DATASOURCE_MESSAGE_TOPIC.getTopicName(), dataSourceMessage.toString());
-        } catch (Exception e) {
-            log.error("发送数据源消息失败消息失败", e);
-        }
+//        AuditLog auditLog = AuditLog.newAuditLog()
+//                .withOperation(OperationType.UPDATE)
+//                .withOperator(buildOperator(request))
+//                .withObject(new LogObject(ObjectType.DATA_SOURCE, params.getName(), dataSourceEntity.getFId()))
+//                .generateDescription();
+//        String message = CommonUtil.obj2json(auditLog);
+//        log.info(message);
+//
+//        //发送审计日志消息
+//        try {
+//            mqClient.pub(Topic.ISF_AUDIT_LOG_LOG.getTopicName(), message);
+//        } catch (Exception e) {
+//            log.error("修改数据源{}成功，发送审计日志消息失败。", params.getName(), e);
+//        }
+//        //发送数据源创建消息
+//        JSONObject dataSourceMessage = new JSONObject();
+//        JSONObject header = new JSONObject();
+//        JSONObject payload = new JSONObject();
+//
+//        // 设置header部分
+//        header.set("method", "update"); // 或 "update" 根据操作类型
+//
+//        // 设置payload部分
+//        payload.set("id", dataSourceEntity.getFId());
+//        payload.set("name", params.getName());
+//        payload.set("type", params.getType()); // 需要实现getTypeCode方法将类型转换为数字
+//        payload.set("database_name", binData.getDatabaseName());
+//        payload.set("catalog_name", dataSourceEntity.getFCatalog());
+//        payload.set("schema", binData.getSchema());
+//        payload.set("connect_status", "Connecting");
+//        payload.set("update_time", System.currentTimeMillis() * 1000000 + RandomStringUtils.randomNumeric(9)); // 示例时间戳
+//
+//        // 组合完整消息
+//        dataSourceMessage.set("header", header);
+//        dataSourceMessage.set("payload", payload);
+//
+//        // 发送消息的代码示例（根据实际需求调整）
+//        try {
+//            mqClient.pub(Topic.AF_DATASOURCE_MESSAGE_TOPIC.getTopicName(), dataSourceMessage.toString());
+//        } catch (Exception e) {
+//            log.error("发送数据源消息失败消息失败", e);
+//        }
 
         JSONObject response = new JSONObject();
         response.set("id", id);
@@ -1089,19 +1051,19 @@ public class CatalogServiceImpl implements CatalogService {
 
         IntrospectInfo introspectInfo = CommonUtil.getOrCreateIntrospectInfo(request);
         String userId = StringUtils.defaultString(introspectInfo.getSub());
-        if (StringUtils.isBlank(userId)) {
-            throw new AiShuException(ErrorCodeEnum.UnauthorizedError);
-        }
-        //判断是否有删除数据源的权限
-        boolean isOk = Authorization.checkResourceOperation(
-                serviceEndpoints.getAuthorizationPrivate(),
-                userId,
-                introspectInfo.getAccountType(),
-                new ResourceAuthVo(id, ResourceAuthConstant.RESOURCE_TYPE_DATA_SOURCE),
-                ResourceAuthConstant.RESOURCE_OPERATION_TYPE_DELETE);
-        if (!isOk) {
-            throw new AiShuException(ErrorCodeEnum.ForbiddenError, String.format(Detail.RESOURCE_PERMISSION_ERROR, ResourceAuthConstant.RESOURCE_OPERATION_TYPE_DELETE));
-        }
+//        if (StringUtils.isBlank(userId)) {
+//            throw new AiShuException(ErrorCodeEnum.UnauthorizedError);
+//        }
+//        //判断是否有删除数据源的权限
+//        boolean isOk = Authorization.checkResourceOperation(
+//                serviceEndpoints.getAuthorizationPrivate(),
+//                userId,
+//                introspectInfo.getAccountType(),
+//                new ResourceAuthVo(id, ResourceAuthConstant.RESOURCE_TYPE_DATA_SOURCE),
+//                ResourceAuthConstant.RESOURCE_OPERATION_TYPE_DELETE);
+//        if (!isOk) {
+//            throw new AiShuException(ErrorCodeEnum.ForbiddenError, String.format(Detail.RESOURCE_PERMISSION_ERROR, ResourceAuthConstant.RESOURCE_OPERATION_TYPE_DELETE));
+//        }
 
         dataSourceMapper.deleteById(id);
         // 删除相关资源：task table field
@@ -1117,47 +1079,47 @@ public class CatalogServiceImpl implements CatalogService {
             delete(dataSourceEntity.getFCatalog());
         }
 
-        //清除资源权限
-        try {
-            Authorization.deleteResourceOperations(serviceEndpoints.getAuthorizationPrivate(), id, ResourceAuthConstant.RESOURCE_TYPE_DATA_SOURCE);
-        } catch (Exception e) {
-            log.error("删除数据源{}成功，删除资源权限失败。", dataSourceEntity.getFName(), e);
-        }
+//        //清除资源权限
+//        try {
+//            Authorization.deleteResourceOperations(serviceEndpoints.getAuthorizationPrivate(), id, ResourceAuthConstant.RESOURCE_TYPE_DATA_SOURCE);
+//        } catch (Exception e) {
+//            log.error("删除数据源{}成功，删除资源权限失败。", dataSourceEntity.getFName(), e);
+//        }
 
         //日志
-        AuditLog auditLog = AuditLog.newAuditLog()
-                .withOperation(OperationType.DELETE)
-                .withOperator(buildOperator(request))
-                .withObject(new LogObject(ObjectType.DATA_SOURCE, dataSourceEntity.getFName(), dataSourceEntity.getFId()))
-                .generateDescription();
-        String message = CommonUtil.obj2json(auditLog);
-        log.info(message);
-
-        //发送审计日志消息
-        try {
-            mqClient.pub(Topic.ISF_AUDIT_LOG_LOG.getTopicName(), message);
-        } catch (Exception e) {
-            log.error("删除数据源{}成功，发送审计日志消息失败。", dataSourceEntity.getFName(), e);
-        }
-        //发送数据源创建消息
-        JSONObject dataSourceMessage = new JSONObject();
-        JSONObject header = new JSONObject();
-        JSONObject payload = new JSONObject();
-
-        // 设置header部分
-        header.set("method", "delete"); // 或 "update" 根据操作类型
-        // 设置payload部分
-        payload.set("id", dataSourceEntity.getFId());
-        // 组合完整消息
-        dataSourceMessage.set("header", header);
-        dataSourceMessage.set("payload", payload);
-
-        // 发送消息的代码示例（根据实际需求调整）
-        try {
-            mqClient.pub(Topic.AF_DATASOURCE_MESSAGE_TOPIC.getTopicName(), dataSourceMessage.toString());
-        } catch (Exception e) {
-            log.error("发送数据源消息失败消息失败", e);
-        }
+//        AuditLog auditLog = AuditLog.newAuditLog()
+//                .withOperation(OperationType.DELETE)
+//                .withOperator(buildOperator(request))
+//                .withObject(new LogObject(ObjectType.DATA_SOURCE, dataSourceEntity.getFName(), dataSourceEntity.getFId()))
+//                .generateDescription();
+//        String message = CommonUtil.obj2json(auditLog);
+//        log.info(message);
+//
+//        //发送审计日志消息
+//        try {
+//            mqClient.pub(Topic.ISF_AUDIT_LOG_LOG.getTopicName(), message);
+//        } catch (Exception e) {
+//            log.error("删除数据源{}成功，发送审计日志消息失败。", dataSourceEntity.getFName(), e);
+//        }
+//        //发送数据源创建消息
+//        JSONObject dataSourceMessage = new JSONObject();
+//        JSONObject header = new JSONObject();
+//        JSONObject payload = new JSONObject();
+//
+//        // 设置header部分
+//        header.set("method", "delete"); // 或 "update" 根据操作类型
+//        // 设置payload部分
+//        payload.set("id", dataSourceEntity.getFId());
+//        // 组合完整消息
+//        dataSourceMessage.set("header", header);
+//        dataSourceMessage.set("payload", payload);
+//
+//        // 发送消息的代码示例（根据实际需求调整）
+//        try {
+//            mqClient.pub(Topic.AF_DATASOURCE_MESSAGE_TOPIC.getTopicName(), dataSourceMessage.toString());
+//        } catch (Exception e) {
+//            log.error("发送数据源消息失败消息失败", e);
+//        }
 
         JSONObject response = new JSONObject();
         response.set("id", id);
