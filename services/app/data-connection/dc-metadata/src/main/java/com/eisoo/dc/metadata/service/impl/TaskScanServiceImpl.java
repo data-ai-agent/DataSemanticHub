@@ -313,11 +313,11 @@ public class TaskScanServiceImpl extends ServiceImpl<TaskScanMapper, TaskScanEnt
         List<TaskScanEntity> taskScanEntities = taskScanMapper.selectPage(ids, keyword, offset, limit, sort, direction);
         // 获取用户名称
         Set<String> userIds = new HashSet<>();
-        taskScanEntities.forEach(t -> userIds.add(t.getCreateUser()));
-        Map<String, String[]> userInfosMap = UserManagement.batchGetUserInfosByUserIds(serviceEndpoints.getUserManagementPrivate(), userIds);
+        //taskScanEntities.forEach(t -> userIds.add(t.getCreateUser()));
+        Map<String, String[]> userInfosMap=null; //= UserManagement.batchGetUserInfosByUserIds(serviceEndpoints.getUserManagementPrivate(), userIds);
 
         List<TaskScanDto> results = taskScanEntities.stream().map(t -> {
-            String userName = userInfosMap.getOrDefault(t.getCreateUser(), new String[]{"", ""})[1];
+            String userName = "anymouse";//userInfosMap.getOrDefault(t.getCreateUser(), new String[]{"", ""})[1];
             DataSourceEntity ds = dataSourceMapper.selectById(t.getDsId());
             Integer typeTask = t.getType();
             String taskStatus = ScheduleJobStatusEnum.OPEN.getDesc();
