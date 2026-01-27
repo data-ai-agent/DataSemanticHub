@@ -54,7 +54,7 @@ const AssetScanningView = ({ onNavigate }: { onNavigate?: (moduleId: string) => 
         type: ScanTaskType.DataSourceInstant,
         dataSourceId: '',
         dataSourceType: 'MySQL',
-        scanStrategy: ScanStrategy.Full,
+        scanStrategy: [] as ('insert' | 'update' | 'delete')[],
         cronExpression: '0 0 2 * * ?',
         status: 'open' as 'open' | 'close',
     });
@@ -130,7 +130,7 @@ const AssetScanningView = ({ onNavigate }: { onNavigate?: (moduleId: string) => 
                 type: newTask.type,
                 dataSourceId: newTask.dataSourceId,
                 dataSourceType: newTask.dataSourceType,
-                scanStrategy: newTask.scanStrategy ? [newTask.scanStrategy] : undefined,
+                scanStrategy: newTask.scanStrategy.length > 0 ? newTask.scanStrategy : undefined,
                 cronExpression: newTask.type === ScanTaskType.DataSourceScheduled ? newTask.cronExpression : undefined,
                 status: newTask.status,
             });
@@ -155,7 +155,7 @@ const AssetScanningView = ({ onNavigate }: { onNavigate?: (moduleId: string) => 
             type: ScanTaskType.DataSourceInstant,
             dataSourceId: '',
             dataSourceType: 'MySQL',
-            scanStrategy: ScanStrategy.Full,
+            scanStrategy: [] as ('insert' | 'update' | 'delete')[],
             cronExpression: '0 0 2 * * ?',
             status: 'open',
         });
@@ -577,27 +577,60 @@ const AssetScanningView = ({ onNavigate }: { onNavigate?: (moduleId: string) => 
                                 </select>
                             </div>
 
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">扫描策略</label>
-                                <div className="grid grid-cols-2 gap-3">
-                                    {[
-                                        { id: ScanStrategy.Full, label: '全量扫描', desc: '扫描所有表和字段' },
-                                        { id: ScanStrategy.Incremental, label: '增量扫描', desc: '仅扫描变更部分' },
-                                    ].map(strategy => (
-                                        <button
-                                            key={strategy.id}
-                                            onClick={() => setNewTask({ ...newTask, scanStrategy: strategy.id })}
-                                            className={`p-3 rounded-lg border-2 text-left transition-all ${newTask.scanStrategy === strategy.id
-                                                ? 'border-emerald-500 bg-emerald-50'
-                                                : 'border-slate-200 hover:border-slate-300'
+                            {/* 只在数据源即时扫描(type=0)和定时扫描(type=2)时显示扫描策略选项 */}
+                            {(newTask.type === ScanTaskType.DataSourceInstant || newTask.type === ScanTaskType.DataSourceScheduled) && (
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                                        扫描策略 <span className="text-slate-400 font-normal">(可选，可选择一项或多项)</span>
+                                    </label>
+                                    <div className="space-y-2">
+                                        {[
+                                            { id: 'insert' as const, label: '插入', desc: '扫描新增的数据' },
+                                            { id: 'update' as const, label: '更新', desc: '扫描修改的数据' },
+                                            { id: 'delete' as const, label: '删除', desc: '扫描删除的数据' },
+                                        ].map(strategy => (
+                                            <label
+                                                key={strategy.id}
+                                                className={`flex items-center p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                                                    newTask.scanStrategy.includes(strategy.id)
+                                                        ? 'border-emerald-500 bg-emerald-50'
+                                                        : 'border-slate-200 hover:border-slate-300'
                                                 }`}
-                                        >
-                                            <div className="font-medium text-sm text-slate-700 mb-1">{strategy.label}</div>
-                                            <div className="text-xs text-slate-500">{strategy.desc}</div>
-                                        </button>
-                                    ))}
+                                            >
+                                                <input
+                                                    type="checkbox"
+                                                    checked={newTask.scanStrategy.includes(strategy.id)}
+                                                    onChange={(e) => {
+                                                        if (e.target.checked) {
+                                                            setNewTask({
+                                                                ...newTask,
+                                                                scanStrategy: [...newTask.scanStrategy, strategy.id]
+                                                            });
+                                                        } else {
+                                                            setNewTask({
+                                                                ...newTask,
+                                                                scanStrategy: newTask.scanStrategy.filter(s => s !== strategy.id)
+                                                            });
+                                                        }
+                                                    }}
+                                                    className="w-4 h-4 text-emerald-600 rounded focus:ring-2 focus:ring-emerald-500"
+                                                />
+                                                <div className="ml-3">
+                                                    <div className="font-medium text-sm text-slate-700">{strategy.label}</div>
+                                                    <div className="text-xs text-slate-500">{strategy.desc}</div>
+                                                </div>
+                                            </label>
+                                        ))}
+                                    </div>
+                                    {newTask.scanStrategy.length > 0 && (
+                                        <div className="mt-2 text-xs text-slate-500">
+                                            已选择: {newTask.scanStrategy.map(s =>
+                                                s === 'insert' ? '插入' : s === 'update' ? '更新' : '删除'
+                                            ).join('、')}
+                                        </div>
+                                    )}
                                 </div>
-                            </div>
+                            )}
 
                             {newTask.type === ScanTaskType.DataSourceScheduled && (
                                 <div>
@@ -807,14 +840,12 @@ const AssetScanningView = ({ onNavigate }: { onNavigate?: (moduleId: string) => 
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-1">扫描策略</label>
-                                <select
-                                    value={selectedScheduledTask.scanStrategy}
+                                <input
+                                    type="text"
+                                    value={selectedScheduledTask.scanStrategy === 'full' ? '全量扫描' : '增量扫描'}
                                     disabled
                                     className="w-full px-3 py-2 border border-slate-200 rounded-md bg-slate-50 text-slate-500 text-sm"
-                                >
-                                    <option value="full">全量扫描</option>
-                                    <option value="incremental">增量扫描</option>
-                                </select>
+                                />
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-2">任务状态</label>

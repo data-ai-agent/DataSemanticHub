@@ -44,13 +44,15 @@ export enum TaskStatus {
 }
 
 /**
- * 扫描策略
+ * 扫描策略（仅增量扫描时使用）
  */
 export enum ScanStrategy {
-    /** 全量扫描 */
-    Full = 'full',
-    /** 增量扫描 */
-    Incremental = 'incremental',
+    /** 插入 */
+    Insert = 'insert',
+    /** 更新 */
+    Update = 'update',
+    /** 删除 */
+    Delete = 'delete',
 }
 
 /**
@@ -89,8 +91,8 @@ export interface ScanDataSourceInfo {
     ds_id: string;
     /** 数据源类型 */
     ds_type: string;
-    /** 扫描策略 */
-    scan_strategy?: ScanStrategy[];
+    /** 扫描策略（仅在增量扫描时使用） */
+    scan_strategy?: ('insert' | 'update' | 'delete')[];
 }
 
 /**
@@ -201,8 +203,8 @@ export interface UpdateScheduledScanRequest {
     schedule_id: string;
     /** 定时表达式 */
     cron_expression: string;
-    /** 扫描策略 */
-    scan_strategy?: ScanStrategy;
+    /** 扫描策略（定时扫描不使用此字段） */
+    scan_strategy?: never;
     /** 状态 */
     status?: 'open' | 'close';
 }
@@ -217,8 +219,8 @@ export interface ScheduledScanStatus {
     name: string;
     /** 数据源类型 */
     ds_type: string;
-    /** 扫描策略 */
-    scan_strategy: ScanStrategy;
+    /** 扫描策略（定时扫描不使用此字段） */
+    scan_strategy?: never;
     /** 定时表达式 */
     cron_expression: string;
     /** 状态 */
@@ -337,8 +339,8 @@ export interface ScheduledScan {
     name: string;
     /** 数据源类型 */
     dataSourceType: string;
-    /** 扫描策略 */
-    scanStrategy: 'full' | 'incremental';
+    /** 扫描策略（保留字段供展示，但不发送后端） */
+    scanStrategy?: 'full' | 'incremental';
     /** 定时表达式 */
     cronExpression: string;
     /** 状态 */
@@ -383,11 +385,11 @@ export interface CreateScanTaskParams {
     dataSourceId: string;
     /** 数据源类型 */
     dataSourceType: string;
-    /** 扫描策略 */
-    scanStrategy?: ScanStrategy[];
-    /** 表ID列表（type为1或3时需要） */
+    /** 扫描策略（仅在数据源即时扫描type=0和定时扫描type=2时使用，支持insert/update/delete的一种或几种组合） */
+    scanStrategy?: ('insert' | 'update' | 'delete')[];
+    /** 表ID列表（type为1时需要） */
     tables?: string[];
-    /** 定时表达式（针对定时扫描） */
+    /** 定时表达式（针对定时扫描type=2） */
     cronExpression?: string;
     /** 任务状态 */
     status?: 'open' | 'close';
@@ -515,7 +517,8 @@ export const fromBackendScheduledScan = (backend: ScheduledScanStatus): Schedule
         scheduleId: backend.schedule_id,
         name: backend.name,
         dataSourceType: formatDataSourceType(backend.ds_type),
-        scanStrategy: backend.scan_strategy,
+        // 定时扫描不使用 scan_strategy，这里可以设置默认值或不设置
+        scanStrategy: 'full', // 默认全量扫描，仅供前端展示
         cronExpression: backend.cron_expression,
         status: backend.status,
         createTime: backend.create_time,
@@ -605,15 +608,19 @@ export const scanService = {
      */
     async createScanTask(params: CreateScanTaskParams): Promise<ScanTask> {
         try {
-            const requestBody: CreateScanTaskRequest = {
+            const requestBody: any = {
                 scan_name: params.scanName,
                 type: params.type,
                 ds_info: {
                     ds_id: params.dataSourceId,
                     ds_type: params.dataSourceType.toLowerCase(),
-                    scan_strategy: params.scanStrategy ? [params.scanStrategy] : undefined,
                 },
             };
+
+            // 只在有 scanStrategy 且是数据源扫描(type=0)或定时扫描(type=2)时才添加此字段
+            if (params.scanStrategy && (params.type === ScanTaskType.DataSourceInstant || params.type === ScanTaskType.DataSourceScheduled)) {
+                requestBody.ds_info.scan_strategy = params.scanStrategy;
+            }
 
             if (params.tables) {
                 requestBody.tables = params.tables;
@@ -649,18 +656,26 @@ export const scanService = {
      */
     async batchCreateScanTasks(params: CreateScanTaskParams[]): Promise<ScanTask[]> {
         try {
-            const requestBody: CreateScanTaskRequest[] = params.map(param => ({
-                scan_name: param.scanName,
-                type: param.type,
-                ds_info: {
-                    ds_id: param.dataSourceId,
-                    ds_type: param.dataSourceType.toLowerCase(),
-                    scan_strategy: param.scanStrategy ? [param.scanStrategy] : undefined,
-                },
-                ...(param.tables && { tables: param.tables }),
-                ...(param.cronExpression && { cron_expression: param.cronExpression }),
-                ...(param.status && { status: param.status }),
-            }));
+            const requestBody: any[] = params.map(param => {
+                const requestObj: any = {
+                    scan_name: param.scanName,
+                    type: param.type,
+                    ds_info: {
+                        ds_id: param.dataSourceId,
+                        ds_type: param.dataSourceType.toLowerCase(),
+                    },
+                    ...(param.tables && { tables: param.tables }),
+                    ...(param.cronExpression && { cron_expression: param.cronExpression }),
+                    ...(param.status && { status: param.status }),
+                };
+
+                // 只在有 scanStrategy 且是数据源扫描(type=0)或定时扫描(type=2)时才添加此字段
+                if (param.scanStrategy && (param.type === ScanTaskType.DataSourceInstant || param.type === ScanTaskType.DataSourceScheduled)) {
+                    requestObj.ds_info.scan_strategy = param.scanStrategy;
+                }
+
+                return requestObj;
+            });
 
             const response = await dataConnectionServiceClient(SCAN_ENDPOINTS.SCAN_BATCH, {
                 method: 'POST',
@@ -735,14 +750,12 @@ export const scanService = {
     async updateScheduledScan(params: {
         scheduleId: string;
         cronExpression: string;
-        scanStrategy?: ScanStrategy;
         status?: 'open' | 'close';
     }): Promise<ScheduledScan> {
         try {
             const requestBody: UpdateScheduledScanRequest = {
                 schedule_id: params.scheduleId,
                 cron_expression: params.cronExpression,
-                scan_strategy: params.scanStrategy,
                 status: params.status,
             };
 

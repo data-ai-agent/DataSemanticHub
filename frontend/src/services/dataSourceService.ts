@@ -150,6 +150,10 @@ const defaultTypeConfigs: Record<string, { color: string; bgColor: string; defau
  * 将前端显示类型转换为后端 API 需求的类型
  */
 const toBackendType = (frontendType: string): string => {
+    if (!frontendType) {
+        console.warn('[DataSource] toBackendType: frontendType is empty, returning "mysql" as default');
+        return 'mysql';
+    }
     return displayToBackendMap[frontendType] || frontendType.toLowerCase();
 };
 
@@ -158,6 +162,12 @@ const toBackendType = (frontendType: string): string => {
  * 注意：密码会自动使用RSA加密
  */
 export const toBackendRequest = (frontend: Partial<DataSource> & { password?: string }): DataSourceVo => {
+    console.log('[DataSource] toBackendRequest - 输入数据:', {
+        name: frontend.name,
+        type: frontend.type,
+        displayName: frontend.type
+    });
+
     // 对密码进行RSA加密
     const encryptedPassword = frontend.password
         ? encryptRSA(frontend.password)
@@ -167,9 +177,16 @@ export const toBackendRequest = (frontend: Partial<DataSource> & { password?: st
         console.log('[DataSource] 密码已加密');
     }
 
-    return {
+    const backendType = toBackendType(frontend.type!);
+    console.log('[DataSource] toBackendRequest - 类型转换:', {
+        frontendType: frontend.type,
+        displayToBackendMap,
+        backendType
+    });
+
+    const result = {
         name: frontend.name!,
-        type: toBackendType(frontend.type!),
+        type: backendType,
         comment: frontend.desc || '',
         bin_data: {
             host: frontend.host!,
@@ -181,6 +198,10 @@ export const toBackendRequest = (frontend: Partial<DataSource> & { password?: st
             connect_protocol: 'jdbc', // 默认协议
         }
     };
+
+    console.log('[DataSource] toBackendRequest - 最终请求数据:', JSON.stringify(result, null, 2));
+
+    return result;
 };
 
 /**
@@ -216,11 +237,16 @@ export const fromBackendResponse = (backend: any): DataSource => {
  * 格式化数据源类型（后端类型名 -> 前端显示名）
  */
 const formatDataSourceType = (type: string): string => {
+    if (!type) {
+        console.warn('[DataSource] formatDataSourceType: type is empty, returning "Unknown"');
+        return 'Unknown';
+    }
+
     // 首先尝试直接匹配
     if (backendToDisplayMap[type]) {
         return backendToDisplayMap[type];
     }
-    
+
     // 尝试忽略大小写的匹配
     const lowerType = type.toLowerCase();
     for (const [backendType, displayName] of Object.entries(backendToDisplayMap)) {
@@ -228,7 +254,7 @@ const formatDataSourceType = (type: string): string => {
             return displayName;
         }
     }
-    
+
     // 如果找不到匹配项，尝试常见类型的映射
     const commonMappings: Record<string, string> = {
         'mysql': 'MySQL',
@@ -244,7 +270,7 @@ const formatDataSourceType = (type: string): string => {
         'hive': 'Hive',
         'kafka': 'Kafka'
     };
-    
+
     return commonMappings[lowerType] || type;
 };
 
@@ -252,14 +278,21 @@ const formatDataSourceType = (type: string): string => {
  * 解析后端连接器数据并更新映射缓存
  */
 const parseBackendConnectors = (backendConnectors: BackendConnector[]): Connector[] => {
+    console.log('[DataSource] 开始解析连接器数据:', backendConnectors);
+
     // 清空缓存
     displayToBackendMap = {};
     backendToDisplayMap = {};
     const connectors: Connector[] = [];
 
-    backendConnectors.forEach((item: BackendConnector) => {
-        const displayName = item.show_connector_name;
-        const backendName = item.olk_connector_name;
+    backendConnectors.forEach((item: any) => {
+        console.log('[DataSource] 处理连接器项:', item);
+
+        // 尝试多个可能的字段名
+        const displayName = item.show_connector_name || item.connectorName || item.name || item.type || 'Unknown';
+        const backendName = item.olk_connector_name || item.connectorType || item.type || displayName;
+
+        console.log(`[DataSource] 映射: ${displayName} -> ${backendName}`);
 
         // 建立映射关系
         displayToBackendMap[displayName] = backendName;
@@ -279,6 +312,12 @@ const parseBackendConnectors = (backendConnectors: BackendConnector[]): Connecto
             color: config.color,
             bgColor: config.bgColor,
         });
+    });
+
+    console.log('[DataSource] 解析完成，映射表:', {
+        displayToBackendMap,
+        backendToDisplayMap,
+        connectors
     });
 
     return connectors;
