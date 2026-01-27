@@ -2,8 +2,8 @@ import { useState } from 'react';
 import {
     Layout, Database, Search, CheckCircle, Plus, X,
     FileText, Settings, Layers, Trash2, ChevronDown, ChevronRight,
-    Folder, FolderOpen, Box, Grid, PanelLeftClose, ChevronRight,
-    ChevronDown, ChevronUp, History, Upload, User, Zap, Tag, Link, Sparkles, Table, MessageSquare, ArrowRight, Edit
+    Folder, FolderOpen, Box, Grid, PanelLeftClose,
+    ChevronUp, History, Upload, User, Zap, Tag, Link, Sparkles, Table, MessageSquare, ArrowRight, Edit
 } from 'lucide-react';
 import SemanticVersionPanel from './components/semantic-version/SemanticVersionPanel';
 import PublishVersionDialog from './components/semantic-version/PublishVersionDialog';
