@@ -27,7 +27,9 @@ import {
     TrendingUp,
     Link,
     Shield,
-    Settings
+    Settings,
+    ListChecks,
+    EyeOff
 } from 'lucide-react';
 
 export interface MenuItem {
@@ -89,8 +91,26 @@ export const GOVERNANCE_MENUS: MenuGroup[] = [
                     { id: 'td_modeling', label: '业务对象建模', icon: Layout }
                 ]
             },
-            { id: 'data_quality', label: '数据质量', icon: Verified },
-            { id: 'data_security', label: '数据安全', icon: Lock },
+            {
+                id: 'data_quality',
+                label: '数据质量',
+                icon: Verified,
+                children: [
+                    { id: 'quality_overview', label: '质量概览', icon: Activity },
+                    { id: 'quality_rules', label: '规则配置', icon: Settings },
+                    { id: 'quality_tasks', label: '质量任务', icon: ListChecks }
+                ]
+            },
+            {
+                id: 'data_security',
+                label: '数据安全',
+                icon: Lock,
+                children: [
+                    { id: 'security_overview', label: '安全概览', icon: Activity },
+                    { id: 'security_permission', label: '权限管理', icon: UserCog },
+                    { id: 'data_masking', label: '数据脱敏', icon: EyeOff }
+                ]
+            },
             { id: 'semantic_version', label: '语义版本', icon: History }
         ]
     },

@@ -8,7 +8,8 @@ import {
     BarChart3, PieChart, FileBarChart, LineChart, TrendingDown, Home, Menu as MenuIcon, Save, Download, Trash2,
     Archive, Star, Heart, ThumbsUp, Flag, Award, Trophy, Zap, Power, Battery, Wifi, Bluetooth, Radio, Tv, Monitor,
     Smartphone, Tablet, Laptop, Printer, Key as KeyIcon, Unlock, EyeOff, ShieldCheck, ShieldAlert, Info, HelpCircle,
-    AlertCircle, CheckCircle2, Minus, Calendar, Bell, Mail, Phone, MapPin, Camera, Image, Video, Music, File, FolderOpen
+    AlertCircle, CheckCircle2, Minus, Calendar, Bell, Mail, Phone, MapPin, Camera, Image, Video, Music, File, FolderOpen,
+    ListChecks
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Menu } from './menuService';
@@ -37,7 +38,13 @@ const ICON_MAP: Record<string, LucideIcon> = {
     'field_semantic': Search,
     'td_modeling': Layout,
     'data_quality': Verified,
+    'quality_overview': Activity,
+    'quality_rules': Settings,
+    'quality_tasks': ListChecks,
     'data_security': Lock,
+    'security_overview': Activity,
+    'security_permission': UserCog,
+    'data_masking': EyeOff,
     'semantic_version': History,
 
     // 语义资产管理
@@ -130,7 +137,13 @@ const CODE_TO_GROUP_MAP: Record<string, string> = {
     'field_semantic': 'semantic_governance',
     'td_modeling': 'semantic_governance',
     'data_quality': 'semantic_governance',
+    'quality_overview': 'semantic_governance',
+    'quality_rules': 'semantic_governance',
+    'quality_tasks': 'semantic_governance',
     'data_security': 'semantic_governance',
+    'security_overview': 'semantic_governance',
+    'security_permission': 'semantic_governance',
+    'data_masking': 'semantic_governance',
     'semantic_version': 'semantic_governance',
 
     // 语义资产管理

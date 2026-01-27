@@ -115,67 +115,12 @@ export default function SemanticLayerApp() {
 
     // 加载菜单数据
     const loadMenus = useCallback(async (productId: string) => {
-        // 对于 agent_factory，暂时强制使用静态菜单（数据库中还未初始化这些菜单）
-        if (productId === 'agent_factory') {
-            setMenus(AGENT_FACTORY_MENUS);
-            return;
-        }
-
-        // 如果使用静态菜单，直接返回
-        if (useStaticMenus) {
-            const staticMenus = productId === 'governance' ? GOVERNANCE_MENUS : AGENT_FACTORY_MENUS;
-            setMenus(staticMenus);
-            return;
-        }
-
-        // 先尝试从缓存获取
-        const cachedMenus = getCachedMenus(productId as any);
-        if (cachedMenus) {
-            setMenus(cachedMenus);
-            setMenuError(null);
-            return;
-        }
-
-        // 从API加载
-        setMenuLoading(true);
-        setMenuError(null);
-
-        try {
-            // 获取菜单树
-            const menuTree = await menuService.getMenuTree({
-                enabled: true,
-                visible: true,
-            });
-
-            // 按产品过滤
-            const filteredMenus = filterMenusByProduct(menuTree, productId as any);
-
-            // 转换为前端格式
-            const transformedMenus = transformMenuTreeToMenuGroups(filteredMenus, productId as any);
-
-            // 如果转换后的菜单为空，使用静态配置作为降级
-            if (transformedMenus.length === 0) {
-                console.warn('转换后的菜单为空，使用静态配置');
-                const staticMenus = productId === 'governance' ? GOVERNANCE_MENUS : AGENT_FACTORY_MENUS;
-                setMenus(staticMenus);
-                setUseStaticMenus(true);
-            } else {
-                setMenus(transformedMenus);
-                // 缓存菜单
-                setCachedMenus(productId as any, transformedMenus);
-            }
-        } catch (error: any) {
-            console.error('Failed to load menus from API:', error);
-            setMenuError(error.message || '加载菜单失败');
-
-            // 降级到静态配置
-            const staticMenus = productId === 'governance' ? GOVERNANCE_MENUS : AGENT_FACTORY_MENUS;
-            setMenus(staticMenus);
-            setUseStaticMenus(true);
-        } finally {
-            setMenuLoading(false);
-        }
-    }, [useStaticMenus]);
+        // 暂时强制所有产品使用静态菜单配置，以确保最新的菜单结构（含子菜单）能立即生效
+        // 待后端数据库同步完毕后，可移除此逻辑
+        const staticMenus = productId === 'governance' ? GOVERNANCE_MENUS : AGENT_FACTORY_MENUS;
+        setMenus(staticMenus);
+        return;
+    }, []);
 
     // 当产品切换时，重新加载菜单
     useEffect(() => {
@@ -321,6 +266,17 @@ export default function SemanticLayerApp() {
                 scanResults={scanResults}
                 onNavigateToField={(tableId, fieldName) => handleNavigateWithParams('bu_semantic', { tableId, mode: 'SEMANTIC', focusField: fieldName })}
             />;
+
+            // Data Quality
+            case 'quality_overview': return <div className="flex items-center justify-center h-full text-slate-400 bg-white m-4 rounded-xl border border-slate-200">数据质量概览 - 功能建设中</div>;
+            case 'quality_rules': return <div className="flex items-center justify-center h-full text-slate-400 bg-white m-4 rounded-xl border border-slate-200">规则配置 - 功能建设中</div>;
+            case 'quality_tasks': return <div className="flex items-center justify-center h-full text-slate-400 bg-white m-4 rounded-xl border border-slate-200">质量任务 - 功能建设中</div>;
+
+            // Data Security
+            case 'security_overview': return <div className="flex items-center justify-center h-full text-slate-400 bg-white m-4 rounded-xl border border-slate-200">安全概览 - 功能建设中</div>;
+            case 'security_permission': return <UserPermissionView />;
+            case 'data_masking': return <div className="flex items-center justify-center h-full text-slate-400 bg-white m-4 rounded-xl border border-slate-200">数据脱敏 - 功能建设中</div>;
+
             case 'semantic_version': return <SemanticVersionView />;
             case 'bu_candidates': return <CandidateGenerationView scanResults={scanResults} setScanResults={setScanResults} onAddBusinessObject={handleAddBusinessObject} />;
             case 'governance': return <ConflictDetectionView />;
