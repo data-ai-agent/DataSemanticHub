@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Plus, Database, Edit, Trash2, Zap, X, CheckCircle, RefreshCw, Server, Building2, Tag, ChevronDown, MoreHorizontal, FileText, List, Activity, Loader2, Eye, Clock, Layers, Table as TableIcon, HardDrive, Archive, Key } from 'lucide-react';
+import { Plus, Database, Edit, Trash2, Zap, X, CheckCircle, RefreshCw, Server, Building2, Tag, ChevronDown, ChevronRight, MoreHorizontal, FileText, List, Activity, Loader2, Eye, Clock, Layers, Table as TableIcon, HardDrive, Archive, Key, BarChart3, PieChart, AlertTriangle, TrendingUp, AlertCircle, Star, Target } from 'lucide-react';
 import { dataSourceService, type DataSource, type Connector, type DataSourceStatisticsVo } from '../services/dataSourceService';
 import { scanService, type TableInfo } from '../services/scanService';
 
@@ -308,6 +308,9 @@ const DataSourceManagementView = () => {
     const [detailTables, setDetailTables] = useState<TableInfo[]>([]);
     const [detailTablesLoading, setDetailTablesLoading] = useState(false);
     const [activeDetailTab, setActiveDetailTab] = useState<'overview' | 'tables'>('overview');
+    const [selectedTable, setSelectedTable] = useState<TableInfo | null>(null);
+    const [selectedTableFields, setSelectedTableFields] = useState<any[]>([]);
+    const [selectedTableFieldsLoading, setSelectedTableFieldsLoading] = useState(false);
 
     const handleViewDetail = async (ds: DataSource) => {
         setDetailDS(ds);
@@ -315,6 +318,8 @@ const DataSourceManagementView = () => {
         setDetailStatisticsLoading(true);
         setDetailTablesLoading(true);
         setActiveDetailTab('overview');
+        setSelectedTable(null);
+        setSelectedTableFields([]);
 
         // Load statistics
         try {
@@ -339,6 +344,24 @@ const DataSourceManagementView = () => {
             setDetailTables([]);
         } finally {
             setDetailTablesLoading(false);
+        }
+    };
+
+    const handleTableClick = async (table: TableInfo) => {
+        setSelectedTable(table);
+        setSelectedTableFieldsLoading(true);
+
+        try {
+            const result = await scanService.getFieldsByTableId({
+                tableId: table.id,
+                limit: 500,
+            });
+            setSelectedTableFields(result.fields);
+        } catch (error) {
+            console.error('Failed to load table fields:', error);
+            setSelectedTableFields([]);
+        } finally {
+            setSelectedTableFieldsLoading(false);
         }
     };
 
@@ -927,73 +950,122 @@ const DataSourceManagementView = () => {
                                                 </div>
 
                                                 {/* 存储统计 */}
-                                                {((detailStatistics.total_data_size_formatted || detailStatistics.totalDataSizeFormatted) ||
-                                                  (detailStatistics.total_index_size_formatted || detailStatistics.totalIndexSizeFormatted)) && (
-                                                    <div className="mb-4">
-                                                        <h5 className="text-xs font-medium text-slate-500 mb-2">存储统计</h5>
-                                                        <div className="grid grid-cols-3 gap-3">
-                                                            <div className="bg-indigo-50 p-3 rounded-lg border border-indigo-100">
-                                                                <div className="flex items-center justify-between mb-1">
-                                                                    <span className="text-xs text-indigo-600">数据大小</span>
-                                                                    <HardDrive size={14} className="text-indigo-500" />
-                                                                </div>
-                                                                <div className="text-xl font-bold text-indigo-700">{detailStatistics.total_data_size_formatted || detailStatistics.totalDataSizeFormatted || '-'}</div>
+                                                <div className="mb-4">
+                                                    <h5 className="text-xs font-medium text-slate-500 mb-2">存储统计</h5>
+                                                    <div className="grid grid-cols-3 gap-3">
+                                                        <div className="bg-indigo-50 p-3 rounded-lg border border-indigo-100">
+                                                            <div className="flex items-center justify-between mb-1">
+                                                                <span className="text-xs text-indigo-600">数据大小</span>
+                                                                <HardDrive size={14} className="text-indigo-500" />
                                                             </div>
-                                                            <div className="bg-pink-50 p-3 rounded-lg border border-pink-100">
-                                                                <div className="flex items-center justify-between mb-1">
-                                                                    <span className="text-xs text-pink-600">索引大小</span>
-                                                                    <FileText size={14} className="text-pink-500" />
-                                                                </div>
-                                                                <div className="text-xl font-bold text-pink-700">{detailStatistics.total_index_size_formatted || detailStatistics.totalIndexSizeFormatted || '-'}</div>
+                                                            <div className="text-xl font-bold text-indigo-700">{detailStatistics.total_data_size_formatted || detailStatistics.totalDataSizeFormatted || '-'}</div>
+                                                        </div>
+                                                        <div className="bg-pink-50 p-3 rounded-lg border border-pink-100">
+                                                            <div className="flex items-center justify-between mb-1">
+                                                                <span className="text-xs text-pink-600">索引大小</span>
+                                                                <FileText size={14} className="text-pink-500" />
                                                             </div>
-                                                            <div className="bg-cyan-50 p-3 rounded-lg border border-cyan-100">
-                                                                <div className="flex items-center justify-between mb-1">
-                                                                    <span className="text-xs text-cyan-600">总大小</span>
-                                                                    <Archive size={14} className="text-cyan-500" />
-                                                                </div>
-                                                                <div className="text-xl font-bold text-cyan-700">{detailStatistics.total_size_formatted || detailStatistics.totalSizeFormatted || '-'}</div>
+                                                            <div className="text-xl font-bold text-pink-700">{detailStatistics.total_index_size_formatted || detailStatistics.totalIndexSizeFormatted || '-'}</div>
+                                                        </div>
+                                                        <div className="bg-cyan-50 p-3 rounded-lg border border-cyan-100">
+                                                            <div className="flex items-center justify-between mb-1">
+                                                                <span className="text-xs text-cyan-600">总大小</span>
+                                                                <Archive size={14} className="text-cyan-500" />
                                                             </div>
+                                                            <div className="text-xl font-bold text-cyan-700">{detailStatistics.total_size_formatted || detailStatistics.totalSizeFormatted || '-'}</div>
                                                         </div>
                                                     </div>
-                                                )}
+                                                </div>
 
                                                 {/* 质量统计 */}
-                                                {((detailStatistics.tables_with_comment !== undefined) ||
-                                                  (detailStatistics.tables_with_primary_key !== undefined) ||
-                                                  (detailStatistics.total_index_count !== undefined)) && (
-                                                    <div className="mb-4">
-                                                        <h5 className="text-xs font-medium text-slate-500 mb-2">质量统计</h5>
-                                                        <div className="grid grid-cols-3 gap-3">
-                                                            {(detailStatistics.tables_with_comment !== undefined || detailStatistics.tablesWithComment !== undefined) && (
-                                                                <div className="bg-amber-50 p-3 rounded-lg border border-amber-100">
-                                                                    <div className="flex items-center justify-between mb-1">
-                                                                        <span className="text-xs text-amber-600">有注释的表</span>
-                                                                        <FileText size={14} className="text-amber-500" />
-                                                                    </div>
-                                                                    <div className="text-xl font-bold text-amber-700">{detailStatistics.tables_with_comment ?? detailStatistics.tablesWithComment ?? 0}</div>
-                                                                </div>
-                                                            )}
-                                                            {(detailStatistics.tables_with_primary_key !== undefined || detailStatistics.tablesWithPrimaryKey !== undefined) && (
-                                                                <div className="bg-rose-50 p-3 rounded-lg border border-rose-100">
-                                                                    <div className="flex items-center justify-between mb-1">
-                                                                        <span className="text-xs text-rose-600">有主键的表</span>
-                                                                        <Key size={14} className="text-rose-500" />
-                                                                    </div>
-                                                                    <div className="text-xl font-bold text-rose-700">{detailStatistics.tables_with_primary_key ?? detailStatistics.tablesWithPrimaryKey ?? 0}</div>
-                                                                </div>
-                                                            )}
-                                                            {(detailStatistics.total_index_count !== undefined || detailStatistics.totalIndexCount !== undefined) && (
-                                                                <div className="bg-teal-50 p-3 rounded-lg border border-teal-100">
-                                                                    <div className="flex items-center justify-between mb-1">
-                                                                        <span className="text-xs text-teal-600">总索引数</span>
-                                                                        <List size={14} className="text-teal-500" />
-                                                                    </div>
-                                                                    <div className="text-xl font-bold text-teal-700">{detailStatistics.total_index_count ?? detailStatistics.totalIndexCount ?? 0}</div>
-                                                                </div>
-                                                            )}
+                                                <div className="mb-4">
+                                                    <h5 className="text-xs font-medium text-slate-500 mb-2">质量统计</h5>
+                                                    <div className="grid grid-cols-3 gap-3">
+                                                        <div className="bg-amber-50 p-3 rounded-lg border border-amber-100">
+                                                            <div className="flex items-center justify-between mb-1">
+                                                                <span className="text-xs text-amber-600">有注释的表</span>
+                                                                <FileText size={14} className="text-amber-500" />
+                                                            </div>
+                                                            <div className="text-xl font-bold text-amber-700">{detailStatistics.tables_with_comment ?? detailStatistics.tablesWithComment ?? 0}</div>
+                                                        </div>
+                                                        <div className="bg-rose-50 p-3 rounded-lg border border-rose-100">
+                                                            <div className="flex items-center justify-between mb-1">
+                                                                <span className="text-xs text-rose-600">有主键的表</span>
+                                                                <Key size={14} className="text-rose-500" />
+                                                            </div>
+                                                            <div className="text-xl font-bold text-rose-700">{detailStatistics.tables_with_primary_key ?? detailStatistics.tablesWithPrimaryKey ?? 0}</div>
+                                                        </div>
+                                                        <div className="bg-teal-50 p-3 rounded-lg border border-teal-100">
+                                                            <div className="flex items-center justify-between mb-1">
+                                                                <span className="text-xs text-teal-600">总索引数</span>
+                                                                <List size={14} className="text-teal-500" />
+                                                            </div>
+                                                            <div className="text-xl font-bold text-teal-700">{detailStatistics.total_index_count ?? detailStatistics.totalIndexCount ?? 0}</div>
                                                         </div>
                                                     </div>
-                                                )}
+                                                </div>
+
+                                                {/* 字段级别统计 */}
+                                                <div className="mb-4">
+                                                    <h5 className="text-xs font-medium text-slate-500 mb-2">字段级别统计</h5>
+                                                    <div className="grid grid-cols-2 gap-3">
+                                                        <div className="bg-violet-50 p-3 rounded-lg border border-violet-100">
+                                                            <div className="flex items-center justify-between mb-1">
+                                                                <span className="text-xs text-violet-600">已分析字段数</span>
+                                                                <BarChart3 size={14} className="text-violet-500" />
+                                                            </div>
+                                                            <div className="text-xl font-bold text-violet-700">{detailStatistics.analyzed_field_count ?? detailStatistics.analyzedFieldCount ?? 0}</div>
+                                                        </div>
+                                                        <div className="bg-fuchsia-50 p-3 rounded-lg border border-fuchsia-100">
+                                                            <div className="flex items-center justify-between mb-1">
+                                                                <span className="text-xs text-fuchsia-600">有分布统计字段</span>
+                                                                <PieChart size={14} className="text-fuchsia-500" />
+                                                            </div>
+                                                            <div className="text-xl font-bold text-fuchsia-700">{detailStatistics.fields_with_distribution_count ?? detailStatistics.fieldsWithDistributionCount ?? 0}</div>
+                                                        </div>
+                                                        <div className="bg-rose-50 p-3 rounded-lg border border-rose-100">
+                                                            <div className="flex items-center justify-between mb-1">
+                                                                <span className="text-xs text-rose-600">平均空值率</span>
+                                                                <AlertTriangle size={14} className="text-rose-500" />
+                                                            </div>
+                                                            <div className="text-xl font-bold text-rose-700">
+                                                                {((detailStatistics.avg_null_ratio ?? detailStatistics.avgNullRatio ?? 0).toFixed(1))}%
+                                                            </div>
+                                                        </div>
+                                                        <div className="bg-orange-50 p-3 rounded-lg border border-orange-100">
+                                                            <div className="flex items-center justify-between mb-1">
+                                                                <span className="text-xs text-orange-600">最大空值率</span>
+                                                                <TrendingUp size={14} className="text-orange-500" />
+                                                            </div>
+                                                            <div className="text-xl font-bold text-orange-700">
+                                                                {((detailStatistics.max_null_ratio ?? detailStatistics.maxNullRatio ?? 0).toFixed(1))}%
+                                                            </div>
+                                                        </div>
+                                                        <div className="bg-amber-50 p-3 rounded-lg border border-amber-100">
+                                                            <div className="flex items-center justify-between mb-1">
+                                                                <span className="text-xs text-amber-600">高空值率字段(&gt;20%)</span>
+                                                                <AlertCircle size={14} className="text-amber-500" />
+                                                            </div>
+                                                            <div className="text-xl font-bold text-amber-700">{detailStatistics.high_null_ratio_field_count ?? detailStatistics.highNullRatioFieldCount ?? 0}</div>
+                                                        </div>
+                                                        <div className="bg-sky-50 p-3 rounded-lg border border-sky-100">
+                                                            <div className="flex items-center justify-between mb-1">
+                                                                <span className="text-xs text-sky-600">唯一字段数(&gt;95%)</span>
+                                                                <Star size={14} className="text-sky-500" />
+                                                            </div>
+                                                            <div className="text-xl font-bold text-sky-700">{detailStatistics.unique_field_count ?? detailStatistics.uniqueFieldCount ?? 0}</div>
+                                                        </div>
+                                                        <div className="bg-emerald-50 p-3 rounded-lg border border-emerald-100 col-span-2">
+                                                            <div className="flex items-center justify-between mb-1">
+                                                                <span className="text-xs text-emerald-600">平均唯一值占比</span>
+                                                                <Target size={14} className="text-emerald-500" />
+                                                            </div>
+                                                            <div className="text-xl font-bold text-emerald-700">
+                                                                {((detailStatistics.avg_unique_ratio ?? detailStatistics.avgUniqueRatio ?? 0).toFixed(1))}%
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
 
                                                 {/* 扫描状态 */}
                                                 <div>
@@ -1052,48 +1124,161 @@ const DataSourceManagementView = () => {
 
                             {/* Tables Tab */}
                             {activeDetailTab === 'tables' && (
-                                <div className="p-6">
-                                    {detailTablesLoading ? (
-                                        <div className="flex items-center justify-center py-12">
-                                            <RefreshCw size={32} className="text-slate-400 animate-spin" />
-                                        </div>
-                                    ) : detailTables.length === 0 ? (
-                                        <div className="text-center py-12">
-                                            <TableIcon size={48} className="text-slate-300 mx-auto mb-4" />
-                                            <h3 className="text-lg font-medium text-slate-600 mb-2">暂无表数据</h3>
-                                            <p className="text-sm text-slate-400">该数据源下还没有已扫描的表</p>
-                                        </div>
-                                    ) : (
-                                        <div className="space-y-3">
-                                            <div className="flex items-center justify-between mb-4">
-                                                <h4 className="text-sm font-semibold text-slate-700">
-                                                    表列表 ({detailTables.length})
-                                                </h4>
+                                <div className="flex h-full">
+                                    {/* 左侧：表列表 */}
+                                    <div className={`w-1/2 border-r border-slate-200 ${selectedTable ? 'overflow-y-auto' : ''}`}>
+                                        {detailTablesLoading ? (
+                                            <div className="flex items-center justify-center py-12">
+                                                <RefreshCw size={32} className="text-slate-400 animate-spin" />
                                             </div>
-                                            <div className="border border-slate-200 rounded-lg overflow-hidden">
-                                                <table className="w-full text-sm">
-                                                    <thead className="bg-slate-50 border-b border-slate-200">
-                                                        <tr>
-                                                            <th className="px-4 py-3 text-left font-medium text-slate-600">表名</th>
-                                                            <th className="px-4 py-3 text-left font-medium text-slate-600">数据库类型</th>
-                                                            <th className="px-4 py-3 text-left font-medium text-slate-600">注释</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        {detailTables.map((table, index) => (
-                                                            <tr key={table.id} className={`border-b border-slate-100 hover:bg-slate-50 ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}`}>
-                                                                <td className="px-4 py-3 font-medium text-slate-700">{table.tableName}</td>
-                                                                <td className="px-4 py-3 text-slate-600">{table.dbType}</td>
-                                                                <td className="px-4 py-3 text-slate-500 truncate max-w-xs" title={table.tableComment}>
-                                                                    {table.tableComment || '-'}
-                                                                </td>
-                                                            </tr>
-                                                        ))}
-                                                    </tbody>
-                                                </table>
+                                        ) : detailTables.length === 0 ? (
+                                            <div className="text-center py-12 px-6">
+                                                <TableIcon size={48} className="text-slate-300 mx-auto mb-4" />
+                                                <h3 className="text-lg font-medium text-slate-600 mb-2">暂无表数据</h3>
+                                                <p className="text-sm text-slate-400">该数据源下还没有已扫描的表</p>
                                             </div>
-                                        </div>
-                                    )}
+                                        ) : (
+                                            <div className="p-4">
+                                                <div className="flex items-center justify-between mb-4">
+                                                    <h4 className="text-sm font-semibold text-slate-700">
+                                                        表列表 ({detailTables.length})
+                                                    </h4>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    {detailTables.map((table) => (
+                                                        <div
+                                                            key={table.id}
+                                                            onClick={() => handleTableClick(table)}
+                                                            className={`p-4 rounded-lg border cursor-pointer transition-all hover:shadow-md ${
+                                                                selectedTable?.id === table.id
+                                                                    ? 'bg-blue-50 border-blue-300 shadow-sm'
+                                                                    : 'bg-white border-slate-200 hover:border-blue-300'
+                                                            }`}
+                                                        >
+                                                            <div className="flex items-start justify-between">
+                                                                <div className="flex-1 min-w-0">
+                                                                    <div className="flex items-center gap-2 mb-1">
+                                                                        <h5 className="font-semibold text-slate-800 truncate">
+                                                                            {table.tableName}
+                                                                        </h5>
+                                                                        {table.dbType && table.dbType !== '未知' && (
+                                                                            <span className="px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-600">
+                                                                                {table.dbType}
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                    {table.tableComment && (
+                                                                        <p className="text-sm text-slate-500 truncate" title={table.tableComment}>
+                                                                            {table.tableComment}
+                                                                        </p>
+                                                                    )}
+                                                                </div>
+                                                                <ChevronRight
+                                                                    size={16}
+                                                                    className={`text-slate-400 transition-transform ${
+                                                                        selectedTable?.id === table.id ? 'rotate-90' : ''
+                                                                    }`}
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* 右侧：字段详情 */}
+                                    <div className="w-1/2 overflow-y-auto">
+                                        {selectedTable ? (
+                                            selectedTableFieldsLoading ? (
+                                                <div className="flex items-center justify-center py-12">
+                                                    <RefreshCw size={32} className="text-slate-400 animate-spin" />
+                                                </div>
+                                            ) : (
+                                                <div className="p-4">
+                                                    <div className="flex items-center justify-between mb-4">
+                                                        <div>
+                                                            <h4 className="text-base font-semibold text-slate-800">
+                                                                {selectedTable.tableName}
+                                                            </h4>
+                                                            <p className="text-sm text-slate-500 mt-1">
+                                                                字段列表 ({selectedTableFields.length})
+                                                            </p>
+                                                        </div>
+                                                        <button
+                                                            onClick={() => setSelectedTable(null)}
+                                                            className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                                                        >
+                                                            <X size={18} />
+                                                        </button>
+                                                    </div>
+
+                                                    {selectedTableFields.length === 0 ? (
+                                                        <div className="text-center py-12">
+                                                            <Layers size={48} className="text-slate-300 mx-auto mb-4" />
+                                                            <h3 className="text-lg font-medium text-slate-600 mb-2">暂无字段数据</h3>
+                                                            <p className="text-sm text-slate-400">该表还没有已扫描的字段信息</p>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="border border-slate-200 rounded-lg overflow-hidden">
+                                                            <table className="w-full text-sm">
+                                                                <thead className="bg-slate-50 border-b border-slate-200">
+                                                                    <tr>
+                                                                        <th className="px-3 py-2 text-left font-medium text-slate-600">字段名</th>
+                                                                        <th className="px-3 py-2 text-left font-medium text-slate-600">类型</th>
+                                                                        <th className="px-3 py-2 text-left font-medium text-slate-600">注释</th>
+                                                                        <th className="px-3 py-2 text-center font-medium text-slate-600">主键</th>
+                                                                        <th className="px-3 py-2 text-center font-medium text-slate-600">空值</th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody>
+                                                                    {selectedTableFields.map((field, index) => (
+                                                                        <tr key={field.id} className={`border-b border-slate-100 ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}`}>
+                                                                            <td className="px-3 py-2 font-medium text-slate-700">{field.fieldName}</td>
+                                                                            <td className="px-3 py-2 text-slate-600">
+                                                                                <span className="px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700">
+                                                                                    {field.fieldType}
+                                                                                </span>
+                                                                            </td>
+                                                                            <td className="px-3 py-2 text-slate-500 truncate max-w-xs" title={field.fieldComment}>
+                                                                                {field.fieldComment || '-'}
+                                                                            </td>
+                                                                            <td className="px-3 py-2 text-center">
+                                                                                {field.isPrimary ? (
+                                                                                    <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-amber-100 text-amber-700">
+                                                                                        <Key size={12} />
+                                                                                    </span>
+                                                                                ) : (
+                                                                                    <span className="text-slate-300">-</span>
+                                                                                )}
+                                                                            </td>
+                                                                            <td className="px-3 py-2 text-center">
+                                                                                {field.isNullable ? (
+                                                                                    <span className="px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-600">
+                                                                                        是
+                                                                                    </span>
+                                                                                ) : (
+                                                                                    <span className="px-2 py-0.5 rounded text-xs font-medium bg-red-50 text-red-600">
+                                                                                        否
+                                                                                    </span>
+                                                                                )}
+                                                                            </td>
+                                                                        </tr>
+                                                                    ))}
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )
+                                        ) : (
+                                            <div className="flex flex-col items-center justify-center h-full text-center px-6">
+                                                <TableIcon size={64} className="text-slate-300 mb-4" />
+                                                <h3 className="text-lg font-medium text-slate-600 mb-2">选择表查看字段</h3>
+                                                <p className="text-sm text-slate-400">点击左侧表列表中的表，查看该表的字段详细信息</p>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             )}
                         </div>

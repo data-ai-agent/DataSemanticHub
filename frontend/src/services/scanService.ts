@@ -181,6 +181,14 @@ export interface TableScanVo {
     scan_time?: string;
     /** 错误信息 */
     error_msg?: string;
+    /** 高级参数（JSON字符串，包含字段数、存储大小等统计信息） */
+    advanced_params?: string | any;
+    /** 字段数 */
+    field_count?: number;
+    /** 数据大小（字节） */
+    data_length?: number;
+    /** 索引大小（字节） */
+    index_length?: number;
 }
 
 /**
@@ -329,6 +337,20 @@ export interface TableScan {
     scanTime?: string;
     /** 错误信息 */
     errorMsg?: string;
+    /** 字段数 */
+    fieldCount?: number;
+    /** 数据大小（字节） */
+    dataSize?: number;
+    /** 索引大小（字节） */
+    indexSize?: number;
+    /** 总大小（字节） */
+    totalSize?: number;
+    /** 数据大小（格式化） */
+    dataSizeFormatted?: string;
+    /** 索引大小（格式化） */
+    indexSizeFormatted?: string;
+    /** 总大小（格式化） */
+    totalSizeFormatted?: string;
 }
 
 /**
@@ -469,6 +491,22 @@ export interface TableInfo {
     createTime?: string;
     /** 更新时间 */
     updateTime?: string;
+    /** 字段数 */
+    fieldCount?: number;
+    /** 总行数 */
+    rowCount?: number;
+    /** 数据大小（字节） */
+    dataSize?: number;
+    /** 索引大小（字节） */
+    indexSize?: number;
+    /** 总大小（字节） */
+    totalSize?: number;
+    /** 数据大小（格式化） */
+    dataSizeFormatted?: string;
+    /** 索引大小（格式化） */
+    indexSizeFormatted?: string;
+    /** 总大小（格式化） */
+    totalSizeFormatted?: string;
 }
 
 /**
@@ -582,6 +620,56 @@ const parseScanError = async (response: Response): Promise<Error> => {
  * 后端扫描任务 → 前端扫描任务
  */
 export const fromBackendScanTask = (backend: any): ScanTask => {
+    // 解析 task_process_info（可能是 JSON 字符串或对象）
+    let processInfo = undefined;
+    if (backend.task_process_info) {
+        try {
+            const parsed = typeof backend.task_process_info === 'string'
+                ? JSON.parse(backend.task_process_info)
+                : backend.task_process_info;
+            processInfo = {
+                tableCount: parsed.table_count || 0,
+                successCount: parsed.success_count || 0,
+                failCount: parsed.fail_count || 0,
+            };
+        } catch (e) {
+            console.error('Failed to parse task_process_info:', e);
+        }
+    }
+
+    // 解析 task_result_info（可能是 JSON 字符串或对象）
+    let resultInfo = undefined;
+    if (backend.task_result_info) {
+        try {
+            const parsed = typeof backend.task_result_info === 'string'
+                ? JSON.parse(backend.task_result_info)
+                : backend.task_result_info;
+            resultInfo = {
+                tableCount: parsed.table_count || 0,
+                successCount: parsed.success_count || 0,
+                failCount: parsed.fail_count || 0,
+                failStage: parsed.fail_stage,
+                errorStack: parsed.error_stack,
+            };
+        } catch (e) {
+            console.error('Failed to parse task_result_info:', e);
+        }
+    }
+
+    // 标准化 scan_status 值（处理后端返回数字或字符串的情况）
+    let normalizedStatus = backend.scan_status;
+    if (typeof normalizedStatus === 'number') {
+        const statusMap: Record<number, string> = {
+            0: 'wait',
+            1: 'running',
+            2: 'success',
+            3: 'fail',
+        };
+        normalizedStatus = statusMap[normalizedStatus] || 'wait';
+    } else if (!normalizedStatus || typeof normalizedStatus !== 'string') {
+        normalizedStatus = 'wait';
+    }
+
     return {
         id: backend.id,
         scheduleId: backend.schedule_id,
@@ -589,22 +677,12 @@ export const fromBackendScanTask = (backend: any): ScanTask => {
         type: mapScanTaskType(backend.type),
         dataSourceType: formatDataSourceType(backend.ds_type),
         createUser: backend.create_user,
-        status: backend.scan_status,
+        status: normalizedStatus as any,
         taskStatus: backend.task_status === 'enable' ? 'enable' : 'disable',
         startTime: backend.start_time,
         scanStrategy: backend.scan_strategy || [],
-        processInfo: backend.task_process_info ? {
-            tableCount: backend.task_process_info.table_count,
-            successCount: backend.task_process_info.success_count,
-            failCount: backend.task_process_info.fail_count,
-        } : undefined,
-        resultInfo: backend.task_result_info ? {
-            tableCount: backend.task_result_info.table_count,
-            successCount: backend.task_result_info.success_count,
-            failCount: backend.task_result_info.fail_count,
-            failStage: backend.task_result_info.fail_stage,
-            errorStack: backend.task_result_info.error_stack,
-        } : undefined,
+        processInfo,
+        resultInfo,
         isScheduled: !!backend.schedule_id,
     };
 };
@@ -613,15 +691,132 @@ export const fromBackendScanTask = (backend: any): ScanTask => {
  * 后端表扫描信息 → 前端表扫描信息
  */
 export const fromBackendTableScan = (backend: TableScanVo): TableScan => {
+    // 标准化 scan_status 值
+    let normalizedStatus = backend.scan_status;
+    if (typeof normalizedStatus === 'number') {
+        const statusMap: Record<number, string> = {
+            0: 'wait',
+            1: 'running',
+            2: 'success',
+            3: 'fail',
+        };
+        normalizedStatus = statusMap[normalizedStatus] || 'wait';
+    } else if (!normalizedStatus || typeof normalizedStatus !== 'string') {
+        normalizedStatus = 'wait';
+    }
+
+    // 解析带单位的大小字符串（如 "16384MB" -> 字节数）
+    const parseSizeString = (sizeStr: string | number | undefined): number => {
+        if (!sizeStr) return 0;
+        if (typeof sizeStr === 'number') return sizeStr;
+        if (typeof sizeStr !== 'string') return 0;
+
+        const str = sizeStr.toString().trim().toUpperCase();
+        if (str === '0' || str === '') return 0;
+
+        // 匹配 "16384MB" 格式
+        const match = str.match(/^([\d.]+)(B|KB|MB|GB|TB)?$/);
+        if (!match) return 0;
+
+        const value = parseFloat(match[1]);
+        const unit = match[2] || 'B';
+
+        const unitMultipliers: Record<string, number> = {
+            'B': 1,
+            'KB': 1024,
+            'MB': 1024 * 1024,
+            'GB': 1024 * 1024 * 1024,
+            'TB': 1024 * 1024 * 1024 * 1024,
+        };
+
+        return value * (unitMultipliers[unit] || 1);
+    };
+
+    // 解析高级参数获取统计信息
+    let fieldCount = backend.field_count;
+    let dataSize = backend.data_length;
+    let indexSize = backend.index_length;
+
+    // 如果没有直接字段，尝试从 advanced_params 解析
+    if ((!fieldCount || !dataSize || !indexSize) && backend.advanced_params) {
+        try {
+            const params = typeof backend.advanced_params === 'string'
+                ? JSON.parse(backend.advanced_params)
+                : backend.advanced_params;
+
+            // params 可能是数组格式 [{key: xxx, value: xxx}, ...]
+            if (Array.isArray(params)) {
+                const paramMap: Record<string, any> = {};
+                params.forEach((p: any) => {
+                    if (p.key && p.value !== undefined) {
+                        paramMap[p.key] = p.value;
+                    }
+                });
+
+                if (!fieldCount) fieldCount = paramMap.field_count ? parseInt(paramMap.field_count) : undefined;
+
+                // 处理 data_length（可能是字符串如 "16384MB"）
+                if (!dataSize && paramMap.data_length) {
+                    dataSize = parseSizeString(paramMap.data_length);
+                }
+
+                // 处理 index_length（可能是字符串如 "16384MB"）
+                if (!indexSize && paramMap.index_length) {
+                    indexSize = parseSizeString(paramMap.index_length);
+                }
+            } else if (typeof params === 'object') {
+                // 如果是对象格式，直接读取字段
+                if (!fieldCount) fieldCount = params.field_count;
+                if (!dataSize && params.data_length) {
+                    dataSize = typeof params.data_length === 'string'
+                        ? parseSizeString(params.data_length)
+                        : params.data_length;
+                }
+                if (!indexSize && params.index_length) {
+                    indexSize = typeof params.index_length === 'string'
+                        ? parseSizeString(params.index_length)
+                        : params.index_length;
+                }
+            }
+        } catch (e) {
+            console.error('Failed to parse advanced_params:', e);
+        }
+    }
+
+    // 如果 dataSize 和 indexSize 还是后端返回的字符串格式，进行转换
+    if (typeof dataSize === 'string' && dataSize) {
+        dataSize = parseSizeString(dataSize);
+    }
+    if (typeof indexSize === 'string' && indexSize) {
+        indexSize = parseSizeString(indexSize);
+    }
+
+    // 格式化大小显示
+    const formatSize = (bytes: number): string => {
+        if (!bytes || bytes === 0) return '-';
+        const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+        const digitGroups = Math.floor(Math.log10(bytes) / Math.log10(1024));
+        return `${(bytes / Math.pow(1024, digitGroups)).toFixed(1)} ${units[digitGroups]}`;
+    };
+
+    const totalSize = (dataSize || 0) + (indexSize || 0);
+
     return {
         tableId: backend.table_id,
         tableName: backend.table_name,
         tableComment: backend.table_comment,
         dbType: formatDataSourceType(backend.db_type),
-        status: backend.scan_status,
+        status: normalizedStatus as any,
         rowCount: backend.row_count,
         scanTime: backend.scan_time,
         errorMsg: backend.error_msg,
+        fieldCount,
+        dataSize,
+        indexSize,
+        totalSize,
+        dataSizeFormatted: formatSize(dataSize || 0),
+        indexSizeFormatted: formatSize(indexSize || 0),
+        totalSizeFormatted: formatSize(totalSize),
     };
 };
 
@@ -652,6 +847,20 @@ export const fromBackendScheduledScan = (backend: any): ScheduledScan => {
  * 2. ScheduledScanExecution: execution_id, schedule_id, execute_time, scan_status, table_count, success_count, fail_count, duration
  */
 export const fromBackendScheduledScanExecution = (backend: any): ScheduledScanExecutionHistory => {
+    // 标准化 scan_status 值
+    let normalizedStatus = backend.scan_status;
+    if (typeof normalizedStatus === 'number') {
+        const statusMap: Record<number, string> = {
+            0: 'wait',
+            1: 'running',
+            2: 'success',
+            3: 'fail',
+        };
+        normalizedStatus = statusMap[normalizedStatus] || 'wait';
+    } else if (!normalizedStatus || typeof normalizedStatus !== 'string') {
+        normalizedStatus = 'wait';
+    }
+
     // 处理 ScheduleTaskInfoDto 格式（来自 /scan/schedule/task/{scheduleId} 接口）
     if (backend.task_id) {
         const taskProcessInfo = backend.task_process_info ? JSON.parse(backend.task_process_info) : null;
@@ -661,7 +870,7 @@ export const fromBackendScheduledScanExecution = (backend: any): ScheduledScanEx
             executionId: backend.task_id,
             scheduleId: backend.schedule_id || '',
             executeTime: backend.start_time,
-            status: backend.scan_status,
+            status: normalizedStatus as any,
             tableCount: taskProcessInfo?.table_count || taskResultInfo?.table_count || 0,
             successCount: taskResultInfo?.success_count || 0,
             failCount: taskResultInfo?.fail_count || 0,
@@ -674,7 +883,7 @@ export const fromBackendScheduledScanExecution = (backend: any): ScheduledScanEx
         executionId: backend.execution_id,
         scheduleId: backend.schedule_id,
         executeTime: backend.execute_time,
-        status: backend.scan_status,
+        status: normalizedStatus as any,
         tableCount: backend.table_count,
         successCount: backend.success_count,
         failCount: backend.fail_count,
@@ -719,16 +928,137 @@ const formatDataSourceType = (type: string): string => {
  * 后端表信息 → 前端表信息
  */
 const fromBackendTableInfo = (backend: TableInfoVo | any): TableInfo => {
+    // 解析带单位的大小字符串（如 "16384MB" -> 字节数）
+    const parseSizeString = (sizeStr: string | number | undefined): number => {
+        if (!sizeStr) return 0;
+        if (typeof sizeStr === 'number') return sizeStr;
+        if (typeof sizeStr !== 'string') return 0;
+
+        const str = sizeStr.toString().trim().toUpperCase();
+        if (str === '0' || str === '') return 0;
+
+        // 匹配 "16384MB" 格式
+        const match = str.match(/^([\d.]+)(B|KB|MB|GB|TB)?$/);
+        if (!match) return 0;
+
+        const value = parseFloat(match[1]);
+        const unit = match[2] || 'B';
+
+        const unitMultipliers: Record<string, number> = {
+            'B': 1,
+            'KB': 1024,
+            'MB': 1024 * 1024,
+            'GB': 1024 * 1024 * 1024,
+            'TB': 1024 * 1024 * 1024 * 1024,
+        };
+
+        return value * (unitMultipliers[unit] || 1);
+    };
+
+    // 格式化大小显示
+    const formatSize = (bytes: number): string => {
+        if (!bytes || bytes === 0) return '-';
+        const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+        const digitGroups = Math.floor(Math.log10(bytes) / Math.log10(1024));
+        return `${(bytes / Math.pow(1024, digitGroups)).toFixed(1)} ${units[digitGroups]}`;
+    };
+
+    // 初始化统计信息
+    let fieldCount = undefined;
+    let rowCount = undefined;
+    let dataSize = undefined;
+    let indexSize = undefined;
+
+    // 1. 首先尝试从根级别直接读取（后端直接返回的字段）
+    if (backend.data_length) {
+        dataSize = parseSizeString(backend.data_length);
+    }
+    if (backend.index_length) {
+        indexSize = parseSizeString(backend.index_length);
+    }
+    if (backend.table_rows !== undefined) {
+        rowCount = typeof backend.table_rows === 'string' ? parseInt(backend.table_rows) : backend.table_rows;
+    }
+    if (backend.field_count !== undefined) {
+        fieldCount = typeof backend.field_count === 'string' ? parseInt(backend.field_count) : backend.field_count;
+    }
+
+    // 2. 如果根级别没有，尝试从 advanced_params 解析
+    if ((!fieldCount || !rowCount || !dataSize || !indexSize) && backend.advanced_params) {
+        try {
+            const params = typeof backend.advanced_params === 'string'
+                ? JSON.parse(backend.advanced_params)
+                : backend.advanced_params;
+
+            // params 可能是数组格式 [{key: xxx, value: xxx}, ...]
+            if (Array.isArray(params)) {
+                const paramMap: Record<string, any> = {};
+                params.forEach((p: any) => {
+                    if (p.key && p.value !== undefined) {
+                        paramMap[p.key] = p.value;
+                    }
+                });
+
+                if (!fieldCount && paramMap.field_count) {
+                    fieldCount = parseInt(paramMap.field_count);
+                }
+                // 支持两种字段名: row_count 或 table_rows
+                if (!rowCount && (paramMap.row_count || paramMap.table_rows)) {
+                    rowCount = parseInt(paramMap.row_count || paramMap.table_rows);
+                }
+                if (!dataSize && paramMap.data_length) {
+                    dataSize = parseSizeString(paramMap.data_length);
+                }
+                if (!indexSize && paramMap.index_length) {
+                    indexSize = parseSizeString(paramMap.index_length);
+                }
+            } else if (typeof params === 'object') {
+                // 如果是对象格式，直接读取字段
+                if (!fieldCount && params.field_count) {
+                    fieldCount = params.field_count;
+                }
+                // 支持两种字段名: row_count 或 table_rows
+                if (!rowCount && (params.row_count || params.table_rows)) {
+                    rowCount = typeof (params.row_count || params.table_rows) === 'string'
+                        ? parseInt(params.row_count || params.table_rows)
+                        : (params.row_count || params.table_rows);
+                }
+                if (!dataSize && params.data_length) {
+                    dataSize = typeof params.data_length === 'string'
+                        ? parseSizeString(params.data_length)
+                        : params.data_length;
+                }
+                if (!indexSize && params.index_length) {
+                    indexSize = typeof params.index_length === 'string'
+                        ? parseSizeString(params.index_length)
+                        : params.index_length;
+                }
+            }
+        } catch (e) {
+            console.error('Failed to parse advanced_params:', e);
+        }
+    }
+
+    const totalSize = (dataSize || 0) + (indexSize || 0);
+
     return {
         id: backend.id,
         // 兼容两种命名格式: table_name 或 name
         tableName: backend.table_name || backend.name || '',
         // 兼容两种命名格式: db_type 或直接使用已格式化的类型
         dbType: backend.db_type ? formatDataSourceType(backend.db_type) : (backend.dbType || '未知'),
-        // 兼容两种格式: 直接的 table_comment 或 advanced_params.comment
-        tableComment: backend.table_comment || (backend.advanced_params?.comment) || '',
+        // 兼容多种字段名格式: table_comment, comment, 或 advanced_params.comment
+        tableComment: backend.table_comment || backend.comment || (backend.advanced_params?.comment) || '',
         createTime: backend.create_time,
         updateTime: backend.update_time,
+        fieldCount,
+        rowCount,
+        dataSize,
+        indexSize,
+        totalSize,
+        dataSizeFormatted: dataSize !== undefined ? formatSize(dataSize) : '-',
+        indexSizeFormatted: indexSize !== undefined ? formatSize(indexSize) : '-',
+        totalSizeFormatted: totalSize > 0 ? formatSize(totalSize) : '-',
     };
 };
 

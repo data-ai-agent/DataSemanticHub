@@ -113,7 +113,7 @@ CREATE TABLE IF NOT EXISTS `t_table_field_scan` (
   `f_field_precision` int DEFAULT NULL COMMENT '字段精度',
   `f_field_comment` varchar(2048) DEFAULT NULL COMMENT '字段注释',
   `f_field_order_no` int DEFAULT NULL,
-  `f_advanced_params` varchar(2048) DEFAULT NULL COMMENT '字段高级参数',
+  `f_advanced_params` text DEFAULT NULL COMMENT '字段高级参数',
   `f_version` int NOT NULL DEFAULT 1 COMMENT '版本号',
   `f_create_time` datetime NOT NULL DEFAULT current_timestamp() COMMENT '创建时间',
   `f_create_user` varchar(100) NOT NULL DEFAULT '' COMMENT '创建用户（ID），默认空字符串',

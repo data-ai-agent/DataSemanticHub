@@ -7,6 +7,7 @@ import {
     Plus, Upload, FileCheck, TrendingUp, MoreHorizontal, X, AlertTriangle, Users, Clock, MessageCircle, Send
 } from 'lucide-react';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { menuService } from './services/menuService';
 import { transformMenuTreeToMenuGroups, filterMenusByProduct } from './services/menuTransformService';
 import { getCachedMenus, setCachedMenus, clearExpiredCaches } from './services/menuCacheService';
@@ -361,9 +362,11 @@ export default function SemanticLayerApp() {
                     <Header activeModule={activeModule} setActiveModule={setActiveModule} />
                     <BreadcrumbBar activeModule={activeModule} menus={menus} />
                     <main className="flex-1 overflow-auto p-4 relative">
-                        <Suspense fallback={<PageLoading />}>
-                            {renderContent()}
-                        </Suspense>
+                        <ErrorBoundary>
+                            <Suspense fallback={<PageLoading />}>
+                                {renderContent()}
+                            </Suspense>
+                        </ErrorBoundary>
                     </main>
                 </div>
             </div>
