@@ -207,6 +207,10 @@ export const SemanticAssistBatchModal: React.FC<SemanticAssistBatchModalProps> =
             <TemplateExplanationDrawer
                 open={showTemplateDrawer}
                 onClose={() => setShowTemplateDrawer(false)}
+                runSnapshot={{
+                    template: 'SEMANTIC_MIN',
+                    sampleRatio
+                }}
             />
         </div>
     );

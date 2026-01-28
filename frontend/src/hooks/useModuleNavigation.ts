@@ -16,7 +16,8 @@ export type ModuleId =
     | 'agent_overview' | 'agent_templates' | 'agent_designer' | 'agent_debug'
     | 'agent_test' | 'agent_release' | 'agent_instances' | 'agent_workbench'
     | 'agent_observability' | 'agent_tools' | 'agent_knowledge' | 'agent_runtime_packs'
-    | 'agent_audit' | 'agent_settings';
+    | 'agent_audit' | 'agent_settings'
+    | 'agent_validation_center' | 'agent_operation_center' | 'agent_model_factory';
 
 // 默认模块：治理概览
 const DEFAULT_MODULE_BY_PRODUCT: Record<ProductId, ModuleId> = {

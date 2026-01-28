@@ -190,6 +190,10 @@ export const BatchSemanticConfigModal: React.FC<BatchSemanticConfigModalProps> =
             <TemplateExplanationDrawer
                 open={showTemplateDrawer}
                 onClose={() => setShowTemplateDrawer(false)}
+                runSnapshot={{
+                    template: 'SEMANTIC_MIN',
+                    sampleRatio
+                }}
             />
         </div>
     );

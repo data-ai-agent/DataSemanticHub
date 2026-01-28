@@ -1,0 +1,180 @@
+[
+    {
+        "id": "tbl_001",
+        "name": "t_users",
+        "sourceId": "ds_mysql_001",
+        "sourceName": "CRM_Primary_DB",
+        "comment": "User account information",
+        "status": "analyzed",
+        "rows": 1250000,
+        "updateTime": "2024-03-15 10:30:00",
+        "semanticAnalysis": {
+            "businessName": "用户表",
+            "description": "存储系统所有用户的基本信息",
+            "lastRun": {
+                "runId": "job_1001",
+                "status": "success",
+                "timestamp": "2024-03-15T10:25:00Z"
+            },
+            "analysisStep": "done",
+            "qualityScore": 88
+        },
+        "fields": [
+            {
+                "name": "user_id",
+                "type": "int",
+                "comment": "Primary Key",
+                "primaryKey": true
+            },
+            {
+                "name": "username",
+                "type": "varchar(50)",
+                "comment": "Login name",
+                "required": true
+            },
+            {
+                "name": "email",
+                "type": "varchar(100)",
+                "comment": "User email address"
+            },
+            {
+                "name": "phone",
+                "type": "varchar(20)",
+                "comment": "Mobile number"
+            },
+            {
+                "name": "created_at",
+                "type": "datetime",
+                "comment": "Register time"
+            },
+            {
+                "name": "status",
+                "type": "tinyint",
+                "comment": "0:Active, 1:Inactive",
+                "sampleValues": [
+                    "0",
+                    "1"
+                ]
+            }
+        ],
+        "reviewStats": {
+            "pendingReviewFields": 1,
+            "gateFailedItems": 0,
+            "riskItems": 0
+        }
+    },
+    {
+        "id": "tbl_002",
+        "name": "t_orders",
+        "sourceId": "ds_mysql_002",
+        "sourceName": "Order_Management_DB",
+        "comment": "Order transactions table",
+        "status": "pending_review",
+        "rows": 5600,
+        "updateTime": "2024-03-14 15:45:00",
+        "semanticAnalysis": {
+            "businessName": "订单主表",
+            "description": "记录客户的订单交易信息",
+            "lastRun": {
+                "runId": "job_1002",
+                "status": "success",
+                "timestamp": "2024-03-14T15:40:00Z"
+            },
+            "analysisStep": "done",
+            "qualityScore": 75
+        },
+        "fields": [
+            {
+                "name": "order_id",
+                "type": "bigint",
+                "comment": "Order ID",
+                "primaryKey": true
+            },
+            {
+                "name": "user_id",
+                "type": "int",
+                "comment": "Customer ID"
+            },
+            {
+                "name": "amount",
+                "type": "decimal(10,2)",
+                "comment": "Total Amount"
+            },
+            {
+                "name": "order_status",
+                "type": "varchar(20)",
+                "comment": "Status Enum"
+            }
+        ],
+        "reviewStats": {
+            "pendingReviewFields": 5,
+            "gateFailedItems": 1,
+            "riskItems": 0
+        }
+    },
+    {
+        "id": "tbl_003",
+        "name": "t_products",
+        "sourceId": "ds_mongo_001",
+        "sourceName": "Product_Catalog_NoSQL",
+        "comment": "Product catalog details",
+        "status": "scanned",
+        "rows": 890,
+        "updateTime": "2024-03-16 09:20:00",
+        "semanticAnalysis": null,
+        "fields": [
+            {
+                "name": "_id",
+                "type": "objectId",
+                "comment": "Document ID",
+                "primaryKey": true
+            },
+            {
+                "name": "name",
+                "type": "string",
+                "comment": "Product Name"
+            },
+            {
+                "name": "price",
+                "type": "double",
+                "comment": "Price"
+            },
+            {
+                "name": "tags",
+                "type": "array",
+                "comment": "Tags"
+            }
+        ],
+        "reviewStats": null
+    },
+    {
+        "id": "tbl_004",
+        "name": "t_logs",
+        "sourceId": "ds_pg_002",
+        "sourceName": "User_Activity_Logs",
+        "comment": "System access logs",
+        "status": "pending",
+        "rows": 12000000,
+        "updateTime": "2024-03-16 11:00:00",
+        "semanticAnalysis": null,
+        "fields": [
+            {
+                "name": "id",
+                "type": "uuid",
+                "comment": "Log ID",
+                "primaryKey": true
+            },
+            {
+                "name": "event",
+                "type": "jsonb",
+                "comment": "Event Payload"
+            },
+            {
+                "name": "created_at",
+                "type": "timestamp",
+                "comment": "Creation Time"
+            }
+        ],
+        "reviewStats": null
+    }
+]

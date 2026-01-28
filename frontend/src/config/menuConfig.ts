@@ -29,7 +29,8 @@ import {
     Shield,
     Settings,
     ListChecks,
-    EyeOff
+    EyeOff,
+    Box
 } from 'lucide-react';
 
 export interface MenuItem {
@@ -155,18 +156,16 @@ export const AGENT_FACTORY_MENUS: MenuGroup[] = [
         items: [
             { id: 'agent_overview', label: '概览', icon: Activity },
             { id: 'agent_templates', label: '模板库', icon: Bookmark },
-            { id: 'agent_designer', label: '智能体设计器', icon: Edit },
-            { id: 'agent_debug', label: '调试与Trace', icon: Search },
-            { id: 'agent_test', label: '用例与评测', icon: CheckSquare },
+            { id: 'agent_validation_center', label: '验证中心', icon: CheckSquare },
             { id: 'agent_release', label: '发布与灰度', icon: Upload },
-            { id: 'agent_instances', label: '运行实例', icon: Cpu },
-            { id: 'agent_observability', label: '运行观测', icon: TrendingUp }
+            { id: 'agent_operation_center', label: '运行中心', icon: Cpu }
         ]
     },
     {
         title: '底座能力',
         color: 'text-emerald-400',
         items: [
+            { id: 'agent_model_factory', label: '模型工厂设置', icon: Box },
             { id: 'agent_tools', label: '工具与技能', icon: Link },
             { id: 'agent_knowledge', label: '知识源与连接', icon: Network },
             { id: 'agent_runtime_packs', label: '运行包与策略', icon: Shield }

@@ -1,10 +1,10 @@
 import React from 'react';
 import {
     ArrowLeft, X, FileText,
-    Activity, Play, Database
+    Play
 } from 'lucide-react';
-import { TableSemanticProfile } from '../../../types/semantic';
-import { profileService, ProfileRunResponse } from '../../../services/profile';
+import { TableSemanticProfile, TableSemanticStage } from '../../../types/semantic';
+import { semanticStageLabelMap, semanticStageToneMap } from '../utils';
 
 
 interface GovernanceTopBarProps {
@@ -14,6 +14,11 @@ interface GovernanceTopBarProps {
     fields: any[];
     onBack?: () => void;
     onFinish?: () => void;
+    tableMeta?: {
+        tableName?: string;
+        sourceType?: string;
+        sourceName?: string;
+    };
 }
 
 export const GovernanceTopBar: React.FC<GovernanceTopBarProps> = ({
@@ -22,7 +27,8 @@ export const GovernanceTopBar: React.FC<GovernanceTopBarProps> = ({
     onModeChange,
     fields,
     onBack,
-    onFinish
+    onFinish,
+    tableMeta
 }) => {
     // Calc Stats
 
@@ -31,14 +37,35 @@ export const GovernanceTopBar: React.FC<GovernanceTopBarProps> = ({
     const confirmedFields = profile.fields?.filter(f => f.semanticStatus === 'DECIDED').length || 0;
     const progress = totalFields > 0 ? (confirmedFields / totalFields) * 100 : 0;
     const blockers = (profile.fields?.filter(f => f.riskLevel === 'HIGH').length || 0) +
-        (fields.length - confirmedFields); // Simple blocker logic: High Risk + Pending
+        (fields.length - confirmedFields);
 
+    const displayTableName = tableMeta?.tableName || profile.tableName || '未命名表';
+    const dataSourceTag = tableMeta?.sourceType || '数据源';
+    const objectTypeLabelMap: Record<string, string> = {
+        entity: '主体',
+        event: '过程',
+        state: '状态',
+        attribute: '清单',
+        rule: '清单'
+    };
+    const objectTypeLabel = objectTypeLabelMap[profile.objectType || ''] || '主体';
 
+    const fallbackStage: TableSemanticStage = profile.governanceStatus === 'S3'
+        ? 'READY_FOR_OBJECT'
+        : profile.governanceStatus === 'S2'
+            ? 'MODELING_IN_PROGRESS'
+            : profile.governanceStatus === 'S1'
+                ? 'FIELD_PENDING'
+                : 'NOT_STARTED';
+    const stage = profile.semanticStage || fallbackStage;
+    const stageLabel = semanticStageLabelMap[stage];
+    const stageTone = semanticStageToneMap[stage];
+
+    const primaryLabel = stage === 'NOT_STARTED' ? '开始语义理解' : '继续语义理解';
 
     return (
         <div className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between shadow-sm sticky top-0 z-10">
-            {/* Left: Context Info */}
-            <div className="flex items-center gap-4">
+            <div className="flex items-start gap-4">
                 <button
                     onClick={onBack}
                     className="p-2 rounded-lg hover:bg-slate-100 text-slate-500 transition-colors"
@@ -46,55 +73,41 @@ export const GovernanceTopBar: React.FC<GovernanceTopBarProps> = ({
                 >
                     <ArrowLeft size={20} />
                 </button>
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${mode === 'SEMANTIC' ? 'bg-purple-600 text-white' : 'bg-slate-100 text-slate-500'
-                    }`}>
-                    {mode === 'SEMANTIC' ? <Activity size={20} /> : <Database size={20} />}
-                </div>
-                <div>
-                    <h1 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                        {profile.tableName}
-                        <span className={`px-2 py-0.5 rounded text-[10px] border ${profile.objectType === 'event' ? 'bg-blue-50 text-blue-600 border-blue-200' :
-                            profile.objectType === 'entity' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' :
-                                'bg-slate-50 text-slate-500 border-slate-200'
-                            }`}>
-                            {(() => {
-                                const map: Record<string, string> = {
-                                    'entity': '主体',
-                                    'event': '事件',
-                                    'state': '状态',
-                                    'rule': '规则',
-                                    'attribute': '属性'
-                                };
-                                return map[profile.objectType || ''] || '表';
-                            })()}
+                <div className="flex flex-col gap-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <div className="text-lg font-bold text-slate-800">{displayTableName}</div>
+                        <span className="px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200">
+                            {dataSourceTag}
                         </span>
-                    </h1>
-                    <div className="flex items-center gap-4 text-xs mt-1">
-                        <span className="text-slate-500">
-                            已治理: <strong className="text-slate-700">{confirmedFields}/{totalFields}</strong>
+                        <span className="px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-600 border border-blue-200">
+                            {objectTypeLabel}
                         </span>
+                    </div>
+                    <div className="text-xs text-slate-500 flex items-center gap-3">
+                        <span>已确认 {confirmedFields}/{totalFields}</span>
                         {blockers > 0 && (
-                            <span className="text-amber-600 font-medium flex items-center gap-1">
-                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                            <span className="text-amber-600 font-medium">
                                 {blockers} 待处理
                             </span>
+                        )}
+                        {tableMeta?.sourceName && (
+                            <span className="text-slate-400">来源：{tableMeta.sourceName}</span>
                         )}
                     </div>
                 </div>
             </div>
 
-            {/* Middle: Semantic Mode Helper (Only in Semantic Mode) */}
-            {mode === 'SEMANTIC' && null}
-
-            {/* Right: Actions */}
             <div className="flex items-center gap-3">
+                <span className={`px-2.5 py-1 rounded-full text-xs font-medium border ${stageTone}`}>
+                    {stageLabel}
+                </span>
                 {mode === 'BROWSE' ? (
                     <button
                         onClick={() => onModeChange('SEMANTIC')}
                         className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-all shadow-sm hover:shadow active:scale-95"
                     >
                         <Play size={16} fill="currentColor" />
-                        开始语义理解
+                        {primaryLabel}
                     </button>
                 ) : (
                     <>
@@ -103,7 +116,7 @@ export const GovernanceTopBar: React.FC<GovernanceTopBarProps> = ({
                             className="flex items-center gap-2 px-4 py-2 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-all"
                         >
                             <X size={16} />
-                            退出模式
+                            退出语义理解
                         </button>
                         <button
                             onClick={onFinish}
@@ -115,8 +128,6 @@ export const GovernanceTopBar: React.FC<GovernanceTopBarProps> = ({
                     </>
                 )}
             </div>
-
-            {/* 模板说明抽屉 - Removed */}
         </div>
     );
 };

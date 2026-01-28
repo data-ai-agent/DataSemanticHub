@@ -1,14 +1,20 @@
 import React from 'react';
-import { X, Info, Shield, CheckCircle, AlertTriangle } from 'lucide-react';
+import { X, Info, AlertTriangle } from 'lucide-react';
 
 interface TemplateExplanationDrawerProps {
     open: boolean;
     onClose: () => void;
+    runSnapshot?: {
+        template?: string;
+        sampleRatio?: number;
+        forceRecompute?: boolean;
+    };
 }
 
 export const TemplateExplanationDrawer: React.FC<TemplateExplanationDrawerProps> = ({
     open,
-    onClose
+    onClose,
+    runSnapshot
 }) => {
     if (!open) return null;
 
@@ -136,6 +142,35 @@ export const TemplateExplanationDrawer: React.FC<TemplateExplanationDrawerProps>
                         </div>
                     </section>
 
+                    {/* 3. 范围与异常提示 */}
+                    <section>
+                        <h3 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+                            <span className="w-1 h-4 bg-emerald-500 rounded-full" />
+                            范围与异常提示
+                        </h3>
+                        <div className="border border-slate-200 rounded-lg overflow-hidden">
+                            <table className="w-full text-sm text-left">
+                                <thead className="bg-slate-50 text-xs text-slate-500 uppercase font-semibold">
+                                    <tr>
+                                        <th className="px-4 py-3 w-1/2">信号名称</th>
+                                        <th className="px-4 py-3 w-1/2">含义</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {[
+                                        { name: '数值 / 时间范围', desc: '判断字段是否符合时间或数值语义' },
+                                        { name: '异常时间提示', desc: '未来时间 / 极端时间值' }
+                                    ].map((row, i) => (
+                                        <tr key={i} className="group hover:bg-slate-50/50">
+                                            <td className="px-4 py-3 font-medium text-slate-700">{row.name}</td>
+                                            <td className="px-4 py-3 text-slate-500">{row.desc}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+
                     {/* 4. 风险提示机制 */}
                     <section className="bg-amber-50/50 rounded-xl p-5 border border-amber-100/50">
                         <div className="flex gap-3">
@@ -180,6 +215,19 @@ export const TemplateExplanationDrawer: React.FC<TemplateExplanationDrawerProps>
                             <li>不影响数据质量模块中的任何规则配置</li>
                         </ul>
                     </div>
+
+                    {runSnapshot && (
+                        <div className="bg-blue-50 rounded-lg p-4 text-xs text-slate-600 border border-blue-100">
+                            <div className="font-semibold text-slate-700 mb-2">本次批量任务中：</div>
+                            <ul className="space-y-1 ml-6 list-disc">
+                                <li>使用模板：{runSnapshot.template || 'SEMANTIC_MIN'}</li>
+                                {typeof runSnapshot.sampleRatio === 'number' && (
+                                    <li>采样比例：{runSnapshot.sampleRatio}%</li>
+                                )}
+                                <li>不强制重算</li>
+                            </ul>
+                        </div>
+                    )}
                 </div>
 
                 {/* Footer */}

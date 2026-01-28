@@ -63,6 +63,9 @@ const KnowledgeConnectorsView = lazy(() => import('./views/agent-factory/Knowled
 const RuntimePacksView = lazy(() => import('./views/agent-factory/RuntimePacksView'));
 const AuditLogsView = lazy(() => import('./views/agent-factory/AuditLogsView'));
 const FactorySettingsView = lazy(() => import('./views/agent-factory/FactorySettingsView'));
+const ValidationCenterView = lazy(() => import('./views/agent-factory/ValidationCenterView'));
+const OperationCenterView = lazy(() => import('./views/agent-factory/OperationCenterView'));
+const ModelFactoryView = lazy(() => import('./views/agent-factory/ModelFactoryView'));
 // Handling named exports for lazy loading
 const DataCatalogView = lazy(() => import('./views/DataCatalogView').then(module => ({ default: module.DataCatalogView })));
 const SemanticAssetManagerView = lazy(() => import('./views/SemanticAssetManagerView'));
@@ -316,12 +319,18 @@ export default function SemanticLayerApp() {
                     onSaveDraft={handleUpsertAgentTemplate}
                 />
             );
-            case 'agent_debug': return <DebugTraceView setActiveModule={setActiveModule} />;
-            case 'agent_test': return <TestEvaluationView />;
+            case 'agent_debug': return <ValidationCenterView setActiveModule={setActiveModule} initialTab="debug" />;
+            case 'agent_test': return <ValidationCenterView setActiveModule={setActiveModule} initialTab="test" />;
+            case 'agent_validation_center': return <ValidationCenterView setActiveModule={setActiveModule} initialTab="debug" />;
+
             case 'agent_release': return <ReleaseCanaryView />;
-            case 'agent_instances': return <AgentInstancesView setActiveModule={setActiveModule} />;
+
+            case 'agent_instances': return <OperationCenterView setActiveModule={setActiveModule} initialTab="instances" />;
+            case 'agent_observability': return <OperationCenterView setActiveModule={setActiveModule} initialTab="observability" />;
+            case 'agent_operation_center': return <OperationCenterView setActiveModule={setActiveModule} initialTab="instances" />;
+
             case 'agent_workbench': return <AgentWorkbenchView setActiveModule={setActiveModule} />;
-            case 'agent_observability': return <ObservabilityView />;
+            case 'agent_model_factory': return <ModelFactoryView />;
             case 'agent_tools': return <ToolRegistryView />;
             case 'agent_knowledge': return <KnowledgeConnectorsView />;
             case 'agent_runtime_packs': return <RuntimePacksView />;

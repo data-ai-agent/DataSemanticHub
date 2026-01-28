@@ -1,0 +1,86 @@
+[
+    {
+        "id": "ds_mysql_001",
+        "name": "CRM_Primary_DB",
+        "type": "MySQL",
+        "desc": "Main CRM database for customer data"
+    },
+    {
+        "id": "ds_mysql_002",
+        "name": "Order_Management_DB",
+        "type": "MySQL",
+        "desc": "Orders and transaction processing"
+    },
+    {
+        "id": "ds_pg_001",
+        "name": "Analytics_Warehouse",
+        "type": "PostgreSQL",
+        "desc": "Data warehouse for BI analytics"
+    },
+    {
+        "id": "ds_pg_002",
+        "name": "User_Activity_Logs",
+        "type": "PostgreSQL",
+        "desc": "High volume activity logs"
+    },
+    {
+        "id": "ds_oracle_001",
+        "name": "Legacy_ERP_System",
+        "type": "Oracle",
+        "desc": "Core ERP financial data"
+    },
+    {
+        "id": "ds_oracle_002",
+        "name": "HR_Master_Data",
+        "type": "Oracle",
+        "desc": "Human resources and payroll"
+    },
+    {
+        "id": "ds_sqlserver_001",
+        "name": "Inventory_Control",
+        "type": "SQL Server",
+        "desc": "Warehouse inventory tracking"
+    },
+    {
+        "id": "ds_mongo_001",
+        "name": "Product_Catalog_NoSQL",
+        "type": "MongoDB",
+        "desc": "Flexible product attributes and metadata"
+    },
+    {
+        "id": "ds_redis_001",
+        "name": "Session_Cache_Cluster",
+        "type": "Redis",
+        "desc": "User session capability cache"
+    },
+    {
+        "id": "ds_es_001",
+        "name": "Global_Search_Index",
+        "type": "Elasticsearch",
+        "desc": "Full-text search engine for products"
+    },
+    {
+        "id": "ds_clickhouse_001",
+        "name": "ClickStream_Analytics",
+        "type": "ClickHouse",
+        "desc": "Real-time clickstream data analysis"
+    },
+    {
+        "id": "ds_hive_001",
+        "name": "Data_Lake_Bronze",
+        "type": "Hive",
+        "desc": "Raw data landing zone"
+    },
+    {
+        "id": "ds_dm_001",
+        "name": "Government_Reporting",
+        "type": "Dameng",
+        "desc": "Compliance reporting database"
+    },
+    {
+        "id": "ds_kingbase_001",
+        "name": "Secure_Archives",
+        "type": "Kingbase",
+        "desc": "Secure document archiving"
+    }
+]

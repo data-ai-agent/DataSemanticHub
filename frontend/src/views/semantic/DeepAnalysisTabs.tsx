@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
-    Table, Database, CheckCircle2, ChevronDown, ChevronRight
+    Table, Database, CheckCircle2, ChevronDown, ChevronRight, Key
 } from 'lucide-react';
 import { TableSemanticProfile, FieldSemanticProfile } from '../../types/semantic';
 import { SemanticFieldDetail } from './SemanticFieldDetail';
@@ -145,7 +145,7 @@ export const DeepAnalysisTabs: React.FC<DeepAnalysisTabsProps> = ({
                             </div>
                             <div className="bg-emerald-50/50 border border-emerald-100 rounded-lg p-3 text-center">
                                 <div className="text-2xl font-bold text-emerald-600 mb-1">
-                                    {fields.length}
+                                    {fields.filter(f => f.required).length}
                                 </div>
                                 <div className="text-xs text-emerald-400 font-medium">必填字段</div>
                             </div>
@@ -177,6 +177,8 @@ export const DeepAnalysisTabs: React.FC<DeepAnalysisTabsProps> = ({
                                         <th className="px-4 py-3 text-left">物理字段</th>
                                         <th className="px-4 py-3 text-left">业务描述</th>
                                         <th className="px-4 py-3 text-left">数据类型</th>
+                                        <th className="px-4 py-3 text-center w-16">主键</th>
+                                        <th className="px-4 py-3 text-center w-16">必填</th>
                                         <th className="px-4 py-3 text-left w-24">⚙️ 规则判定</th>
                                         <th className="px-4 py-3 text-left w-24">✨ AI 语义</th>
                                         <th className="px-4 py-3 text-left w-32">💾 采样值</th>
@@ -227,6 +229,20 @@ export const DeepAnalysisTabs: React.FC<DeepAnalysisTabsProps> = ({
                                                             {field.type}
                                                             <CheckCircle2 size={10} className="opacity-50" />
                                                         </span>
+                                                    </td>
+                                                    <td className="px-4 py-3 text-center">
+                                                        {field.primaryKey && (
+                                                            <div className="flex justify-center">
+                                                                <Key size={14} className="text-amber-500" />
+                                                            </div>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-center">
+                                                        {field.required ? (
+                                                            <span className="text-slate-500 font-medium">是</span>
+                                                        ) : (
+                                                            <span className="text-slate-300">-</span>
+                                                        )}
                                                     </td>
                                                     <td className="px-4 py-3">
                                                         <div className="bg-slate-50 text-slate-400 px-2 py-1 rounded text-[10px] border border-slate-100/50">

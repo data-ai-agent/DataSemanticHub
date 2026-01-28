@@ -1,24 +1,17 @@
-import { useState, useRef, useMemo, useEffect } from 'react';
-import { Sparkles, Activity, CheckCircle, ChevronDown, ChevronRight, Bot, AlertTriangle, ArrowLeft, RefreshCw, Table, Share2, Layers, Shield, Database, Search, Settings, Filter, Plus, FileText, Key, Hash, CheckCircle2, XCircle, Info, ChevronLeft, Server, Clock, Edit, X, Box, Cpu, Star, Tag, ShieldCheck, AlertCircle, ArrowRight } from 'lucide-react';
+import { useState, useRef, useMemo, useEffect, Fragment } from 'react';
+import { Sparkles, Activity, CheckCircle, ChevronDown, ChevronRight, AlertTriangle, ArrowLeft, RefreshCw, Table, Share2, Layers, Shield, Database, Search, Settings, Filter, Plus, FileText, Key, Hash, CheckCircle2, XCircle, Info, ChevronLeft, Server, Clock, Edit, X, Box, Cpu, Star, Tag, ShieldCheck, AlertCircle, ArrowRight } from 'lucide-react';
 import { useToast } from '../components/ui/Toast';
-import { TableSemanticProfile, GovernanceStatus, ReviewStats, RunSummary, TableSemanticStage, FieldSemanticStatus } from '../types/semantic';
+import { TableSemanticProfile, GovernanceStatus, ReviewStats, RunSummary, TableSemanticStage, FieldSemanticStatus, FieldSemanticProfile, BUSINESS_DOMAINS, DATA_LAYERS } from '../types/semantic';
 import { ReadOnlyBadge } from '../components/common/ReadOnlyBadge';
 import { useVersionContext } from '../contexts/VersionContext';
 import { analyzeSingleTable, resolveGovernanceStatus, normalizeFields, buildReviewStats, checkGatekeeper, analyzeField, calculateTableRuleScore, calculateFusionScore } from './semantic/logic';
-import { SemanticAnalysisCard } from './semantic/SemanticAnalysisCard';
-import { SemanticConclusionCard } from './semantic/SemanticConclusionCard';
-import { DeepAnalysisTabs } from './semantic/DeepAnalysisTabs';
-import { GateFailureAlertCard } from './semantic/components/GateFailureAlertCard';
-import { SemanticHeader, PageMode } from './semantic/components/SemanticHeader';
+import { PageMode } from './semantic/components/SemanticHeader';
 import { GovernanceFieldList } from './semantic/components/GovernanceFieldList';
 import { SemanticDecisionPanel } from './semantic/components/SemanticDecisionPanel';
 import { GovernanceTopBar } from './semantic/components/GovernanceTopBar';
 import { SemanticContextPanel } from './semantic/components/SemanticContextPanel';
 import { typeConfig, getGovernanceDisplay, GovernanceDisplay, runStatusLabelMap, runStatusToneMap, semanticStageLabelMap, semanticStageToneMap } from './semantic/utils';
 import { UpgradeSuggestionCard, generateUpgradeSuggestion } from './semantic/UpgradeSuggestionCard';
-import { OverviewTab } from './semantic/tabs/OverviewTab';
-import { EvidenceTab } from './semantic/tabs/EvidenceTab';
-import { LogsTab } from './semantic/tabs/LogsTab';
 import { RelationshipGraphTab } from './semantic/tabs/RelationshipGraphTab';
 import { QualityOverviewTab } from './semantic/tabs/QualityOverviewTab';
 import { BatchOperationBar } from './semantic/components/BatchOperationBar';
@@ -35,6 +28,8 @@ import { SemanticAssistBatchRunConfig, DEFAULT_SEMANTIC_ASSIST, SemanticAssist }
 import { SemanticAssistBar } from './semantic/components/SemanticAssistBar';
 import { TemplateExplanationDrawer } from './semantic/components/TemplateExplanationDrawer';
 import { SemanticAssistConfigPanel } from './semantic/components/SemanticAssistConfigPanel';
+import mockTreeData from '../data/mockDataSourceTree.json';
+import mockAssetList from '../data/mockAssetList.json';
 
 
 interface DataSemanticUnderstandingViewProps {
@@ -76,7 +71,7 @@ const DataSemanticUnderstandingView = ({
     const [selectedDataSourceId, setSelectedDataSourceId] = useState<string | null>(null); // null means all
     const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
     const [expandedTypes, setExpandedTypes] = useState<string[]>(['MySQL', 'Oracle', 'PostgreSQL']);
-    const [showDirectory, setShowDirectory] = useState(true);
+    const [dataSourceSearchTerm, setDataSourceSearchTerm] = useState('');
 
 
     /*
@@ -174,8 +169,10 @@ const DataSemanticUnderstandingView = ({
     const [selectedFieldNames, setSelectedFieldNames] = useState<string[]>([]);
     const [expandedFields, setExpandedFields] = useState<string[]>([]);
     const [focusField, setFocusField] = useState<string | null>(null);
+    const [expandedFieldRows, setExpandedFieldRows] = useState<string[]>([]);
+    const [selectedRelationIndex, setSelectedRelationIndex] = useState(0);
 
-    const [resultTab, setResultTab] = useState<'overview' | 'evidence' | 'fields' | 'logs' | 'structure' | 'graph' | 'quality'>('overview');
+    const [resultTab, setResultTab] = useState<'business' | 'fields' | 'graph' | 'governance'>('business');
     const [showAllKeyEvidence, setShowAllKeyEvidence] = useState(false);
     const [fieldRoleOverrides, setFieldRoleOverrides] = useState<Record<string, { role: string; source: 'rule' | 'ai' }>>({});
     const [openConflictPopover, setOpenConflictPopover] = useState<string | null>(null);
@@ -204,24 +201,11 @@ const DataSemanticUnderstandingView = ({
 
 
     // Derived Data
-    // Get unique data sources from scan results (assuming scanResults contains source info)
-    // Or we use a mock list of sources if scanResults doesn't have full source metadata, 
-    // but usually scanResults items should have 'sourceId', 'sourceName', 'sourceType'.
     // We will extract unique sources from the assets list.
     const assets = scanResults.filter(r => ['scanned', 'analyzed', 'pending_review', 'pending'].includes(r.status));
 
-    const dataSourcesMap = assets.reduce((acc: any, asset: any) => {
-        if (!asset.sourceId) return acc;
-        if (!acc[asset.sourceId]) {
-            acc[asset.sourceId] = {
-                id: asset.sourceId,
-                name: asset.sourceName || 'Unknown Source',
-                type: asset.sourceType || 'MySQL'
-            };
-        }
-        return acc;
-    }, {});
-    const dataSources = Object.values(dataSourcesMap);
+    // Use Mock Data for the Tree
+    const dataSources = mockTreeData;
 
     // Group Sources by Type for the Left Tree
     const typeGroups = dataSources.reduce((acc: Record<string, any[]>, ds: any) => {
@@ -242,7 +226,9 @@ const DataSemanticUnderstandingView = ({
             let semanticStage: TableSemanticStage = 'NOT_STARTED';
             if (governanceStatus === 'S3') {
                 semanticStage = 'READY_FOR_OBJECT';
-            } else if (governanceStatus === 'S1' || governanceStatus === 'S2') {
+            } else if (governanceStatus === 'S2') {
+                semanticStage = 'MODELING_IN_PROGRESS';
+            } else if (governanceStatus === 'S1') {
                 semanticStage = 'FIELD_PENDING';
             }
 
@@ -414,6 +400,29 @@ const DataSemanticUnderstandingView = ({
         }
     };
 
+    const updateFieldProfile = (fieldName: string, updates: Partial<FieldSemanticProfile>) => {
+        if (isReadOnly) return;
+        setSemanticProfile((prev: any) => {
+            const nextFields = Array.isArray(prev.fields) ? [...prev.fields] : [];
+            const index = nextFields.findIndex((f: any) => f.fieldName === fieldName);
+            if (index >= 0) {
+                nextFields[index] = { ...nextFields[index], ...updates };
+            } else {
+                nextFields.push({
+                    fieldName,
+                    dataType: updates.dataType || 'string',
+                    role: updates.role || 'BusAttr',
+                    roleConfidence: updates.roleConfidence || 0,
+                    sensitivity: updates.sensitivity || 'L1',
+                    quality: updates.quality || 'B',
+                    ...updates
+                });
+            }
+            return { ...prev, fields: nextFields };
+        });
+    };
+
+
     const rolledBackTableIds = useMemo(() => {
         return new Set(
             upgradeHistory.filter(entry => entry.rolledBack).map(entry => entry.tableId)
@@ -518,7 +527,7 @@ const DataSemanticUnderstandingView = ({
         setFieldSearchTerm('');
         setSelectedFieldNames([]);
         setFieldReviewStatus({});
-        setResultTab('overview');
+        setResultTab('business');
 
         // Prepare semantic profile for detail view
         const asset = assets.find(a => a.table === tableId);
@@ -583,16 +592,9 @@ const DataSemanticUnderstandingView = ({
     };
 
     const handleViewEvidence = () => {
-        setResultTab('evidence');
-        scrollToSection('result-key-evidence');
+        setResultTab('business');
+        scrollToSection('business-evidence');
     };
-
-    const handleViewLogs = () => {
-        setResultTab('logs');
-        scrollToSection('result-logs');
-    };
-
-
 
     const handleEvidenceAction = (payload: {
         action: 'accept' | 'override' | 'pending';
@@ -623,13 +625,7 @@ const DataSemanticUnderstandingView = ({
         scrollToSection('detail-fields-table');
     };
 
-    const handleOpenGateDetail = () => {
-        setResultTab('overview');
-        scrollToSection('result-gate-detail');
-    };
-
-
-
+    
 
 
     // Conflict resolution: user chooses to adopt rule or AI suggestion
@@ -1015,52 +1011,87 @@ const DataSemanticUnderstandingView = ({
                         </div>
 
                         {!isTreeCollapsed ? (
-                            <div className="flex-1 overflow-y-auto p-2 opacity-100 transition-opacity duration-300">
-                                <button
-                                    onClick={() => handleDataSourceSelect(null)}
-                                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm mb-2 font-medium transition-colors ${selectedDataSourceId === null ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50'
-                                        }`}
-                                >
-                                    <Layers size={14} />
-                                    全部数据源
-                                </button>
-
-                                {Object.entries(typeGroups).map(([type, items]: [string, any]) => (
-                                    <div key={type} className="mb-1">
-                                        <button
-                                            onClick={() => toggleType(type)}
-                                            className="w-full flex items-center gap-2 px-2 py-1.5 rounded hover:bg-slate-50 transition-colors text-slate-700"
-                                        >
-                                            <ChevronRight
-                                                size={14}
-                                                className={`text-slate-400 transition-transform duration-200 ease-out ${expandedTypes.includes(type) ? 'rotate-90' : ''}`}
-                                            />
-                                            <span className="text-base">{typeLogoConfig[type] || '💾'}</span>
-                                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${typeConfig[type]?.bgColor || 'bg-slate-100'} ${typeConfig[type]?.color || ''}`}>{type}</span>
-                                            <span className="ml-auto text-xs text-slate-400">{items.length}</span>
-                                        </button>
-                                        <div
-                                            className={`ml-5 space-y-0.5 mt-1 border-l border-slate-100 pl-1 overflow-hidden origin-top transition-all duration-300 ease-in-out ${expandedTypes.includes(type)
-                                                ? 'max-h-96 opacity-100'
-                                                : 'max-h-0 opacity-0 pointer-events-none'
-                                                }`}
-                                        >
-                                            {items.map((ds: any) => (
-                                                <button
-                                                    key={ds.id}
-                                                    onClick={() => handleDataSourceSelect(ds.id)}
-                                                    className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-left text-xs transition-colors ${selectedDataSourceId === ds.id ? 'bg-blue-50 text-blue-700 font-medium' : 'hover:bg-slate-50 text-slate-600'}`}
-                                                >
-                                                    <Server size={12} className={selectedDataSourceId === ds.id ? 'text-blue-500' : 'text-slate-400'} />
-                                                    <span className="truncate" title={ds.name}>{ds.name}</span>
-                                                </button>
-                                            ))}
-                                        </div>
+                            <div className="flex-1 flex flex-col h-full opacity-100 transition-opacity duration-300">
+                                {/* Search Bar */}
+                                <div className="px-3 py-3 border-b border-slate-50 shrink-0 bg-white sticky top-0 z-10">
+                                    <div className="relative group">
+                                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={13} />
+                                        <input
+                                            type="text"
+                                            value={dataSourceSearchTerm}
+                                            onChange={(e) => setDataSourceSearchTerm(e.target.value)}
+                                            placeholder="搜索数据源..."
+                                            className="w-full pl-8 pr-2 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all placeholder:text-slate-400"
+                                        />
                                     </div>
-                                ))}
+                                </div>
+
+                                <div className="flex-1 overflow-y-auto p-2 space-y-1 scrollbar-hide">
+                                    <button
+                                        onClick={() => handleDataSourceSelect(null)}
+                                        className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm mb-3 font-medium transition-all duration-200 group ${selectedDataSourceId === null
+                                            ? 'bg-blue-50 text-blue-700 shadow-sm ring-1 ring-blue-100'
+                                            : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 border border-transparent hover:border-slate-100'
+                                            }`}
+                                    >
+                                        <div className={`w-5 h-5 rounded flex items-center justify-center transition-colors ${selectedDataSourceId === null ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-400 group-hover:bg-slate-200 group-hover:text-slate-600'}`}>
+                                            <Layers size={12} />
+                                        </div>
+                                        <span className="flex-1 text-left">全部资源</span>
+                                        {/* <span className="text-[10px] bg-white/50 px-1.5 py-0.5 rounded text-slate-400 border border-slate-100/50">{dataSources.length}</span> */}
+                                    </button>
+
+                                    {Object.entries(typeGroups).map(([type, items]: [string, any]) => {
+                                        const filteredItems = items.filter((ds: any) =>
+                                            ds.name.toLowerCase().includes(dataSourceSearchTerm.toLowerCase())
+                                        );
+
+                                        if (filteredItems.length === 0 && dataSourceSearchTerm) return null;
+
+                                        const isExpanded = expandedTypes.includes(type) || dataSourceSearchTerm.length > 0;
+                                        const finalItems = dataSourceSearchTerm ? filteredItems : items;
+
+                                        return (
+                                            <div key={type} className="mb-0.5">
+                                                <button
+                                                    onClick={() => toggleType(type)}
+                                                    className="w-full flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-slate-50 transition-colors text-slate-700 group select-none"
+                                                >
+                                                    <ChevronRight
+                                                        size={14}
+                                                        className={`text-slate-300 group-hover:text-slate-500 transition-transform duration-200 ease-out ${isExpanded ? 'rotate-90' : ''}`}
+                                                    />
+                                                    <span className="text-sm opacity-90">{typeLogoConfig[type] || '💾'}</span>
+                                                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ml-0.5 ${typeConfig[type]?.bgColor || 'bg-slate-100'} ${typeConfig[type]?.color || 'text-slate-600'}`}>{type}</span>
+                                                    <span className="ml-auto text-[10px] text-slate-400 tabular-nums bg-slate-50 px-1.5 rounded">{finalItems.length}</span>
+                                                </button>
+                                                <div
+                                                    className={`ml-[11px] border-l border-slate-100 pl-2 space-y-0.5 overflow-hidden origin-top transition-all duration-300 ease-in-out ${isExpanded
+                                                        ? 'max-h-[500px] opacity-100 py-1'
+                                                        : 'max-h-0 opacity-0 pointer-events-none'
+                                                        }`}
+                                                >
+                                                    {finalItems.map((ds: any) => (
+                                                        <button
+                                                            key={ds.id}
+                                                            onClick={() => handleDataSourceSelect(ds.id)}
+                                                            className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-left text-xs transition-colors ${selectedDataSourceId === ds.id
+                                                                ? 'bg-blue-50 text-blue-700 font-medium'
+                                                                : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
+                                                                }`}
+                                                        >
+                                                            <div className={`w-1.5 h-1.5 rounded-full ${selectedDataSourceId === ds.id ? 'bg-blue-500 shadow-[0_0_0_2px_rgba(59,130,246,0.2)]' : 'bg-slate-300'}`}></div>
+                                                            <span className="truncate flex-1" title={ds.name}>{ds.name}</span>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
                             </div>
                         ) : (
-                            <div className="flex-1 flex flex-col items-center py-4 gap-3 animate-fade-in overflow-y-auto custom-scrollbar">
+                            <div className="flex-1 flex flex-col items-center py-4 gap-3 animate-fade-in overflow-y-auto scrollbar-hide">
                                 <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 mb-2 cursor-pointer hover:bg-blue-100 transition-colors" title="全部数据源" onClick={() => handleDataSourceSelect(null)}>
                                     <Layers size={16} />
                                 </div>
@@ -1375,6 +1406,7 @@ const DataSemanticUnderstandingView = ({
                                                                 handleTableClick(asset.table || asset.name || asset.id);
                                                                 // CTA 统一进入语义理解模式
                                                                 setPageMode('SEMANTIC');
+                                                                setGovernanceMode('SEMANTIC');
                                                             }}
                                                             className={`px-2 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1 mx-auto ${asset.semanticStage === 'READY_FOR_OBJECT'
                                                                 ? 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -1484,6 +1516,11 @@ const DataSemanticUnderstandingView = ({
                                         }
                                     }}
                                     fields={selectedTableFields}
+                                    tableMeta={{
+                                        tableName: selectedTable?.table,
+                                        sourceType: selectedTable?.sourceType,
+                                        sourceName: selectedTable?.sourceName
+                                    }}
                                     onBack={handleBackToList}
                                     onFinish={() => {
                                         setGovernanceMode('BROWSE');
@@ -1570,7 +1607,7 @@ const DataSemanticUnderstandingView = ({
                                             <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
                                                 <div className="border-b border-slate-100 bg-slate-50 px-4 py-3 font-medium text-slate-700 flex items-center gap-2 text-sm">
                                                     <FileText size={16} className="text-blue-600" />
-                                                    {focusField ? `🔍 字段语义分析: ${focusField}` : '💡 整表语义概览'}
+                                                    {focusField ? `🔍 字段语义理解: ${focusField}` : '💡 整表语义概览'}
                                                 </div>
                                                 <div className="flex-1 overflow-y-auto relative">
                                                     {focusField ? (
@@ -1847,7 +1884,7 @@ const DataSemanticUnderstandingView = ({
                                                                     }
                                                                     : item
                                                             ));
-                                                            setResultTab('overview');
+                                                            setResultTab('business');
                                                             setFieldViewMode('semantic');
                                                             setEditModeSafe(true);
                                                             setIsAnalyzing(false);
@@ -1868,332 +1905,539 @@ const DataSemanticUnderstandingView = ({
                                                             const aiEvidenceItems = Array.isArray(semanticProfile.aiEvidenceItems)
                                                                 ? semanticProfile.aiEvidenceItems
                                                                 : [];
-                                                            const conflictCount = ruleEvidence.filter((item) => /冲突|待确认|复核/.test(item)).length;
-                                                            const commentCoverage = Math.round((semanticProfile.ruleScore?.comment || 0) * 100);
-                                                            const gateResult = semanticProfile.gateResult?.result;
                                                             const reviewStats = semanticProfile.reviewStats
                                                                 || buildReviewStats(selectedTable.table, selectedTableFields, selectedTable.comment);
                                                             const pendingReviewCount = reviewStats?.pendingReviewFields || 0;
                                                             const gateFailedCount = reviewStats?.gateFailedItems || 0;
                                                             const riskItemsCount = reviewStats?.riskItems || 0;
-                                                            const ruleScoreTotal = semanticProfile.ruleScore?.total || 0;
+                                                            const gateResult = semanticProfile.gateResult?.result;
                                                             const analyzedFieldsForRisk = selectedTableFields.map((field: any) => analyzeField(field));
                                                             const sensitiveCount = analyzedFieldsForRisk.filter((field) => ['L3', 'L4'].includes(field.sensitivity)).length;
-                                                            const sensitivityRatio = analyzedFieldsForRisk.length === 0 ? 0 : sensitiveCount / analyzedFieldsForRisk.length;
-                                                            const sensitivityPercent = Math.round(sensitivityRatio * 100);
-                                                            let riskLabel = '低风险';
-                                                            let riskTone: 'red' | 'amber' | 'emerald' = 'emerald';
-                                                            if (gateResult === 'REJECT' || riskItemsCount >= 2) {
-                                                                riskLabel = '高风险';
-                                                                riskTone = 'red';
-                                                            } else if (gateResult === 'REVIEW' || riskItemsCount === 1) {
-                                                                riskLabel = '中风险';
-                                                                riskTone = 'amber';
-                                                            }
-                                                            const gateFallbackReasons: string[] = [];
-                                                            if (semanticProfile.gateResult?.details?.primaryKey === false) {
-                                                                gateFallbackReasons.push('未找到主键字段。');
-                                                            }
-                                                            if (semanticProfile.gateResult?.details?.lifecycle === false) {
-                                                                gateFallbackReasons.push('未找到生命周期字段 (如: create_time, update_time)。');
-                                                            }
-                                                            if (semanticProfile.gateResult?.details?.tableType === false) {
-                                                                gateFallbackReasons.push('表类型命中排除规则。');
-                                                            }
-                                                            const gateReasonsSource = semanticProfile.gateResult?.reasons?.length
-                                                                ? semanticProfile.gateResult.reasons
-                                                                : gateFallbackReasons;
-                                                            const uniqueGateReasons = Array.from(new Set(gateReasonsSource));
-                                                            const gateIssueCount = gateResult === 'PASS'
-                                                                ? 0
-                                                                : Math.max(gateFailedCount, uniqueGateReasons.length || 0, 1);
-                                                            const gateTitle = gateResult === 'REVIEW' ? 'Gate 需复核项' : 'Gate 未通过项';
-                                                            const gateSummaryItems = uniqueGateReasons.slice(0, 3);
-                                                            const riskReasonCandidates = [
-                                                                ...ruleEvidence.filter((item) => /冲突|敏感|风险|复核|缺失/.test(item)),
-                                                                ...aiEvidenceItems.map(item => `${item.field}：${item.reason}`),
-                                                                conflictCount > 0 ? `冲突字段 ${conflictCount} 个` : null,
-                                                                commentCoverage < 60 ? `口径覆盖度 ${commentCoverage}%` : null,
-                                                                ruleScoreTotal < 0.6 ? `规则评分 ${Math.round(ruleScoreTotal * 100)}%` : null,
-                                                                sensitivityRatio >= 0.3 ? `高敏字段占比 ${sensitivityPercent}%` : null,
-                                                                scorePercent < 65 ? `通过率 ${scorePercent}%` : null,
-                                                                gateResult === 'REJECT' ? 'Gate 未通过' : gateResult === 'REVIEW' ? 'Gate 需复核' : null
-                                                            ].filter(Boolean) as string[];
-                                                            const riskSummaryItems = riskReasonCandidates.slice(0, 3);
-                                                            const pendingSummaryItems = [
-                                                                `字段 ${pendingReviewCount}`,
-                                                                `对象 ${pendingReviewCount > 0 ? 1 : 0}`
-                                                            ];
-                                                            const summarySections = [
-                                                                { key: 'gate', title: gateTitle, count: gateIssueCount, items: gateSummaryItems },
-                                                                { key: 'risk', title: '风险项', count: riskItemsCount, items: riskSummaryItems },
-                                                                { key: 'review', title: '待Review', count: pendingReviewCount, items: pendingSummaryItems }
-                                                            ];
                                                             const gateLabelMap: Record<string, string> = {
                                                                 PASS: '通过',
                                                                 REVIEW: '需复核',
                                                                 REJECT: '未通过'
                                                             };
                                                             const gateLabel = gateResult ? (gateLabelMap[gateResult] || gateResult) : '-';
-                                                            const gateReviewable = gateResult ? gateResult !== 'PASS' : false;
-                                                            const canJumpToReview = pendingReviewCount > 0;
-                                                            const canOpenGateDetail = gateReviewable;
-                                                            const riskStyles = {
-                                                                red: 'bg-red-50 text-red-600 border-red-100',
-                                                                amber: 'bg-amber-50 text-amber-600 border-amber-100',
-                                                                emerald: 'bg-emerald-50 text-emerald-600 border-emerald-100'
-                                                            };
-
                                                             const status = (semanticProfile.governanceStatus || (semanticProfile.analysisStep === 'done' ? 'S1' : 'S0')) as GovernanceStatus;
                                                             const statusDisplay = getGovernanceDisplay(status, rolledBackTableIds.has(selectedTable.table));
-                                                            const statusSummary = statusDisplay.hint || statusDisplay.label;
 
-                                                            const evidenceCount = ruleEvidence.length + aiEvidenceItems.length;
-                                                            const fieldsCount = selectedTableFields.length;
-                                                            const logsCount = upgradeHistory.filter(entry => entry.tableId === selectedTable.table).length;
-                                                            const overviewAnchors = [
-                                                                { id: 'result-summary', label: '治理摘要' },
-                                                                { id: 'result-key-evidence', label: '关键证据' },
-                                                                ...(gateReviewable ? [{ id: 'result-gate-detail', label: 'Gate 明细' }] : []),
-                                                                { id: 'result-score-breakdown', label: '评分拆解' }
+                                                            const fieldProfiles = Array.isArray(semanticProfile.fields) ? semanticProfile.fields : [];
+                                                            const fieldProfileMap = new Map(fieldProfiles.map(field => [field.fieldName, field]));
+                                                            const roleCoverage = selectedTableFields.length === 0
+                                                                ? 0
+                                                                : Math.round((fieldProfiles.filter(field => field.role).length / selectedTableFields.length) * 100);
+
+                                                            const objectTypeOptions = [
+                                                                { value: 'entity', label: '主体' },
+                                                                { value: 'event', label: '过程' },
+                                                                { value: 'state', label: '状态' },
+                                                                { value: 'attribute', label: '清单' }
                                                             ];
-                                                            const anchors = {
-                                                                overview: overviewAnchors,
-                                                                evidence: [
-                                                                    { id: 'result-summary', label: '治理摘要' },
-                                                                    { id: 'result-conclusion', label: '综合结论' },
-                                                                    { id: 'result-analysis', label: '分析详情' }
-                                                                ],
-                                                                fields: [
-                                                                    { id: 'result-summary', label: '治理摘要' },
-                                                                    { id: 'result-fields', label: '字段分析' }
-                                                                ],
-                                                                structure: [
-                                                                    { id: 'result-fields', label: '字段结构' }
-                                                                ],
-                                                                graph: [
-                                                                    { id: 'result-graph', label: '关系图谱' }
-                                                                ],
-                                                                quality: [
-                                                                    { id: 'result-quality', label: '质量概览' }
-                                                                ],
-                                                                logs: [
-                                                                    { id: 'result-summary', label: '治理摘要' },
-                                                                    { id: 'result-logs', label: '操作记录' }
-                                                                ]
-                                                            };
+                                                            const confidenceLabel = scorePercent >= 80 ? '较高' : scorePercent >= 60 ? '可用' : '需复核';
+
+                                                            const improveItems = [
+                                                                {
+                                                                    factor: '命名一致性',
+                                                                    ok: Boolean(semanticProfile.businessName),
+                                                                    action: semanticProfile.businessName ? '已形成业务命名' : '补充业务对象名称与口径',
+                                                                    improve: '+8%'
+                                                                },
+                                                                {
+                                                                    factor: '字段角色覆盖',
+                                                                    ok: roleCoverage >= 60,
+                                                                    action: `补充字段角色标注（覆盖 ${roleCoverage}%）`,
+                                                                    improve: '+6%'
+                                                                },
+                                                                {
+                                                                    factor: '关系证据',
+                                                                    ok: (semanticProfile.relationships?.length || 0) > 0,
+                                                                    action: (semanticProfile.relationships?.length || 0) > 0 ? '已识别对象关系' : '补充对象关联字段与关系类型',
+                                                                    improve: '+5%'
+                                                                },
+                                                                {
+                                                                    factor: '质量信号支撑',
+                                                                    ok: gateFailedCount === 0,
+                                                                    action: gateFailedCount === 0 ? '门槛满足' : '补齐主键与生命周期字段',
+                                                                    improve: '+4%'
+                                                                }
+                                                            ];
+
+                                                            const evidenceItems = [
+                                                                ...ruleEvidence.map((text) => ({
+                                                                    type: /命名|名称|name/.test(text) ? '命名' : /分布|占比|比例|ratio|distinct/.test(text) ? '分布' : '规则',
+                                                                    text,
+                                                                    field: ''
+                                                                })),
+                                                                ...aiEvidenceItems.map((item) => ({
+                                                                    type: '规则',
+                                                                    text: `${item.field}：${item.reason}`,
+                                                                    field: item.field
+                                                                }))
+                                                            ];
+
+                                                            const relations = semanticProfile.relationships || [];
+                                                            const safeRelationIndex = relations.length === 0
+                                                                ? 0
+                                                                : Math.min(selectedRelationIndex, relations.length - 1);
+                                                            const selectedRelation = relations[safeRelationIndex];
+
+                                                            const riskReasonCandidates = [
+                                                                ...ruleEvidence.filter((item) => /冲突|敏感|风险|复核|缺失/.test(item)),
+                                                                ...aiEvidenceItems.map(item => `${item.field}：${item.reason}`),
+                                                                sensitiveCount > 0 ? `高敏字段 ${sensitiveCount} 个` : null,
+                                                                gateResult === 'REJECT' ? 'Gate 未通过' : gateResult === 'REVIEW' ? 'Gate 需复核' : null
+                                                            ].filter(Boolean) as string[];
 
                                                             return (
-                                                                <>
-                                                                    <div id="result-summary" className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
-                                                                        <div className="flex items-start justify-between gap-4">
-                                                                            <div>
-                                                                                <div className="text-xs text-slate-500">治理建议摘要</div>
-                                                                                <div className="mt-2 flex flex-wrap items-center gap-2">
-                                                                                    <span className={`px-2 py-0.5 rounded-full text-xs font-semibold border ${statusDisplay.tone}`}>
-                                                                                        {statusDisplay.label}
-                                                                                    </span>
-                                                                                    <span className="text-base font-semibold text-slate-800">
-                                                                                        {statusSummary}
-                                                                                    </span>
-                                                                                </div>
-                                                                                <div className="mt-1 text-xs text-slate-400">基于规则门槛、字段评分与 AI 语义识别综合生成</div>
-                                                                            </div>
-                                                                            <div className={`px-3 py-1.5 rounded-full text-xs font-semibold border ${riskStyles[riskTone]}`}>
-                                                                                {riskLabel}
+                                                                <div className="mt-6 grid grid-cols-1 gap-6">
+                                                                    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden relative min-h-[600px]">
+                                                                        <div className="flex items-center gap-1 border-b border-slate-100 bg-slate-50 px-2 justify-between">
+                                                                            <div className="flex items-center gap-1">
+                                                                                {([
+                                                                                    { key: 'business', label: '业务理解', count: undefined },
+                                                                                    { key: 'fields', label: '字段与属性', count: selectedTableFields.length },
+                                                                                    { key: 'graph', label: '对象关系', count: relations.length },
+                                                                                    { key: 'governance', label: '治理与风险', count: riskItemsCount }
+                                                                                ] as const).map(tab => (
+                                                                                    <button
+                                                                                        key={tab.key}
+                                                                                        onClick={() => setResultTab(tab.key)}
+                                                                                        className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${resultTab === tab.key ? 'border-blue-500 text-blue-600 bg-white' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-white/60'}`}
+                                                                                    >
+                                                                                        <span className="flex items-center gap-2">
+                                                                                            <span>{tab.label}</span>
+                                                                                            {typeof tab.count === 'number' && (
+                                                                                                <span className="px-2 py-0.5 rounded-full text-[11px] bg-slate-100 text-slate-500">
+                                                                                                    {tab.count}
+                                                                                                </span>
+                                                                                            )}
+                                                                                        </span>
+                                                                                    </button>
+                                                                                ))}
                                                                             </div>
                                                                         </div>
-                                                                        <div className="mt-4 grid grid-cols-2 lg:grid-cols-5 gap-3">
-                                                                            <div className="rounded-lg border border-slate-100 bg-slate-50 p-3">
-                                                                                <div className="text-xs text-slate-500">通过率</div>
-                                                                                <div className="text-lg font-semibold text-slate-800">{scorePercent}%</div>
-                                                                            </div>
-                                                                            <div className="rounded-lg border border-slate-100 bg-slate-50 p-3">
-                                                                                <div className="text-xs text-slate-500">冲突数</div>
-                                                                                <div className="text-lg font-semibold text-slate-800">{conflictCount}</div>
-                                                                            </div>
-                                                                            <div className="rounded-lg border border-slate-100 bg-slate-50 p-3">
-                                                                                <div className="text-xs text-slate-500">覆盖度</div>
-                                                                                <div className="text-lg font-semibold text-slate-800">{commentCoverage}%</div>
-                                                                            </div>
-                                                                            <button
-                                                                                onClick={canJumpToReview ? handleJumpToProblemFields : undefined}
-                                                                                disabled={!canJumpToReview}
-                                                                                className={`rounded-lg border border-slate-100 bg-slate-50 p-3 text-left transition-colors ${canJumpToReview ? 'hover:border-amber-200 hover:bg-amber-50/40 cursor-pointer' : 'cursor-not-allowed opacity-70'}`}
-                                                                            >
-                                                                                <div className="text-xs text-slate-500">待Review字段</div>
-                                                                                <div className="text-lg font-semibold text-slate-800">{pendingReviewCount}</div>
-                                                                                <div className="text-[10px] text-slate-400 mt-1">{canJumpToReview ? '点击定位问题字段' : '暂无待Review字段'}</div>
-                                                                            </button>
-                                                                            <button
-                                                                                onClick={canOpenGateDetail ? handleOpenGateDetail : undefined}
-                                                                                disabled={!canOpenGateDetail}
-                                                                                className={`rounded-lg border border-slate-100 bg-slate-50 p-3 text-left transition-colors ${canOpenGateDetail ? 'hover:border-red-200 hover:bg-red-50/40 cursor-pointer' : 'cursor-not-allowed opacity-70'}`}
-                                                                            >
-                                                                                <div className="text-xs text-slate-500">门槛状态</div>
-                                                                                <div className="text-lg font-semibold text-slate-800">{gateLabel}</div>
-                                                                                <div className="text-[10px] text-slate-400 mt-1">{canOpenGateDetail ? '查看 Gate 明细' : '门槛通过'}</div>
-                                                                            </button>
-                                                                        </div>
-                                                                        <div className="mt-4 grid grid-cols-1 lg:grid-cols-3 gap-3">
-                                                                            {summarySections.map(section => (
-                                                                                <div key={section.key} className="rounded-lg border border-slate-100 bg-slate-50 p-3">
-                                                                                    <div className="flex items-center justify-between text-xs text-slate-500">
-                                                                                        <span>{section.title}</span>
-                                                                                        <span className="font-medium text-slate-700">{section.count}</span>
-                                                                                    </div>
-                                                                                    <div className="mt-2 space-y-1 text-xs text-slate-600">
-                                                                                        {section.items.length > 0 ? section.items.map((item, idx) => (
-                                                                                            <div key={`${section.key}-${idx}`} className="flex items-start gap-2">
-                                                                                                <span className="text-slate-400">-</span>
-                                                                                                <span>{item}</span>
+                                                                        <div className="p-4 space-y-6">
+                                                                            {resultTab === 'business' && (
+                                                                                <div className="space-y-4">
+                                                                                    <div className="rounded-lg border border-slate-200 bg-white p-4">
+                                                                                        <div className="flex items-center justify-between gap-4">
+                                                                                            <div>
+                                                                                                <div className="text-sm font-semibold text-slate-700">业务对象理解结论</div>
+                                                                                                <div className="text-xs text-slate-400">这是对象结论，用于后续对象建模</div>
                                                                                             </div>
-                                                                                        )) : (
-                                                                                            <div className="text-xs text-slate-400">无</div>
-                                                                                        )}
+                                                                                            <div className="flex items-center gap-2">
+                                                                                                <span className="text-xs text-slate-500">置信度</span>
+                                                                                                <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200">
+                                                                                                    {scorePercent}%
+                                                                                                </span>
+                                                                                                <span className="text-xs text-amber-600">{confidenceLabel}</span>
+                                                                                            </div>
+                                                                                        </div>
+                                                                                        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                                                            <div>
+                                                                                                <div className="text-xs text-slate-500 mb-1">业务对象名称</div>
+                                                                                                <input
+                                                                                                    value={semanticProfile.businessName || ''}
+                                                                                                    onChange={(e) => setSemanticProfile(prev => ({ ...prev, businessName: e.target.value }))}
+                                                                                                    disabled={isReadOnly}
+                                                                                                    placeholder="请输入业务对象名称"
+                                                                                                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500 disabled:bg-slate-100"
+                                                                                                />
+                                                                                            </div>
+                                                                                            <div>
+                                                                                                <div className="text-xs text-slate-500 mb-1">业务域</div>
+                                                                                                <select
+                                                                                                    value={semanticProfile.businessDomain || ''}
+                                                                                                    onChange={(e) => setSemanticProfile(prev => ({ ...prev, businessDomain: e.target.value as any }))}
+                                                                                                    disabled={isReadOnly}
+                                                                                                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500 disabled:bg-slate-100"
+                                                                                                >
+                                                                                                    <option value="">请选择业务域</option>
+                                                                                                    {BUSINESS_DOMAINS.map(domain => (
+                                                                                                        <option key={domain} value={domain}>{domain}</option>
+                                                                                                    ))}
+                                                                                                </select>
+                                                                                            </div>
+                                                                                            <div>
+                                                                                                <div className="text-xs text-slate-500 mb-1">数据层</div>
+                                                                                                <select
+                                                                                                    value={semanticProfile.dataLayer || ''}
+                                                                                                    onChange={(e) => setSemanticProfile(prev => ({ ...prev, dataLayer: e.target.value as any }))}
+                                                                                                    disabled={isReadOnly}
+                                                                                                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500 disabled:bg-slate-100"
+                                                                                                >
+                                                                                                    <option value="">请选择数据层</option>
+                                                                                                    {DATA_LAYERS.map(layer => (
+                                                                                                        <option key={layer} value={layer}>{layer}</option>
+                                                                                                    ))}
+                                                                                                </select>
+                                                                                            </div>
+                                                                                            <div>
+                                                                                                <div className="text-xs text-slate-500 mb-1">对象类型</div>
+                                                                                                <select
+                                                                                                    value={semanticProfile.objectType || 'entity'}
+                                                                                                    onChange={(e) => setSemanticProfile(prev => ({ ...prev, objectType: e.target.value as any }))}
+                                                                                                    disabled={isReadOnly}
+                                                                                                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500 disabled:bg-slate-100"
+                                                                                                >
+                                                                                                    {objectTypeOptions.map(option => (
+                                                                                                        <option key={option.value} value={option.value}>{option.label}</option>
+                                                                                                    ))}
+                                                                                                </select>
+                                                                                            </div>
+                                                                                            <div>
+                                                                                                <div className="text-xs text-slate-500 mb-1">数据粒度</div>
+                                                                                                <input
+                                                                                                    value={semanticProfile.dataGrain || ''}
+                                                                                                    onChange={(e) => setSemanticProfile(prev => ({ ...prev, dataGrain: e.target.value }))}
+                                                                                                    disabled={isReadOnly}
+                                                                                                    placeholder="如：订单/用户/日"
+                                                                                                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500 disabled:bg-slate-100"
+                                                                                                />
+                                                                                            </div>
+                                                                                        </div>
                                                                                     </div>
-                                                                                </div>
-                                                                            ))}
-                                                                        </div>
-                                                                    </div>
 
-                                                                    <div className="mt-6 grid grid-cols-1 gap-6">
-                                                                        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden relative min-h-[600px]">
-                                                                            <div className="flex items-center gap-1 border-b border-slate-100 bg-slate-50 px-2 justify-between">
-                                                                                <div className="flex items-center gap-1">
-                                                                                    {([
-                                                                                        { key: 'overview', label: '概览', count: undefined },
-                                                                                        { key: 'evidence', label: '证据', count: evidenceCount },
-                                                                                        { key: 'structure', label: '字段结构', count: fieldsCount },
-                                                                                        { key: 'graph', label: '关系图谱', count: semanticProfile.relationships?.length || 0 },
-                                                                                        { key: 'quality', label: '质量概览', count: undefined },
-                                                                                        { key: 'logs', label: '日志', count: logsCount }
-                                                                                    ] as const).map(tab => (
-                                                                                        <button
-                                                                                            key={tab.key}
-                                                                                            onClick={() => setResultTab(tab.key)}
-                                                                                            className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${resultTab === tab.key ? 'border-blue-500 text-blue-600 bg-white' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-white/60'}`}
-                                                                                        >
-                                                                                            <span className="flex items-center gap-2">
-                                                                                                <span>{tab.label}</span>
-                                                                                                {typeof tab.count === 'number' && (
-                                                                                                    <span className="px-2 py-0.5 rounded-full text-[11px] bg-slate-100 text-slate-500">
-                                                                                                        {tab.count}
+                                                                                    <div className="rounded-lg border border-slate-200 bg-white p-4">
+                                                                                        <div className="flex items-center justify-between mb-3">
+                                                                                            <div className="text-sm font-semibold text-slate-700">置信度提升建议</div>
+                                                                                            <div className="text-xs text-slate-400">当前 {scorePercent}%</div>
+                                                                                        </div>
+                                                                                        <div className="overflow-hidden rounded-lg border border-slate-100">
+                                                                                            <table className="w-full text-xs">
+                                                                                                <thead className="bg-slate-50 text-slate-500">
+                                                                                                    <tr>
+                                                                                                        <th className="px-3 py-2 text-left font-medium">因子</th>
+                                                                                                        <th className="px-3 py-2 text-left font-medium">状态</th>
+                                                                                                        <th className="px-3 py-2 text-left font-medium">建议动作</th>
+                                                                                                        <th className="px-3 py-2 text-left font-medium">预期提升</th>
+                                                                                                    </tr>
+                                                                                                </thead>
+                                                                                                <tbody className="divide-y divide-slate-100">
+                                                                                                    {improveItems.map(item => (
+                                                                                                        <tr key={item.factor}>
+                                                                                                            <td className="px-3 py-2 text-slate-700">{item.factor}</td>
+                                                                                                            <td className="px-3 py-2">
+                                                                                                                <span className={`px-2 py-0.5 rounded-full text-[11px] border ${item.ok ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-amber-50 text-amber-600 border-amber-100'}`}>
+                                                                                                                    {item.ok ? '已满足' : '待完善'}
+                                                                                                                </span>
+                                                                                                            </td>
+                                                                                                            <td className="px-3 py-2 text-slate-600">{item.action}</td>
+                                                                                                            <td className="px-3 py-2 text-slate-500">{item.improve}</td>
+                                                                                                        </tr>
+                                                                                                    ))}
+                                                                                                </tbody>
+                                                                                            </table>
+                                                                                        </div>
+                                                                                        <div className="mt-2 text-[11px] text-slate-400">建议先补齐基础对象口径，再处理字段角色与关系。</div>
+                                                                                    </div>
+
+                                                                                    <div id="business-evidence" className="rounded-lg border border-slate-200 bg-white p-4">
+                                                                                        <div className="text-sm font-semibold text-slate-700 mb-3">理解依据</div>
+                                                                                        <div className="space-y-2 text-sm">
+                                                                                            {evidenceItems.length > 0 ? evidenceItems.slice(0, 8).map((item, idx) => (
+                                                                                                <div key={`${item.type}-${idx}`} className="flex items-start gap-3">
+                                                                                                    <span className="px-2 py-0.5 rounded-full text-[11px] border bg-slate-50 text-slate-600 border-slate-200">
+                                                                                                        {item.type}
                                                                                                     </span>
-                                                                                                )}
-                                                                                            </span>
-                                                                                        </button>
-                                                                                    ))}
+                                                                                                    <div className="flex-1 text-slate-600">{item.text}</div>
+                                                                                                    {item.field && (
+                                                                                                        <button
+                                                                                                            onClick={() => handleFocusField(item.field)}
+                                                                                                            className="text-[11px] text-blue-600 hover:text-blue-700"
+                                                                                                        >
+                                                                                                            查看字段
+                                                                                                        </button>
+                                                                                                    )}
+                                                                                                </div>
+                                                                                            )) : (
+                                                                                                <div className="text-xs text-slate-400">暂无理解依据</div>
+                                                                                            )}
+                                                                                        </div>
+                                                                                    </div>
+
+                                                                                    <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 flex items-center justify-between">
+                                                                                        <div className="text-xs text-slate-500">系统建议，需人工确认</div>
+                                                                                        <div className="flex items-center gap-2">
+                                                                                            <button
+                                                                                                onClick={guardAction(handleConfirmEffective)}
+                                                                                                disabled={isReadOnly}
+                                                                                                className="px-4 py-2 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-400"
+                                                                                            >
+                                                                                                确认理解结果
+                                                                                            </button>
+                                                                                            <button
+                                                                                                onClick={guardAction(handleIgnore)}
+                                                                                                disabled={isReadOnly}
+                                                                                                className="px-4 py-2 text-xs border border-slate-200 text-slate-600 rounded-lg hover:bg-white disabled:bg-slate-100"
+                                                                                            >
+                                                                                                暂不处理
+                                                                                            </button>
+                                                                                        </div>
+                                                                                    </div>
                                                                                 </div>
-                                                                            </div>
-                                                                            <div className="p-4 relative">
-                                                                                {/* Directory Floating Widget */}
-                                                                                {/* Directory Widget - Hidden temporarily per user request
-                                                {anchors[resultTab] && anchors[resultTab].length > 0 && (
-                                                    <div className={`absolute top-4 right-4 z-20 transition-all duration-300 ${showDirectory ? 'w-48 bg-white/90 backdrop-blur border border-slate-200 shadow-sm rounded-lg p-3' : ''}`}>
-                                                        <div className={`flex items-center ${showDirectory ? 'justify-between mb-2' : 'justify-end'}`}>
-                                                            {showDirectory && <div className="text-xs font-medium text-slate-500 px-1">结果目录</div>}
-                                                            <button
-                                                                onClick={() => setShowDirectory(!showDirectory)}
-                                                                className={`p-1.5 rounded-lg transition-colors ${showDirectory ? 'hover:bg-slate-100 text-slate-400' : 'bg-white border border-slate-200 shadow-sm text-slate-500 hover:text-blue-600'}`}
-                                                                title={showDirectory ? "收起目录" : "展开目录"}
-                                                            >
-                                                                {showDirectory ? <ChevronLeft size={14} /> : <Plus size={16} />}
-                                                            </button>
-                                                        </div>
-                                                        {showDirectory && (
-                                                            <div className="space-y-0.5 animate-in fade-in slide-in-from-top-1 duration-200">
-                                                                {anchors[resultTab].map(item => (
-                                                                    <button
-                                                                        key={item.id}
-                                                                        onClick={() => scrollToSection(item.id)}
-                                                                        className="w-full text-left text-xs text-slate-500 px-2 py-1.5 rounded hover:bg-blue-50 hover:text-blue-600 transition-colors"
-                                                                    >
-                                                                        {item.label}
-                                                                    </button>
-                                                                ))}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                )}
-                                                */}
+                                                                            )}
 
-                                                                                {resultTab === 'overview' && (
-                                                                                    <OverviewTab
-                                                                                        profile={semanticProfile}
-                                                                                        onNavigateToEvidence={() => setResultTab('evidence')}
-                                                                                    />
-                                                                                )}
-
-                                                                                {resultTab === 'evidence' && (
-                                                                                    <EvidenceTab
-                                                                                        profile={semanticProfile}
-                                                                                        fields={selectedTableFields}
-                                                                                        selectedTable={selectedTable}
-                                                                                        businessObject={(() => {
-                                                                                            const mappedEntry = Object.entries(mockBOTableMappings).find(([_, config]) => config.tableName === selectedTable.table);
-                                                                                            return mappedEntry ? (businessObjects || []).find(b => b.id === mappedEntry[0]) : undefined;
-                                                                                        })()}
-                                                                                        editMode={isReadOnly ? false : editMode}
-                                                                                        setEditMode={setEditModeSafe}
-                                                                                        onProfileChange={isReadOnly ? () => { } : (updates) => setSemanticProfile(prev => ({ ...prev, ...updates }))}
-                                                                                        actions={{
-                                                                                            onAccept: guardAction(handleSaveToMetadata),
-                                                                                            onReject: guardAction(handleIgnore),
-                                                                                            onConfirmEffective: guardAction(handleConfirmEffective),
-                                                                                            onViewLogs: handleViewLogs,
-                                                                                            onEvidenceAction: guardAction(handleEvidenceAction),
-                                                                                            onSaveEdit: () => {
-                                                                                                if (isReadOnly) return;
-                                                                                                handleJustSave();
-                                                                                                setEditModeSafe(false);
-                                                                                            },
-                                                                                            onFocusField: handleFocusField,
-                                                                                            onUpgradeAccepted: guardAction((before, after) => {
-                                                                                                if (!selectedTable) return;
-                                                                                                recordUpgradeHistory(
-                                                                                                    selectedTable.table,
-                                                                                                    selectedTable.table,
-                                                                                                    before,
-                                                                                                    after
-                                                                                                );
-                                                                                            })
-                                                                                        }}
-                                                                                    />
-                                                                                )}
-
-                                                                                {resultTab === 'structure' && (
-                                                                                    <div id="result-fields">
-                                                                                        <DeepAnalysisTabs
-                                                                                            profile={semanticProfile}
-                                                                                            fields={selectedTableFields}
-                                                                                            onProfileChange={isReadOnly ? () => { } : (updates) => setSemanticProfile(prev => ({ ...prev, ...updates }))}
-                                                                                            focusField={focusField}
-                                                                                        />
+                                                                            {resultTab === 'fields' && (
+                                                                                <div className="space-y-4">
+                                                                                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                                                                                        <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                                                                                            <div className="text-xs text-slate-500">字段总数</div>
+                                                                                            <div className="text-xl font-semibold text-slate-800">{selectedTableFields.length}</div>
+                                                                                        </div>
+                                                                                        <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                                                                                            <div className="text-xs text-slate-500">主键字段</div>
+                                                                                            <div className="text-xl font-semibold text-slate-800">{fieldProfiles.filter(field => field.role === 'Identifier').length}</div>
+                                                                                        </div>
+                                                                                        <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                                                                                            <div className="text-xs text-slate-500">业务属性</div>
+                                                                                            <div className="text-xl font-semibold text-slate-800">{fieldProfiles.filter(field => field.role === 'BusAttr' || field.role === 'Attribute').length}</div>
+                                                                                        </div>
+                                                                                        <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                                                                                            <div className="text-xs text-slate-500">关联字段</div>
+                                                                                            <div className="text-xl font-semibold text-slate-800">{fieldProfiles.filter(field => field.role === 'ForeignKey').length}</div>
+                                                                                        </div>
                                                                                     </div>
-                                                                                )}
 
-                                                                                {resultTab === 'graph' && (
-                                                                                    <div className="bg-white rounded-xl border border-slate-200">
-                                                                                        <RelationshipGraphTab semanticProfile={semanticProfile} />
+                                                                                    <div className="rounded-lg border border-slate-200 overflow-hidden">
+                                                                                        <table className="w-full text-sm">
+                                                                                            <thead className="bg-slate-50 text-slate-500 text-xs">
+                                                                                                <tr>
+                                                                                                    <th className="px-3 py-3 text-left font-medium">字段名</th>
+                                                                                                    <th className="px-3 py-3 text-left font-medium">业务含义</th>
+                                                                                                    <th className="px-3 py-3 text-left font-medium">映射对象</th>
+                                                                                                    <th className="px-3 py-3 text-left font-medium">角色</th>
+                                                                                                    <th className="px-3 py-3 text-left font-medium">置信度</th>
+                                                                                                    <th className="px-3 py-3 text-left font-medium">问题</th>
+                                                                                                </tr>
+                                                                                            </thead>
+                                                                                            <tbody className="divide-y divide-slate-100">
+                                                                                                {selectedTableFields.map((field: any) => {
+                                                                                                    const fieldName = field.fieldName || field.name;
+                                                                                                    const profile = fieldProfileMap.get(fieldName);
+                                                                                                    const isExpanded = expandedFieldRows.includes(fieldName);
+                                                                                                    const roleLabelMap: Record<string, string> = {
+                                                                                                        Identifier: '主键',
+                                                                                                        BusAttr: '业务属性',
+                                                                                                        Attribute: '业务属性',
+                                                                                                        ForeignKey: '对象关联',
+                                                                                                        Status: '描述字段',
+                                                                                                        Time: '描述字段',
+                                                                                                        Measure: '业务属性'
+                                                                                                    };
+                                                                                                    const roleLabel = profile?.role ? roleLabelMap[profile.role] || profile.role : '';
+                                                                                                    const boTag = profile?.tags?.find((tag: string) => tag.startsWith('BO:'));
+                                                                                                    const mappedBO = boTag ? boTag.replace('BO:', '') : semanticProfile.businessName || '-';
+                                                                                                    const confidenceValue = profile?.roleConfidence ?? 0;
+                                                                                                    const hasIssue = profile?.semanticStatus === 'BLOCKED' || profile?.riskLevel === 'HIGH';
+                                                                                                    return (
+                                                                                                        <Fragment key={fieldName}>
+                                                                                                            <tr className="hover:bg-slate-50">
+                                                                                                                <td className="px-3 py-3 text-slate-700 font-mono text-xs">
+                                                                                                                    <button
+                                                                                                                        onClick={() => setExpandedFieldRows(isExpanded ? expandedFieldRows.filter(name => name !== fieldName) : [...expandedFieldRows, fieldName])}
+                                                                                                                        className="flex items-center gap-2 text-left"
+                                                                                                                    >
+                                                                                                                        <ChevronRight size={14} className={`text-slate-400 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+                                                                                                                        {fieldName}
+                                                                                                                    </button>
+                                                                                                                </td>
+                                                                                                                <td className="px-3 py-3">
+                                                                                                                    <input
+                                                                                                                        value={profile?.businessDefinition || profile?.aiSuggestion || ''}
+                                                                                                                        onChange={(e) => updateFieldProfile(fieldName, { businessDefinition: e.target.value })}
+                                                                                                                        disabled={isReadOnly}
+                                                                                                                        placeholder="填写业务含义"
+                                                                                                                        className="w-full px-2 py-1 text-xs border border-slate-200 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 disabled:bg-slate-100"
+                                                                                                                    />
+                                                                                                                </td>
+                                                                                                                <td className="px-3 py-3 text-xs text-slate-600">{mappedBO}</td>
+                                                                                                                <td className="px-3 py-3">
+                                                                                                                    {roleLabel ? (
+                                                                                                                        <span className="px-2 py-0.5 rounded-full text-[11px] border bg-blue-50 text-blue-600 border-blue-100">
+                                                                                                                            {roleLabel}
+                                                                                                                        </span>
+                                                                                                                    ) : (
+                                                                                                                        <span className="text-xs text-slate-300">-</span>
+                                                                                                                    )}
+                                                                                                                </td>
+                                                                                                                <td className="px-3 py-3 text-xs text-slate-600">
+                                                                                                                    {confidenceValue ? `${confidenceValue}%` : '-'}
+                                                                                                                </td>
+                                                                                                                <td className="px-3 py-3">
+                                                                                                                    {hasIssue ? (
+                                                                                                                        <span className="px-2 py-0.5 rounded-full text-[11px] bg-amber-50 text-amber-600 border border-amber-100">
+                                                                                                                            待处理
+                                                                                                                        </span>
+                                                                                                                    ) : (
+                                                                                                                        <span className="text-xs text-slate-300">-</span>
+                                                                                                                    )}
+                                                                                                                </td>
+                                                                                                            </tr>
+                                                                                                            {isExpanded && (
+                                                                                                                <tr className="bg-slate-50/60">
+                                                                                                                    <td colSpan={6} className="px-8 py-3 text-xs text-slate-600 space-y-2">
+                                                                                                                        <div>
+                                                                                                                            <span className="text-slate-500 mr-2">样例值：</span>
+                                                                                                                            <span>{Array.isArray(field.sampleValues) ? field.sampleValues.join(', ') : '暂无样例'}</span>
+                                                                                                                        </div>
+                                                                                                                        <div>
+                                                                                                                            <span className="text-slate-500 mr-2">质量信号：</span>
+                                                                                                                            <span>{profile?.quality ? `质量等级 ${profile.quality}` : '暂无'}</span>
+                                                                                                                        </div>
+                                                                                                                        <div>
+                                                                                                                            <span className="text-slate-500 mr-2">规则命中：</span>
+                                                                                                                            <span>{profile?.ruleHit || '暂无'}</span>
+                                                                                                                        </div>
+                                                                                                                    </td>
+                                                                                                                </tr>
+                                                                                                            )}
+                                                                                                        </Fragment>
+                                                                                                    );
+                                                                                                })}
+                                                                                            </tbody>
+                                                                                        </table>
                                                                                     </div>
-                                                                                )}
+                                                                                </div>
+                                                                            )}
 
-                                                                                {resultTab === 'quality' && (
-                                                                                    <QualityOverviewTab />
-                                                                                )}
+                                                                            {resultTab === 'graph' && (
+                                                                                <div className="space-y-4">
+                                                                                    <div className="flex items-center gap-3 text-xs text-slate-500">
+                                                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-blue-100 text-blue-600 bg-blue-50">建议</span>
+                                                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-emerald-100 text-emerald-600 bg-emerald-50">已确认</span>
+                                                                                    </div>
+                                                                                    <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-4">
+                                                                                        <div className="bg-white rounded-xl border border-slate-200">
+                                                                                            <RelationshipGraphTab semanticProfile={semanticProfile} />
+                                                                                        </div>
+                                                                                        <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 space-y-3">
+                                                                                            <div className="text-sm font-semibold text-slate-700">关系明细</div>
+                                                                                            {relations.length > 0 ? (
+                                                                                                <>
+                                                                                                    <div className="space-y-2">
+                                                                                                        {relations.map((relation, idx) => (
+                                                                                                            <button
+                                                                                                                key={`${relation.targetTable}-${idx}`}
+                                                                                                                onClick={() => setSelectedRelationIndex(idx)}
+                                                                                                                className={`w-full text-left px-3 py-2 rounded-md text-xs border ${safeRelationIndex === idx ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-slate-200 bg-white text-slate-600 hover:border-blue-100'}`}
+                                                                                                            >
+                                                                                                                {relation.targetTable}
+                                                                                                            </button>
+                                                                                                        ))}
+                                                                                                    </div>
+                                                                                                    {selectedRelation && (
+                                                                                                        <div className="rounded-md bg-white border border-slate-200 p-3 text-xs text-slate-600 space-y-2">
+                                                                                                            <div className="flex items-center justify-between">
+                                                                                                                <span className="text-slate-500">关系类型</span>
+                                                                                                                <span className="font-medium">{selectedRelation.type}</span>
+                                                                                                            </div>
+                                                                                                            <div className="flex items-center justify-between">
+                                                                                                                <span className="text-slate-500">关联字段</span>
+                                                                                                                <span className="font-medium">{selectedRelation.key}</span>
+                                                                                                            </div>
+                                                                                                            <div className="text-[11px] text-slate-400">后续在业务对象建模中确认</div>
+                                                                                                        </div>
+                                                                                                    )}
+                                                                                                </>
+                                                                                            ) : (
+                                                                                                <div className="text-xs text-slate-400">暂无对象关系</div>
+                                                                                            )}
+                                                                                        </div>
+                                                                                    </div>
+                                                                                </div>
+                                                                            )}
 
-                                                                                {resultTab === 'logs' && (
-                                                                                    <LogsTab
-                                                                                        auditLogs={auditLogs.filter(entry => entry.tableId === selectedTable.table)}
-                                                                                        upgradeHistory={upgradeHistory.filter(entry => entry.tableId === selectedTable.table)}
-                                                                                        onRollback={rollbackUpgrade}
-                                                                                    />
-                                                                                )}
-                                                                            </div>
+                                                                            {resultTab === 'governance' && (
+                                                                                <div className="space-y-4">
+                                                                                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                                                                                        <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                                                                                            <div className="text-xs text-slate-500">治理状态</div>
+                                                                                            <div className={`mt-1 inline-flex items-center px-2 py-0.5 rounded-full text-xs border ${statusDisplay.tone}`}>
+                                                                                                {statusDisplay.label}
+                                                                                            </div>
+                                                                                        </div>
+                                                                                        <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                                                                                            <div className="text-xs text-slate-500">Gate 状态</div>
+                                                                                            <div className="mt-1 text-sm font-semibold text-slate-700">{gateLabel}</div>
+                                                                                        </div>
+                                                                                        <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                                                                                            <div className="text-xs text-slate-500">风险项</div>
+                                                                                            <div className="mt-1 text-sm font-semibold text-slate-700">{riskItemsCount}</div>
+                                                                                        </div>
+                                                                                        <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                                                                                            <div className="text-xs text-slate-500">待复核</div>
+                                                                                            <div className="mt-1 text-sm font-semibold text-slate-700">{pendingReviewCount}</div>
+                                                                                        </div>
+                                                                                    </div>
+
+                                                                                    <div id="governance-gate-detail" className="rounded-lg border border-slate-200 bg-white p-4">
+                                                                                        <div className="text-sm font-semibold text-slate-700 mb-2">质量信号</div>
+                                                                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs text-slate-600">
+                                                                                            <div className="rounded-md border border-slate-100 bg-slate-50 p-3">
+                                                                                                <div className="text-slate-500">完整度</div>
+                                                                                                <div className="text-base font-semibold text-slate-800">{Math.round((semanticProfile.ruleScore?.comment || 0) * 100)}%</div>
+                                                                                            </div>
+                                                                                            <div className="rounded-md border border-slate-100 bg-slate-50 p-3">
+                                                                                                <div className="text-slate-500">关键缺失</div>
+                                                                                                <div className="text-base font-semibold text-slate-800">
+                                                                                                    {semanticProfile.gateResult?.details?.primaryKey === false ? '主键缺失' : '无'}
+                                                                                                </div>
+                                                                                            </div>
+                                                                                            <div className="rounded-md border border-slate-100 bg-slate-50 p-3">
+                                                                                                <div className="text-slate-500">质量提示</div>
+                                                                                                <div className="text-base font-semibold text-slate-800">
+                                                                                                    {gateFailedCount > 0 ? '需复核' : '正常'}
+                                                                                                </div>
+                                                                                            </div>
+                                                                                        </div>
+                                                                                    </div>
+
+                                                                                    <div className="rounded-lg border border-slate-200 bg-white p-4">
+                                                                                        <div className="text-sm font-semibold text-slate-700 mb-2">安全与合规</div>
+                                                                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs text-slate-600">
+                                                                                            <div className="rounded-md border border-slate-100 bg-slate-50 p-3">
+                                                                                                <div className="text-slate-500">敏感等级</div>
+                                                                                                <div className="text-base font-semibold text-slate-800">{semanticProfile.securityLevel || '-'}</div>
+                                                                                            </div>
+                                                                                            <div className="rounded-md border border-slate-100 bg-slate-50 p-3">
+                                                                                                <div className="text-slate-500">PII 信息</div>
+                                                                                                <div className="text-base font-semibold text-slate-800">{sensitiveCount} 个高敏字段</div>
+                                                                                            </div>
+                                                                                            <div className="rounded-md border border-slate-100 bg-slate-50 p-3">
+                                                                                                <div className="text-slate-500">访问建议</div>
+                                                                                                <div className="text-base font-semibold text-slate-800">{sensitiveCount > 0 ? '建议限制访问' : '常规访问'}</div>
+                                                                                            </div>
+                                                                                        </div>
+                                                                                    </div>
+
+                                                                                    <div className="rounded-lg border border-slate-200 bg-white p-4">
+                                                                                        <div className="text-sm font-semibold text-slate-700 mb-2">风险项清单</div>
+                                                                                        <div className="overflow-hidden rounded-lg border border-slate-100">
+                                                                                            <table className="w-full text-xs">
+                                                                                                <thead className="bg-slate-50 text-slate-500">
+                                                                                                    <tr>
+                                                                                                        <th className="px-3 py-2 text-left font-medium">风险点</th>
+                                                                                                        <th className="px-3 py-2 text-left font-medium">说明</th>
+                                                                                                    </tr>
+                                                                                                </thead>
+                                                                                                <tbody className="divide-y divide-slate-100">
+                                                                                                    {(riskReasonCandidates.length > 0 ? riskReasonCandidates : ['暂无风险项']).slice(0, 6).map((item, idx) => (
+                                                                                                        <tr key={`${item}-${idx}`}>
+                                                                                                            <td className="px-3 py-2 text-slate-700">{item}</td>
+                                                                                                            <td className="px-3 py-2 text-slate-500">需在对象建模与治理流程中确认</td>
+                                                                                                        </tr>
+                                                                                                    ))}
+                                                                                                </tbody>
+                                                                                            </table>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                </div>
+                                                                            )}
                                                                         </div>
                                                                     </div>
-                                                                </>
+                                                                </div>
                                                             );
                                                         })()}
                                                     </>
@@ -2219,13 +2463,15 @@ const DataSemanticUnderstandingView = ({
                                                                 <Share2 size={16} /> 关系图谱 ({semanticProfile.relationships?.length || 0})
                                                             </button>
                                                         )}
-                                                        <button
-                                                            onClick={() => setDetailTab('dimensions')}
-                                                            title={isIdle ? "语义维度待理解" : ""}
-                                                            className={`px-4 py-3 text-sm font-medium border-b-2 flex items-center gap-2 transition-colors ${detailTab === 'dimensions' ? 'border-blue-500 text-blue-600 bg-white' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-100/50'}`}
-                                                        >
-                                                            <Layers size={16} /> 语义维度
-                                                        </button>
+                                                        {!isIdle && (
+                                                            <button
+                                                                onClick={() => setDetailTab('dimensions')}
+                                                                title={isIdle ? "语义维度待理解" : ""}
+                                                                className={`px-4 py-3 text-sm font-medium border-b-2 flex items-center gap-2 transition-colors ${detailTab === 'dimensions' ? 'border-blue-500 text-blue-600 bg-white' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-100/50'}`}
+                                                            >
+                                                                <Layers size={16} /> 语义维度
+                                                            </button>
+                                                        )}
                                                         <button
                                                             onClick={() => setDetailTab('quality')}
                                                             className={`px-4 py-3 text-sm font-medium border-b-2 flex items-center gap-2 transition-colors ${detailTab === 'quality' ? 'border-blue-500 text-blue-600 bg-white' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-100/50'}`}
@@ -2975,8 +3221,8 @@ const DataSemanticUnderstandingView = ({
                                                                     return Array.from(merged);
                                                                 }
                                                                 return prev.filter(name => !visibleFieldNames.includes(name));
-                                                            });
-                                                        };
+        });
+    };
                                                         const handleToggleFieldSelection = (fieldName: string, checked: boolean) => {
                                                             setSelectedFieldNames(prev => {
                                                                 if (checked) {
@@ -3046,26 +3292,28 @@ const DataSemanticUnderstandingView = ({
                                                         return (
                                                             // Fields Tab (default)
                                                             <div className="space-y-4">
-                                                                {/* 1. Statistics Dashboard (New Design) */}
-                                                                <div className="grid grid-cols-4 gap-4">
+                                                                {/* 1. Statistics Dashboard (Optimized Height) */}
+                                                                <div className="grid grid-cols-4 gap-3">
                                                                     {/* Total Fields */}
-                                                                    <div className="bg-white p-4 rounded-xl border border-slate-200 flex items-center justify-between shadow-sm relative overflow-hidden group hover:border-blue-300 transition-colors">
+                                                                    <div className="bg-white px-3 py-2.5 rounded-lg border border-slate-200 flex items-center justify-between shadow-sm group hover:border-blue-300 transition-colors">
                                                                         <div>
-                                                                            <div className="text-slate-500 text-xs font-medium mb-1">总字段数</div>
-                                                                            <div className="text-2xl font-bold text-slate-800">{allFields.length}</div>
-                                                                            <div className="flex items-center gap-2 text-[10px] text-slate-400 mt-1">
-                                                                                <span>来自元数据</span>
-                                                                                <button
-                                                                                    onClick={handleViewEvidence}
-                                                                                    disabled={!canViewEvidence}
-                                                                                    className={`text-[10px] ${canViewEvidence ? 'text-blue-600 hover:underline' : 'text-slate-300 cursor-not-allowed'}`}
-                                                                                >
-                                                                                    查看证据
-                                                                                </button>
+                                                                            <div className="text-slate-500 text-[11px] font-medium">总字段数</div>
+                                                                            <div className="flex items-baseline gap-2 mt-0.5">
+                                                                                <div className="text-xl font-bold text-slate-800">{allFields.length}</div>
+                                                                                <div className="flex items-center gap-1 text-[10px] text-slate-400">
+                                                                                    <span>元数据</span>
+                                                                                    <button
+                                                                                        onClick={handleViewEvidence}
+                                                                                        disabled={!canViewEvidence}
+                                                                                        className={`text-[10px] ${canViewEvidence ? 'text-blue-600 hover:underline' : 'text-slate-300 cursor-not-allowed'}`}
+                                                                                    >
+                                                                                        证据
+                                                                                    </button>
+                                                                                </div>
                                                                             </div>
                                                                         </div>
-                                                                        <div className="w-10 h-10 bg-slate-50 rounded-full flex items-center justify-center group-hover:bg-blue-50 transition-colors">
-                                                                            <Table size={20} className="text-slate-400 group-hover:text-blue-500 transition-colors" />
+                                                                        <div className="w-8 h-8 bg-slate-50 rounded-full flex items-center justify-center group-hover:bg-blue-50 transition-colors">
+                                                                            <Table size={16} className="text-slate-400 group-hover:text-blue-500 transition-colors" />
                                                                         </div>
                                                                     </div>
 
@@ -3077,50 +3325,40 @@ const DataSemanticUnderstandingView = ({
                                                                             ? pkFromMeta.length
                                                                             : allFields.filter((f: any) => f.fieldName?.endsWith('_id') || f.fieldName === 'id').length;
                                                                         return (
-                                                                            <div className="bg-white p-4 rounded-xl border border-slate-200 flex items-center justify-between shadow-sm relative overflow-hidden group hover:border-amber-300 transition-colors">
+                                                                            <div className="bg-white px-3 py-2.5 rounded-lg border border-slate-200 flex items-center justify-between shadow-sm group hover:border-amber-300 transition-colors">
                                                                                 <div>
-                                                                                    <div className="text-slate-500 text-xs font-medium mb-1">主键/标识</div>
-                                                                                    <div className="text-2xl font-bold text-slate-800">{pkCount}</div>
-                                                                                    <div className="flex items-center gap-2 text-[10px] text-slate-400 mt-1">
-                                                                                        <span>{hasPkMeta ? '来自元数据' : '规则建议'}</span>
-                                                                                        <button
-                                                                                            onClick={handleViewEvidence}
-                                                                                            disabled={!canViewEvidence}
-                                                                                            className={`text-[10px] ${canViewEvidence ? 'text-blue-600 hover:underline' : 'text-slate-300 cursor-not-allowed'}`}
-                                                                                        >
-                                                                                            查看证据
-                                                                                        </button>
+                                                                                    <div className="text-slate-500 text-[11px] font-medium">主键/标识</div>
+                                                                                    <div className="flex items-baseline gap-2 mt-0.5">
+                                                                                        <div className="text-xl font-bold text-slate-800">{pkCount}</div>
+                                                                                        <div className="flex items-center gap-1 text-[10px] text-slate-400">
+                                                                                            <span>{hasPkMeta ? '元数据' : '建议'}</span>
+                                                                                        </div>
                                                                                     </div>
                                                                                 </div>
-                                                                                <div className="w-10 h-10 bg-slate-50 rounded-full flex items-center justify-center group-hover:bg-amber-50 transition-colors">
-                                                                                    <Key size={20} className="text-slate-400 group-hover:text-amber-500 transition-colors" />
+                                                                                <div className="w-8 h-8 bg-slate-50 rounded-full flex items-center justify-center group-hover:bg-amber-50 transition-colors">
+                                                                                    <Key size={16} className="text-slate-400 group-hover:text-amber-500 transition-colors" />
                                                                                 </div>
                                                                             </div>
                                                                         );
                                                                     })()}
 
                                                                     {/* Sensitive Fields */}
-                                                                    <div className="bg-white p-4 rounded-xl border border-slate-200 flex items-center justify-between shadow-sm relative overflow-hidden group hover:border-red-300 transition-colors">
+                                                                    <div className="bg-white px-3 py-2.5 rounded-lg border border-slate-200 flex items-center justify-between shadow-sm group hover:border-red-300 transition-colors">
                                                                         <div>
-                                                                            <div className="text-slate-500 text-xs font-medium mb-1">敏感字段</div>
-                                                                            <div className="text-2xl font-bold text-slate-800">{allFields.filter((f: any) => {
-                                                                                const name = (f.fieldName || f.name || '').toString().toLowerCase();
-                                                                                return name.includes('id_card') || name.includes('sfz') || name.includes('bank') ||
-                                                                                    name.includes('mobile') || name.includes('phone') || name.includes('address');
-                                                                            }).length}</div>
-                                                                            <div className="flex items-center gap-2 text-[10px] text-slate-400 mt-1">
-                                                                                <span>规则建议</span>
-                                                                                <button
-                                                                                    onClick={handleViewEvidence}
-                                                                                    disabled={!canViewEvidence}
-                                                                                    className={`text-[10px] ${canViewEvidence ? 'text-blue-600 hover:underline' : 'text-slate-300 cursor-not-allowed'}`}
-                                                                                >
-                                                                                    查看证据
-                                                                                </button>
+                                                                            <div className="text-slate-500 text-[11px] font-medium">敏感字段</div>
+                                                                            <div className="flex items-baseline gap-2 mt-0.5">
+                                                                                <div className="text-xl font-bold text-slate-800">{allFields.filter((f: any) => {
+                                                                                    const name = (f.fieldName || f.name || '').toString().toLowerCase();
+                                                                                    return name.includes('id_card') || name.includes('sfz') || name.includes('bank') ||
+                                                                                        name.includes('mobile') || name.includes('phone') || name.includes('address');
+                                                                                }).length}</div>
+                                                                                <div className="flex items-center gap-1 text-[10px] text-slate-400">
+                                                                                    <span>建议</span>
+                                                                                </div>
                                                                             </div>
                                                                         </div>
-                                                                        <div className="w-10 h-10 bg-slate-50 rounded-full flex items-center justify-center group-hover:bg-red-50 transition-colors">
-                                                                            <Shield size={20} className="text-slate-400 group-hover:text-red-500 transition-colors" />
+                                                                        <div className="w-8 h-8 bg-slate-50 rounded-full flex items-center justify-center group-hover:bg-red-50 transition-colors">
+                                                                            <Shield size={16} className="text-slate-400 group-hover:text-red-500 transition-colors" />
                                                                         </div>
                                                                     </div>
 
@@ -3131,23 +3369,18 @@ const DataSemanticUnderstandingView = ({
                                                                             ? allFields.filter((f: any) => f.required === true).length
                                                                             : 0;
                                                                         return (
-                                                                            <div className="bg-white p-4 rounded-xl border border-slate-200 flex items-center justify-between shadow-sm relative overflow-hidden group hover:border-emerald-300 transition-colors">
+                                                                            <div className="bg-white px-3 py-2.5 rounded-lg border border-slate-200 flex items-center justify-between shadow-sm group hover:border-emerald-300 transition-colors">
                                                                                 <div>
-                                                                                    <div className="text-slate-500 text-xs font-medium mb-1">必填字段</div>
-                                                                                    <div className="text-2xl font-bold text-slate-800">{requiredCount}</div>
-                                                                                    <div className="flex items-center gap-2 text-[10px] text-slate-400 mt-1">
-                                                                                        <span>{hasRequiredMeta ? '来自元数据' : '未提供元数据'}</span>
-                                                                                        <button
-                                                                                            onClick={handleViewEvidence}
-                                                                                            disabled={!canViewEvidence}
-                                                                                            className={`text-[10px] ${canViewEvidence ? 'text-blue-600 hover:underline' : 'text-slate-300 cursor-not-allowed'}`}
-                                                                                        >
-                                                                                            查看证据
-                                                                                        </button>
+                                                                                    <div className="text-slate-500 text-[11px] font-medium">必填字段</div>
+                                                                                    <div className="flex items-baseline gap-2 mt-0.5">
+                                                                                        <div className="text-xl font-bold text-slate-800">{requiredCount}</div>
+                                                                                        <div className="flex items-center gap-1 text-[10px] text-slate-400">
+                                                                                            <span>{hasRequiredMeta ? '元数据' : '无'}</span>
+                                                                                        </div>
                                                                                     </div>
                                                                                 </div>
-                                                                                <div className="w-10 h-10 bg-slate-50 rounded-full flex items-center justify-center group-hover:bg-emerald-50 transition-colors">
-                                                                                    <CheckCircle2 size={20} className="text-slate-400 group-hover:text-emerald-500 transition-colors" />
+                                                                                <div className="w-8 h-8 bg-slate-50 rounded-full flex items-center justify-center group-hover:bg-emerald-50 transition-colors">
+                                                                                    <CheckCircle2 size={16} className="text-slate-400 group-hover:text-emerald-500 transition-colors" />
                                                                                 </div>
                                                                             </div>
                                                                         );
@@ -3323,8 +3556,8 @@ const DataSemanticUnderstandingView = ({
                                                                                         <th className="px-4 py-4 w-10 text-xs font-semibold"></th>
                                                                                     )}
                                                                                     <th className="px-5 py-4 w-12 text-xs font-semibold">#</th>
-                                                                                    <th className="px-5 py-4 text-xs w-56 font-semibold">物理字段</th>
-                                                                                    <th className="px-5 py-4 text-xs w-56 font-semibold">业务描述</th>
+                                                                                    <th className="px-5 py-4 text-xs w-56 font-semibold">字段名称</th>
+                                                                                    <th className="px-5 py-4 text-xs w-56 font-semibold">中文注释</th>
                                                                                     <th className="px-5 py-4 text-xs w-36 font-semibold">数据类型</th>
                                                                                     {showSemanticColumns && (
                                                                                         <th className="px-5 py-4 text-xs w-40 font-semibold">

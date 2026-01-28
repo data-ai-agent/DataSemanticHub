@@ -3,10 +3,10 @@ import { Sparkles } from 'lucide-react';
 
 // Constants
 export const governanceLabelMap: Record<GovernanceStatus, string> = {
-    'S0': '未治理',
-    'S1': 'AI建议中',
-    'S2': '待人工确认',
-    'S3': '治理完成'
+    'S0': '未开始语义建模',
+    'S1': '字段语义待确认',
+    'S2': '语义建模进行中',
+    'S3': '可进入对象建模'
 };
 
 export const governanceToneMap: Record<GovernanceStatus, string> = {
@@ -17,10 +17,10 @@ export const governanceToneMap: Record<GovernanceStatus, string> = {
 };
 
 export const governanceHintMap: Record<GovernanceStatus, string> = {
-    'S0': '尚未进行语义理解',
-    'S1': 'AI生成的建议待确认',
-    'S2': '存在低置信度建议需复核',
-    'S3': '已确认所有关键语义'
+    'S0': '尚未开始语义建模',
+    'S1': '字段语义待确认',
+    'S2': '语义建模进行中，建议持续完善',
+    'S3': '可进入对象建模'
 };
 
 export const rolledBackTone = 'bg-rose-50 text-rose-600 border-rose-200';
@@ -85,10 +85,10 @@ export const runStatusToneMap: Record<RunSummary['status'], string> = {
 
 // Semantic Stage Configuration
 export const semanticStageLabelMap: Record<string, string> = {
-    'NOT_STARTED': '未开始',
-    'FIELD_PENDING': '语义待确认',
+    'NOT_STARTED': '未开始语义建模',
+    'FIELD_PENDING': '字段语义待确认',
     'MODELING_IN_PROGRESS': '语义建模进行中',
-    'READY_FOR_OBJECT': '可对象建模'
+    'READY_FOR_OBJECT': '可进入对象建模'
 };
 
 export const semanticStageToneMap: Record<string, string> = {

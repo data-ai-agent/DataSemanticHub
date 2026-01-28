@@ -1,4 +1,4 @@
-import { ArrowLeft, ChevronDown, ChevronRight, GripVertical, Info, Play, RotateCcw, Save, Sparkles } from 'lucide-react';
+import { ArrowLeft, ChevronDown, ChevronRight, GripVertical, Info, Play, RotateCcw, Save, Sparkles, Activity, AlertTriangle, CheckCircle, XCircle, FileText, GitBranch, History, Settings, Shield, Bug, Search, Anchor, FileCode, Layers, Database as DbIcon, Lock, List as ListIcon, Maximize2, X, Plus } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useToast } from '../../components/ui/Toast';
 
@@ -51,8 +51,11 @@ const buildTemplateState = (initialTemplate?: AgentTemplateDesignerViewProps['te
 const AgentTemplateDesignerView = ({ setActiveModule, template: initialTemplate, source, onSaveDraft }: AgentTemplateDesignerViewProps) => {
     const toast = useToast();
     const [openPanels, setOpenPanels] = useState<string[]>([
-        'input', 'knowledge', 'tools', 'model', 'experience', 'security'
+        'knowledge', 'tools', 'model', 'experience', 'security'
     ]);
+    const [activeSection, setActiveSection] = useState('basic-info');
+    const [fieldDrawerOpen, setFieldDrawerOpen] = useState(false);
+    const [stepDrawerOpen, setStepDrawerOpen] = useState(false);
     const [templateState, setTemplateState] = useState(() => buildTemplateState(initialTemplate));
     const [outputType, setOutputType] = useState<'text' | 'json' | 'multi'>('json');
     const [experienceConfig, setExperienceConfig] = useState({
@@ -77,6 +80,21 @@ const AgentTemplateDesignerView = ({ setActiveModule, template: initialTemplate,
     ]);
     const [dragIndex, setDragIndex] = useState<number | null>(null);
     const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+
+    const [issuesDrawerOpen, setIssuesDrawerOpen] = useState(false);
+    const [compileStatus, setCompileStatus] = useState<'Ready' | 'Warning' | 'Blocked'>('Warning');
+    const [mockIssues, setMockIssues] = useState([
+        { type: 'error', location: 'Prompt', message: '引用了未定义变量 {{time_range}}', id: 1 },
+        { type: 'warning', location: 'Workflow', message: 'SQLRunner 模块未配置最大行数限制', id: 2 }
+    ]);
+
+    const scrollToSection = (id: string) => {
+        setActiveSection(id);
+        const element = document.getElementById(id);
+        if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    };
 
     const togglePanel = (key: string) => {
         setOpenPanels(prev => prev.includes(key) ? prev.filter(item => item !== key) : [...prev, key]);
@@ -113,31 +131,6 @@ const AgentTemplateDesignerView = ({ setActiveModule, template: initialTemplate,
     ];
 
     const rightPanels = [
-        {
-            key: 'input',
-            title: '输入配置',
-            content: (
-                <div className="mt-3 space-y-3 text-sm">
-                    <div className="flex items-center justify-between text-xs text-slate-500">
-                        <span>字段列表</span>
-                        <button className="px-2 py-1 rounded-md border border-slate-200 text-xs text-slate-600">新增字段</button>
-                    </div>
-                    <div className="space-y-2">
-                        {inputFields.map(field => (
-                            <div key={field.name} className="rounded-lg border border-slate-200 p-2 text-xs">
-                                <div className="flex items-center justify-between">
-                                    <span className="text-slate-700 font-medium">{field.label}</span>
-                                    <span className={`px-2 py-0.5 rounded-full ${field.required ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
-                                        {field.required ? '必填' : '可选'}
-                                    </span>
-                                </div>
-                                <div className="mt-1 text-slate-500">类型：{field.type} · 来源：{field.source}</div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )
-        },
         {
             key: 'knowledge',
             title: '知识源',
@@ -388,6 +381,7 @@ const AgentTemplateDesignerView = ({ setActiveModule, template: initialTemplate,
                     模板已创建：{templateState.name} · 请完善语义资产、流程与输出结构后发布。
                 </div>
             )}
+
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
                 <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                     <div className="flex items-center gap-3">
@@ -438,43 +432,101 @@ const AgentTemplateDesignerView = ({ setActiveModule, template: initialTemplate,
                     </div>
                 </div>
             </div>
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
-                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                    <div className="flex items-center gap-4 text-sm">
-                        <div className="flex items-center gap-2 text-slate-700">
-                            当前版本 <span className="px-2 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs">{templateState.semanticVersion} {templateState.status}</span>
+
+            {/* VersionStrip (Frame 0 - Fixed under TopHeader) */}
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-3">
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                    {/* Left */}
+                    <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2">
+                            <span className="px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-700 font-mono text-sm font-semibold">{templateState.semanticVersion} Stable</span>
                         </div>
-                        <div className="text-slate-500">环境指针：Staging → v2.3.1 / Prod → v2.2.8</div>
+                        <div className="hidden md:block h-4 w-px bg-slate-200" />
+                        <div className="flex items-center gap-3 text-xs md:text-sm text-slate-600">
+                            <span>Staging → v2.3.1</span>
+                            <span className="text-slate-300">/</span>
+                            <span className="flex items-center gap-1">
+                                Prod → <span className="font-mono bg-amber-50 text-amber-700 px-1 rounded">v2.3.0 (20%)</span>
+                            </span>
+                        </div>
                     </div>
-                    <div className="flex items-center gap-2 text-xs text-slate-500">
-                        <button className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white">版本历史</button>
-                        <button className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white">Diff</button>
-                        <button className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white">从某版本拉草稿</button>
+
+                    {/* Center */}
+                    <div className="flex items-center gap-3">
+                        <button
+                            className={`flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs font-medium transition-colors ${compileStatus === 'Ready'
+                                ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                                : compileStatus === 'Warning'
+                                    ? 'border-amber-200 bg-amber-50 text-amber-700'
+                                    : 'border-rose-200 bg-rose-50 text-rose-700'
+                                }`}
+                            onClick={() => setIssuesDrawerOpen(true)}
+                        >
+                            {compileStatus === 'Warning' && <AlertTriangle size={12} />}
+                            {compileStatus === 'Blocked' && <XCircle size={12} />}
+                            {compileStatus === 'Ready' ? 'Ready' : compileStatus === 'Blocked' ? 'Blocked' : '2 Warnings'}
+                        </button>
+
+                        <div className="hidden md:block h-3 w-px bg-slate-200" />
+
+                        <div className="flex items-center gap-3 text-xs font-medium">
+                            <span className="flex items-center gap-1 text-slate-600 cursor-pointer hover:text-emerald-600">
+                                <Shield size={12} className="text-emerald-500" /> Gate Pass
+                            </span>
+                            <span className="flex items-center gap-1 text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
+                                <Activity size={12} /> 运行包: QNA-SupplyChain-v1
+                            </span>
+                        </div>
                     </div>
-                </div>
-                <div className="mt-4 grid grid-cols-1 md:grid-cols-4 gap-3 text-xs text-slate-500">
-                    <div className="rounded-lg border border-slate-200 p-3">
-                        <div className="text-slate-400">变更说明</div>
-                        <div className="text-slate-700 mt-1">优化指标归因解释 + 新增 evidence 字段</div>
-                    </div>
-                    <div className="rounded-lg border border-slate-200 p-3">
-                        <div className="text-slate-400">门禁状态</div>
-                        <div className="text-emerald-600 mt-1">评测通过</div>
-                    </div>
-                    <div className="rounded-lg border border-slate-200 p-3">
-                        <div className="text-slate-400">灰度进度</div>
-                        <div className="text-slate-700 mt-1">Prod 20%</div>
-                    </div>
-                    <div className="rounded-lg border border-slate-200 p-3">
-                        <div className="text-slate-400">绑定运行包</div>
-                        <div className="text-slate-700 mt-1">QNA-供应链-稳定</div>
+
+                    {/* Right */}
+                    <div className="hidden md:flex items-center gap-3 text-xs">
+                        <button className="text-indigo-600 hover:bg-indigo-50 px-2 py-1 rounded transition-colors">版本历史</button>
+                        <button className="text-indigo-600 hover:bg-indigo-50 px-2 py-1 rounded transition-colors">Diff 模式</button>
+                        <button className="text-indigo-600 hover:bg-indigo-50 px-2 py-1 rounded transition-colors">从某版本拉草稿</button>
                     </div>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                <div className="lg:col-span-2 space-y-4">
-                    <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+            {/* Left Anchor Nav (Frame 1) */}
+            <div className="grid grid-cols-12 gap-6 items-start">
+                <div className="col-span-2 hidden xl:block sticky top-24">
+                    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                        <div className="p-2 space-y-1">
+                            {[
+                                { id: 'basic-info', label: '基本信息', icon: FileText },
+                                { id: 'input-schema', label: '输入配置', icon: ListIcon },
+                                { id: 'semantic', label: '绑定语义资产', icon: DbIcon },
+                                { id: 'knowledge-source', label: '知识源', icon: Layers }, // Link to right panel? Requirements say "Jump to Right Panel" but let's keep it in flow for now or just scroll to section if we have one? Wait, requirement Frame 1 says "Knowledge Source (Jump to Right...)" but also Frame 2 doesn't have it. Let's strictly follow Frame 1 items.
+                                { id: 'role-prompt', label: '角色指令', icon: Sparkles },
+                                { id: 'workflow', label: '流程编排', icon: GitBranch },
+                                { id: 'output-schema', label: '输出结构', icon: FileCode },
+                                { id: 'runtime', label: '运行限制与安全', icon: Lock },
+                            ].map(item => (
+                                <button
+                                    key={item.id}
+                                    onClick={() => scrollToSection(item.id)}
+                                    className={`w-full flex items-center gap-2 px-3 py-2 text-xs font-medium rounded-lg transition-colors ${activeSection === item.id ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-50'
+                                        }`}
+                                >
+                                    <item.icon size={14} />
+                                    {item.label}
+                                </button>
+                            ))}
+                        </div>
+                        <div className="p-2 border-t border-slate-100 bg-slate-50/50">
+                            <div className="flex items-center justify-between text-[10px] text-slate-400 px-1">
+                                <span>未保存</span>
+                                <button className="hover:text-slate-600">Top</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Main Editor (Frame 2) */}
+                <div className="col-span-12 lg:col-span-8 xl:col-span-7 space-y-4">
+                    {/* 2.1 SectionCard: Basic Info */}
+                    <div id="basic-info" className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 scroll-mt-24">
                         <h3 className="text-sm font-semibold text-slate-800">基本信息</h3>
                         <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                             <div className="rounded-lg border border-slate-200 p-3">
@@ -525,13 +577,56 @@ const AgentTemplateDesignerView = ({ setActiveModule, template: initialTemplate,
                         </div>
                     </div>
 
+                    {/* 2.2 SectionCard: Input Schema */}
+                    <div id="input-schema" className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 scroll-mt-24">
+                        <div className="flex items-center justify-between">
+                            <h3 className="text-sm font-semibold text-slate-800">输入配置 (Input Schema)</h3>
+                            <button className="px-2 py-1 rounded-md border border-slate-200 text-xs text-slate-600 hover:bg-slate-50">
+                                + 新增字段
+                            </button>
+                        </div>
+                        <div className="mt-4 space-y-2">
+                            {inputFields.map(field => (
+                                <div key={field.name} className="flex items-center justify-between rounded-lg border border-slate-200 p-3 text-sm hover:border-slate-300 transition-colors">
+                                    <div className="flex items-center gap-3">
+                                        <div className="font-mono text-slate-700 font-medium">{field.name}</div>
+                                        <span className={`px-2 py-0.5 rounded text-[10px] ${field.required ? 'bg-rose-50 text-rose-700' : 'bg-slate-100 text-slate-500'}`}>
+                                            {field.required ? 'REQUIRED' : 'OPTIONAL'}
+                                        </span>
+                                        <span className="text-xs text-slate-400 px-2 border-l border-slate-200">
+                                            {field.type}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center gap-2 text-xs text-slate-500">
+                                        <span>From: {field.source}</span>
+                                        <button className="ml-2 hover:text-indigo-600" onClick={() => setFieldDrawerOpen(true)}>编辑</button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                    {/* FieldEditorDrawer Mock */}
+                    {fieldDrawerOpen && (
+                        <div className="fixed inset-0 z-50 flex justify-end">
+                            <div className="absolute inset-0 bg-black/20" onClick={() => setFieldDrawerOpen(false)} />
+                            <div className="relative bg-white w-[500px] h-full shadow-2xl p-4 animate-in slide-in-from-right">
+                                <div className="flex justify-between items-center border-b border-slate-100 pb-3 mb-4">
+                                    <h3 className="font-semibold text-slate-800">编辑字段: question</h3>
+                                    <button onClick={() => setFieldDrawerOpen(false)}><X size={18} className="text-slate-400" /></button>
+                                </div>
+                                <div className="text-sm text-slate-500 text-center py-10">字段配置抽屉 (Mock)</div>
+                            </div>
+                        </div>
+                    )}
+
+
                     <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
                         <h3 className="text-sm font-semibold text-slate-800">绑定语义资产</h3>
                         <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                             <div className="rounded-lg border border-slate-200 p-3">
                                 <div className="text-xs text-slate-400">语义版本</div>
                                 <div className="mt-2 flex items-center justify-between">
-                                    <span className="text-slate-700">v2.1.0</span>
+                                    <span className="text-slate-700 font-mono">v2.1.0</span>
                                     <button className="px-2 py-1 rounded-md border border-slate-200 text-xs text-slate-600">切换</button>
                                 </div>
                             </div>
@@ -551,11 +646,10 @@ const AgentTemplateDesignerView = ({ setActiveModule, template: initialTemplate,
                                 <div className="text-xs text-slate-400">指标/术语/标签</div>
                                 <div className="mt-2 text-slate-700">库存周转率、缺货率、供应商评分</div>
                             </div>
-                            <div className="rounded-lg border border-slate-200 p-3 md:col-span-2">
-                                <div className="text-xs text-slate-400">质量/安全策略</div>
-                                <div className="mt-2 flex items-center justify-between">
-                                    <span className="text-slate-700">供应链质量门禁 v1 · SQL 安全策略</span>
-                                    <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-xs">已启用</span>
+                            <div className="rounded-lg border border-slate-200 p-3 md:col-span-2 bg-slate-50">
+                                <div className="flex items-center justify-between">
+                                    <div className="text-xs text-slate-500">强一致性校验：知识源过期将阻断发布</div>
+                                    <div className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-700 text-xs">On</div>
                                 </div>
                             </div>
                         </div>
@@ -576,40 +670,81 @@ const AgentTemplateDesignerView = ({ setActiveModule, template: initialTemplate,
                     </div>
 
                     <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
-                        <h3 className="text-sm font-semibold text-slate-800">流程编排（Workflow / DSL）</h3>
-                        <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
-                            <span>当前骨架：{templateState.skeleton}</span>
-                            <button className="px-2 py-1 rounded-md border border-slate-200 text-xs text-slate-600">切换骨架</button>
+                        <div className="flex items-center justify-between">
+                            <h3 className="text-sm font-semibold text-slate-800">流程编排 (Workflow / DSL)</h3>
+                            <button className="text-indigo-600 text-xs hover:underline flex items-center gap-1">
+                                <Settings size={12} /> 骨架配置: {templateState.skeleton}
+                            </button>
                         </div>
-                        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                            {['语义检索', '指标解析', 'SQL 生成', '解释与归因'].map(stage => (
-                                <div key={stage} className="rounded-lg border border-slate-200 p-3 flex items-center justify-between">
-                                    <div>
-                                        <div className="text-slate-800 font-medium">{stage}</div>
-                                        <div className="text-xs text-slate-500 mt-1">模块状态：启用</div>
+
+                        <div className="mt-4 grid grid-cols-1 gap-3">
+                            {[
+                                { name: 'SemanticSearch', type: '工具', detail: 'query={term}', deps: ['v2.1.0'], status: 'Active' },
+                                { name: 'MetricResolver', type: '工具', detail: 'metricId', deps: [], status: 'Active' },
+                                { name: 'SQLRunner', type: '高级工具', detail: 'generate & execute', deps: ['SafePolicy-v1'], status: 'Warning' },
+                                { name: 'Explanation', type: '模块', detail: '归因分析', deps: [], status: 'Active' }
+                            ].map((mod, idx) => (
+                                <div key={mod.name} className="relative rounded-lg border border-slate-200 p-3 flex items-start justify-between bg-white hover:border-indigo-300 hover:shadow-sm transition-all group">
+                                    <div className="flex gap-3">
+                                        <div className="flex flex-col items-center gap-1 pt-1">
+                                            <div className="w-6 h-6 rounded bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-600">
+                                                {idx + 1}
+                                            </div>
+                                            {idx < 3 && <div className="w-0.5 h-full bg-slate-100" />}
+                                        </div>
+                                        <div>
+                                            <div className="flex items-center gap-2">
+                                                <span className="font-semibold text-slate-900">{mod.name}</span>
+                                                <span className={`px-1.5 py-0.5 rounded text-[10px] ${mod.status === 'Warning' ? 'bg-amber-50 text-amber-700' : 'bg-slate-100 text-slate-600'}`}>
+                                                    {mod.type}
+                                                </span>
+                                            </div>
+                                            <div className="text-xs text-slate-500 font-mono mt-1">{mod.detail}</div>
+                                            {mod.deps.length > 0 && (
+                                                <div className="flex flex-wrap gap-1 mt-2">
+                                                    {mod.deps.map(d => (
+                                                        <span key={d} className="px-1.5 py-0.5 rounded text-[10px] bg-slate-50 border border-slate-100 text-slate-500 flex items-center gap-1">
+                                                            <GitBranch size={8} /> {d}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
-                                    <ChevronRight size={16} className="text-slate-400" />
+                                    <button
+                                        className="px-2 py-1 rounded border border-slate-200 text-xs opacity-0 group-hover:opacity-100 transition-opacity bg-white hover:bg-slate-50"
+                                        onClick={() => setStepDrawerOpen(true)}
+                                    >
+                                        配置
+                                    </button>
                                 </div>
                             ))}
                         </div>
-                        <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600 font-mono">
-                            step: parse → ground → plan → generate → execute → explain
-                            <br />
-                            tool: SemanticSearch(query={'{'}term{'}'}) → MetricResolver(metricId)
-                            <br />
-                            guard: SQL安全策略 / 未加limit拦截
-                        </div>
-                        <div className="mt-3 flex items-center gap-2 text-xs text-slate-500">
-                            <button className="px-2 py-1 rounded-md border border-slate-200 text-xs text-slate-600 flex items-center gap-1">
-                                <Sparkles size={12} /> 插入工具
-                            </button>
-                            <button className="px-2 py-1 rounded-md border border-slate-200 text-xs text-slate-600">插入变量</button>
-                            <button className="px-2 py-1 rounded-md border border-slate-200 text-xs text-slate-600">危险操作 lint</button>
-                            <span className="ml-auto flex items-center gap-1">
-                                <Sparkles size={12} /> Flow Editor
-                            </span>
+
+                        <div className="mt-4 pt-4 border-t border-slate-100 flex items-center gap-2 text-xs text-slate-500">
+                            <span className="flex items-center gap-1"><Info size={12} className="text-amber-500" /> SQLRunner 缺少行数限制配置</span>
+                            <button className="text-indigo-600 hover:underline">去修复</button>
+                            <div className="ml-auto flex gap-2">
+                                <button className="flex items-center gap-1 px-2 py-1 hover:bg-slate-100 rounded">
+                                    <Sparkles size={12} /> Flow Editor
+                                </button>
+                            </div>
                         </div>
                     </div>
+                    {/* StepConfigDrawer Mock */}
+                    {stepDrawerOpen && (
+                        <div className="fixed inset-0 z-50 flex justify-end">
+                            <div className="absolute inset-0 bg-black/20" onClick={() => setStepDrawerOpen(false)} />
+                            <div className="relative bg-white w-[600px] h-full shadow-2xl p-4 animate-in slide-in-from-right">
+                                <div className="flex justify-between items-center border-b border-slate-100 pb-3 mb-4">
+                                    <h3 className="font-semibold text-slate-800">配置步骤: SemanticSearch</h3>
+                                    <button onClick={() => setStepDrawerOpen(false)}><X size={18} className="text-slate-400" /></button>
+                                </div>
+                                <div className="text-sm text-slate-500 text-center py-10">步骤配置抽屉 (Mock)</div>
+                            </div>
+                        </div>
+                    )}
+
 
                     <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
                         <h3 className="text-sm font-semibold text-slate-800">输出结构（Output Schema）</h3>
@@ -639,8 +774,8 @@ const AgentTemplateDesignerView = ({ setActiveModule, template: initialTemplate,
                                 Schema 必填字段：entities / relations / evidence / confidence / conflicts
                             </div>
                         </div>
-                    <div className="mt-4 rounded-lg border border-slate-200 bg-slate-900 text-slate-100 p-4 text-xs font-mono overflow-x-auto">
-                        <pre className="leading-relaxed">{`{
+                        <div className="mt-4 rounded-lg border border-slate-200 bg-slate-900 text-slate-100 p-4 text-xs font-mono overflow-x-auto">
+                            <pre className="leading-relaxed">{`{
   "type": "object",
   "required": ["entities", "evidence", "confidence"],
   "properties": {
@@ -649,7 +784,7 @@ const AgentTemplateDesignerView = ({ setActiveModule, template: initialTemplate,
     "confidence": { "type": "number" }
   }
 }`}</pre>
-                    </div>
+                        </div>
                         <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                             <div className="rounded-lg border border-slate-200 p-3">
                                 <div className="text-xs text-slate-400">Schema 规则</div>
@@ -661,9 +796,28 @@ const AgentTemplateDesignerView = ({ setActiveModule, template: initialTemplate,
                             </div>
                         </div>
                     </div>
+
+                    {/* 2.7 SectionCard: Runtime - Summary in Main */}
+                    <div id="runtime" className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 scroll-mt-24">
+                        <div className="flex items-center justify-between">
+                            <h3 className="text-sm font-semibold text-slate-800">运行限制与安全</h3>
+                            <button className="text-indigo-600 text-xs hover:underline" onClick={() => togglePanel('security')}>
+                                在右侧编辑详情
+                            </button>
+                        </div>
+                        <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-3 text-xs text-slate-600">
+                            <div className="p-2 border border-slate-100 rounded bg-slate-50 text-center">最大耗时: 8s</div>
+                            <div className="p-2 border border-slate-100 rounded bg-slate-50 text-center">最大扫行: 100k</div>
+                            <div className="p-2 border border-slate-100 rounded bg-slate-50 text-center">分页: 自动</div>
+                            <div className="p-2 border-emerald-100 rounded bg-emerald-50 text-center text-emerald-700">SQL 安全: On</div>
+                        </div>
+                    </div>
                 </div>
 
-                <div className="space-y-4">
+                {/* Right Panel (Frame 3) */}
+                <div className="col-span-12 lg:col-span-4 xl:col-span-3 space-y-4">
+                    {/* Knowledge jump target */}
+                    <div id="knowledge-source" className="scroll-mt-24" />
                     {rightPanels.map(panel => (
                         <div key={panel.key} className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
                             <button
@@ -678,8 +832,61 @@ const AgentTemplateDesignerView = ({ setActiveModule, template: initialTemplate,
                     ))}
                 </div>
             </div>
+
+
+            {/* Issues Drawer (P0) */}
+            {
+                issuesDrawerOpen && (
+                    <>
+                        <div className="fixed inset-0 bg-black/20 z-[60]" onClick={() => setIssuesDrawerOpen(false)} />
+                        <div className="fixed right-0 top-0 h-full w-96 bg-white z-[70] shadow-2xl flex flex-col animate-in slide-in-from-right duration-200">
+                            <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+                                <div>
+                                    <h3 className="font-semibold text-slate-800">一致性校验</h3>
+                                    <div className="flex items-center gap-2 mt-1">
+                                        <span className="text-xs px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 font-medium">1 阻断</span>
+                                        <span className="text-xs px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 font-medium">1 警告</span>
+                                    </div>
+                                </div>
+                                <button onClick={() => setIssuesDrawerOpen(false)} className="text-slate-400 hover:text-slate-600">
+                                    <ArrowLeft className="rotate-180" size={18} />
+                                </button>
+                            </div>
+                            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                                {mockIssues.map(issue => (
+                                    <div key={issue.id} className={`rounded-lg border p-3 ${issue.type === 'error' ? 'border-rose-200 bg-rose-50' : 'border-amber-200 bg-amber-50'}`}>
+                                        <div className="flex items-start gap-3">
+                                            {issue.type === 'error' ? <XCircle size={16} className="text-rose-600 mt-0.5" /> : <AlertTriangle size={16} className="text-amber-600 mt-0.5" />}
+                                            <div>
+                                                <div className={`text-sm font-medium ${issue.type === 'error' ? 'text-rose-800' : 'text-amber-800'}`}>
+                                                    {issue.message}
+                                                </div>
+                                                <div className={`text-xs mt-1 ${issue.type === 'error' ? 'text-rose-600' : 'text-amber-600'}`}>
+                                                    位置: {issue.location}
+                                                </div>
+                                                <button className="mt-2 text-xs font-semibold underline hover:opacity-80">
+                                                    自动修复
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="p-4 border-t border-slate-200 bg-slate-50">
+                                <button className="w-full py-2 bg-white border border-slate-300 rounded-lg text-sm text-slate-700 hover:bg-slate-50" onClick={() => {
+                                    setMockIssues([]);
+                                    setCompileStatus('Ready');
+                                }}>
+                                    重新编译校验
+                                </button>
+                            </div>
+                        </div>
+                    </>
+                )
+            }
         </div>
     );
 };
 
 export default AgentTemplateDesignerView;
+
