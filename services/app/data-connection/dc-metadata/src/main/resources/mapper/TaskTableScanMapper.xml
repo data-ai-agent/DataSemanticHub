@@ -10,6 +10,11 @@
         </foreach>
     </delete>
 
+    <select id="selectByTaskId" resultType="com.eisoo.dc.common.metadata.entity.TaskScanTableEntity">
+        SELECT * FROM t_task_scan_table
+        WHERE task_id = #{id}
+    </select>
+
     <select id="selectByTaskIdAndIds" resultType="com.eisoo.dc.common.metadata.entity.TaskScanTableEntity">
         SELECT * FROM t_task_scan_table
         WHERE task_id= #{taskId} AND table_id IN

@@ -187,15 +187,34 @@ public class TaskScanServiceImpl extends ServiceImpl<TaskScanMapper, TaskScanEnt
 
         TableStatusDto tableStatusDto = new TableStatusDto();
         tableStatusDto.setId(taskId);
-        List<TaskScanTableEntity> listPre = taskScanTableMapper.selectByTaskIdAndIds(taskId, tables);
+
+        // 根据 tables 是否为空选择不同的查询方法
+        List<TaskScanTableEntity> listPre;
+        if (tables == null || tables.isEmpty()) {
+            listPre = taskScanTableMapper.selectByTaskId(taskId);
+        } else {
+            listPre = taskScanTableMapper.selectByTaskIdAndIds(taskId, tables);
+        }
+
+        // 将任务状态更新为"扫描中"
+        log.info("【重新扫描】更新任务状态为扫描中，taskId: {}", taskId);
+        int updateCount = taskScanMapper.updateScanStatusStart(taskId, ScanStatusEnum.RUNNING.getCode());
+        log.info("【重新扫描】任务状态已更新，taskId: {}, 新状态: {}, 更新行数: {}",
+            taskId, ScanStatusEnum.RUNNING.getCode(), updateCount);
+
         // 构造返回
-        List<TableStatusDto.TableStatus> list = new ArrayList<>(tables.size());
+        List<TableStatusDto.TableStatus> list = new ArrayList<>(listPre.size());
         try {
             submitTablesScanTaskInner(listPre, 1, userId, true);
         } catch (Exception e) {
             throw new RuntimeException(e);
         } finally {
-            List<TaskScanTableEntity> listPost = taskScanTableMapper.selectByTaskIdAndIds(taskId, tables);
+            List<TaskScanTableEntity> listPost;
+            if (tables == null || tables.isEmpty()) {
+                listPost = taskScanTableMapper.selectByTaskId(taskId);
+            } else {
+                listPost = taskScanTableMapper.selectByTaskIdAndIds(taskId, tables);
+            }
             // 更新结果信息
             updateScanTaskResultInfo(taskId, listPost);
             for (TaskScanTableEntity table : listPost) {

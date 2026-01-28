@@ -526,6 +526,7 @@ export interface QueryFieldsParams {
 const SCAN_ENDPOINTS = {
     METADATA_SCAN: '/metadata/scan',
     SCAN_INFO: (taskId: string) => `/metadata/scan/info/${taskId}`,
+    SCAN_RETRY: '/metadata/scan/retry',
     SCAN_SCHEDULE: '/metadata/scan/schedule',
     SCAN_SCHEDULE_STATUS: (scheduleId: string) => `/metadata/scan/schedule/${scheduleId}`,
     SCAN_SCHEDULE_TASK: (scheduleId: string) => `/metadata/scan/schedule/task/${scheduleId}`,
@@ -1218,6 +1219,34 @@ export const scanService = {
             }
         } catch (error) {
             console.error('Failed to execute scheduled scan:', error);
+            throw error;
+        }
+    },
+
+    /**
+     * 重新扫描任务
+     */
+    async retryScan(taskId: string, tableIds?: string[]): Promise<void> {
+        try {
+            const requestBody: any = {
+                id: taskId,
+            };
+
+            // 如果提供了表ID列表，则只重新扫描这些表
+            if (tableIds && tableIds.length > 0) {
+                requestBody.tables = tableIds;
+            }
+
+            const response = await dataConnectionServiceClient(SCAN_ENDPOINTS.SCAN_RETRY, {
+                method: 'POST',
+                body: JSON.stringify(requestBody),
+            });
+
+            if (!response.ok) {
+                throw await parseScanError(response);
+            }
+        } catch (error) {
+            console.error('Failed to retry scan:', error);
             throw error;
         }
     },

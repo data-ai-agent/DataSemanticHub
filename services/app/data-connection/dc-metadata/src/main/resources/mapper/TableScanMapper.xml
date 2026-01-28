@@ -148,7 +148,7 @@
 
     <select id="selectCount" resultType="long">
         SELECT COUNT(*) FROM t_table_scan
-        WHERE f_data_source_id = #{dsId} AND f_operation_type != 1
+        WHERE f_data_source_id = #{id} AND f_operation_type != 1
         <if test="keyword != null and keyword != ''">
             AND f_name LIKE CONCAT('%', #{keyword}, '%')
         </if>

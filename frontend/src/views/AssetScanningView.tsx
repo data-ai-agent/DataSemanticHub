@@ -375,6 +375,27 @@ const AssetScanningView = ({ onNavigate }: { onNavigate?: (moduleId: string) => 
         }
     };
 
+    const handleRescan = async (task: ScanTask) => {
+        if (!task.id) return;
+
+        try {
+            // 立即更新前端状态为"扫描中"（乐观更新）
+            setInstantTasks(prevTasks =>
+                prevTasks.map(t =>
+                    t.id === task.id ? { ...t, status: 'running' as const } : t
+                )
+            );
+
+            await scanService.retryScan(task.id);
+            // 重新加载任务列表以获取后端真实状态
+            loadInstantTasks();
+        } catch (error) {
+            console.error('Failed to rescan task:', error);
+            // 失败时恢复原状态
+            loadInstantTasks();
+        }
+    };
+
     const handleSaveScheduledTask = async () => {
         if (!editingScheduledTask) return;
 
@@ -595,7 +616,11 @@ const AssetScanningView = ({ onNavigate }: { onNavigate?: (moduleId: string) => 
                                                     >
                                                         <Eye size={16} />
                                                     </button>
-                                                    <button className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded transition-colors" title="重新扫描">
+                                                    <button
+                                                        onClick={() => handleRescan(task)}
+                                                        className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded transition-colors"
+                                                        title="重新扫描"
+                                                    >
                                                         <RefreshCw size={16} />
                                                     </button>
                                                 </div>

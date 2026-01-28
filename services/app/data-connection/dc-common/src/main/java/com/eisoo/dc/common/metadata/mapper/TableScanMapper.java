@@ -33,7 +33,7 @@ public interface TableScanMapper extends MPJBaseMapper<TableScanEntity> {
             @Param("direction") String direction
     );
 
-    long selectCount(String dsId, String keyword);
+    long selectCount(@Param("id") String dsId, @Param("keyword") String keyword);
 
     @Update("UPDATE t_table_scan SET f_operation_type=1, f_operation_time=#{operationTime} WHERE f_id = #{id}")
     int deleteById(@Param("id") String id, @Param("operationTime") Date operationTime);

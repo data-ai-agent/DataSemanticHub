@@ -112,13 +112,62 @@ export interface Connector {
  * 数据源统计信息（后端返回）
  */
 export interface DataSourceStatisticsVo {
-    data_source_id: string;
-    data_source_name: string;
-    table_count: number;
-    field_count: number;
-    scanned_table_count: number;
-    scanning_table_count: number;
-    unscanned_table_count: number;
+    data_source_id?: string;
+    data_source_name?: string;
+    dataSourceId?: string;
+    dataSourceName?: string;
+    table_count?: number;
+    tableCount?: number;
+    field_count?: number;
+    fieldCount?: number;
+    scanned_table_count?: number;
+    scannedTableCount?: number;
+    scanning_table_count?: number;
+    scanningTableCount?: number;
+    unscanned_table_count?: number;
+    unscannedTableCount?: number;
+    // 存储统计
+    total_rows?: number;
+    totalRows?: number;
+    total_data_size?: number;
+    totalDataSize?: number;
+    total_data_size_formatted?: string;
+    totalDataSizeFormatted?: string;
+    total_index_size?: number;
+    totalIndexSize?: number;
+    total_index_size_formatted?: string;
+    totalIndexSizeFormatted?: string;
+    total_size?: number;
+    totalSize?: number;
+    total_size_formatted?: string;
+    totalSizeFormatted?: string;
+    // 质量统计
+    tables_with_comment?: number;
+    tablesWithComment?: number;
+    fields_with_comment?: number;
+    fieldsWithComment?: number;
+    tables_with_primary_key?: number;
+    tablesWithPrimaryKey?: number;
+    tables_with_index?: number;
+    tablesWithIndex?: number;
+    total_index_count?: number;
+    totalIndexCount?: number;
+
+    // 字段级别统计汇总
+    avg_null_ratio?: number;
+    avgNullRatio?: number;
+    max_null_ratio?: number;
+    maxNullRatio?: number;
+    high_null_ratio_field_count?: number;
+    highNullRatioFieldCount?: number;
+    avg_unique_ratio?: number;
+    avgUniqueRatio?: number;
+    unique_field_count?: number;
+    uniqueFieldCount?: number;
+    fields_with_distribution_count?: number;
+    fieldsWithDistributionCount?: number;
+    analyzed_field_count?: number;
+    analyzedFieldCount?: number;
 }
 
 /**

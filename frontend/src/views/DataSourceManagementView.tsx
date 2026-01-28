@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Plus, Database, Edit, Trash2, Zap, X, CheckCircle, RefreshCw, Server, Building2, Tag, ChevronDown, MoreHorizontal, FileText, List, Activity, Loader2, Eye, Clock, Layers, Table as TableIcon } from 'lucide-react';
+import { Plus, Database, Edit, Trash2, Zap, X, CheckCircle, RefreshCw, Server, Building2, Tag, ChevronDown, MoreHorizontal, FileText, List, Activity, Loader2, Eye, Clock, Layers, Table as TableIcon, HardDrive, Archive, Key } from 'lucide-react';
 import { dataSourceService, type DataSource, type Connector, type DataSourceStatisticsVo } from '../services/dataSourceService';
 import { scanService, type TableInfo } from '../services/scanService';
 
@@ -140,7 +140,7 @@ const DataSourceManagementView = () => {
 
     const handleTestConnection = async (dsId: string) => {
         setTestingId(dsId);
-        const ds = dataSources.find(d => d.id === dsId);
+        const ds = dataSources.find(d => d.id === dsId) || detailDS;
         if (!ds) {
             setTestingId(null);
             return;
@@ -163,13 +163,21 @@ const DataSourceManagementView = () => {
             const result = await dataSourceService.testConnection(testRequest);
 
             if (result.success) {
+                // 更新列表中的数据源状态
                 setDataSources(prev => prev.map(d =>
                     d.id === dsId ? { ...d, status: 'connected' as const } : d
                 ));
+                // 更新详情模态框中的数据源状态
+                if (detailDS && detailDS.id === dsId) {
+                    setDetailDS(prev => prev ? { ...prev, status: 'connected' as const } : prev);
+                }
             } else {
                 setDataSources(prev => prev.map(d =>
                     d.id === dsId ? { ...d, status: 'error' as const } : d
                 ));
+                if (detailDS && detailDS.id === dsId) {
+                    setDetailDS(prev => prev ? { ...prev, status: 'error' as const } : prev);
+                }
                 alert('连接测试失败：' + result.message);
             }
         } catch (error) {
@@ -177,6 +185,9 @@ const DataSourceManagementView = () => {
             setDataSources(prev => prev.map(d =>
                 d.id === dsId ? { ...d, status: 'error' as const } : d
             ));
+            if (detailDS && detailDS.id === dsId) {
+                setDetailDS(prev => prev ? { ...prev, status: 'error' as const } : prev);
+            }
             alert('连接测试失败：' + (error as Error).message);
         } finally {
             setTestingId(null);
@@ -763,7 +774,7 @@ const DataSourceManagementView = () => {
             {/* Detail Modal */}
             {showDetailModal && detailDS && (
                 <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
-                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[85vh]">
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh]">
                         {/* Header */}
                         <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50 shrink-0">
                             <div className="flex items-center gap-3">
@@ -815,10 +826,10 @@ const DataSourceManagementView = () => {
                         </div>
 
                         {/* Content */}
-                        <div className="flex-1 overflow-hidden">
+                        <div className="flex-1 overflow-y-auto custom-scrollbar">
                             {/* Overview Tab */}
                             {activeDetailTab === 'overview' && (
-                                <div className="p-6 overflow-y-auto custom-scrollbar h-full">
+                                <div className="p-6">
                                     {/* Basic Info */}
                                     <div className="mb-6">
                                         <h4 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
@@ -886,51 +897,136 @@ const DataSourceManagementView = () => {
                                                 <span className="text-sm text-slate-500">加载统计信息中...</span>
                                             </div>
                                         ) : detailStatistics ? (
-                                            <div className="grid grid-cols-3 gap-4">
-                                                <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
-                                                    <div className="flex items-center justify-between mb-2">
-                                                        <span className="text-xs text-blue-600">表总数</span>
-                                                        <Server size={16} className="text-blue-500" />
-                                                    </div>
-                                                    <div className="text-2xl font-bold text-blue-700">{detailStatistics.table_count || 0}</div>
-                                                </div>
-                                                <div className="bg-purple-50 p-4 rounded-lg border border-purple-100">
-                                                    <div className="flex items-center justify-between mb-2">
-                                                        <span className="text-xs text-purple-600">字段总数</span>
-                                                        <Layers size={16} className="text-purple-500" />
-                                                    </div>
-                                                    <div className="text-2xl font-bold text-purple-700">{detailStatistics.field_count || 0}</div>
-                                                </div>
-                                                <div className="bg-emerald-50 p-4 rounded-lg border border-emerald-100">
-                                                    <div className="flex items-center justify-between mb-2">
-                                                        <span className="text-xs text-emerald-600">已扫描表</span>
-                                                        <CheckCircle size={16} className="text-emerald-500" />
-                                                    </div>
-                                                    <div className="text-2xl font-bold text-emerald-700">{detailStatistics.scanned_table_count || 0}</div>
-                                                </div>
-                                                {(detailStatistics.scanning_table_count > 0 || detailStatistics.unscanned_table_count > 0) && (
-                                                    <>
-                                                        {detailStatistics.scanning_table_count > 0 && (
-                                                            <div className="bg-orange-50 p-4 rounded-lg border border-orange-100">
-                                                                <div className="flex items-center justify-between mb-2">
-                                                                    <span className="text-xs text-orange-600">扫描中</span>
-                                                                    <RefreshCw size={16} className="text-orange-500 animate-spin" />
-                                                                </div>
-                                                                <div className="text-2xl font-bold text-orange-700">{detailStatistics.scanning_table_count}</div>
+                                            <>
+                                                {/* 基础统计 */}
+                                                <div className="mb-4">
+                                                    <h5 className="text-xs font-medium text-slate-500 mb-2">基础统计</h5>
+                                                    <div className="grid grid-cols-3 gap-3">
+                                                        <div className="bg-blue-50 p-3 rounded-lg border border-blue-100">
+                                                            <div className="flex items-center justify-between mb-1">
+                                                                <span className="text-xs text-blue-600">表总数</span>
+                                                                <Server size={14} className="text-blue-500" />
                                                             </div>
-                                                        )}
-                                                        {detailStatistics.unscanned_table_count > 0 && (
-                                                            <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
-                                                                <div className="flex items-center justify-between mb-2">
-                                                                    <span className="text-xs text-slate-600">未扫描</span>
-                                                                    <Clock size={16} className="text-slate-500" />
-                                                                </div>
-                                                                <div className="text-2xl font-bold text-slate-700">{detailStatistics.unscanned_table_count}</div>
+                                                            <div className="text-xl font-bold text-blue-700">{detailStatistics.table_count || detailStatistics.tableCount || 0}</div>
+                                                        </div>
+                                                        <div className="bg-purple-50 p-3 rounded-lg border border-purple-100">
+                                                            <div className="flex items-center justify-between mb-1">
+                                                                <span className="text-xs text-purple-600">字段总数</span>
+                                                                <Layers size={14} className="text-purple-500" />
                                                             </div>
-                                                        )}
-                                                    </>
+                                                            <div className="text-xl font-bold text-purple-700">{detailStatistics.field_count || detailStatistics.fieldCount || 0}</div>
+                                                        </div>
+                                                        <div className="bg-emerald-50 p-3 rounded-lg border border-emerald-100">
+                                                            <div className="flex items-center justify-between mb-1">
+                                                                <span className="text-xs text-emerald-600">总行数</span>
+                                                                <Database size={14} className="text-emerald-500" />
+                                                            </div>
+                                                            <div className="text-xl font-bold text-emerald-700">{((detailStatistics.total_rows || detailStatistics.totalRows || 0)).toLocaleString()}</div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* 存储统计 */}
+                                                {((detailStatistics.total_data_size_formatted || detailStatistics.totalDataSizeFormatted) ||
+                                                  (detailStatistics.total_index_size_formatted || detailStatistics.totalIndexSizeFormatted)) && (
+                                                    <div className="mb-4">
+                                                        <h5 className="text-xs font-medium text-slate-500 mb-2">存储统计</h5>
+                                                        <div className="grid grid-cols-3 gap-3">
+                                                            <div className="bg-indigo-50 p-3 rounded-lg border border-indigo-100">
+                                                                <div className="flex items-center justify-between mb-1">
+                                                                    <span className="text-xs text-indigo-600">数据大小</span>
+                                                                    <HardDrive size={14} className="text-indigo-500" />
+                                                                </div>
+                                                                <div className="text-xl font-bold text-indigo-700">{detailStatistics.total_data_size_formatted || detailStatistics.totalDataSizeFormatted || '-'}</div>
+                                                            </div>
+                                                            <div className="bg-pink-50 p-3 rounded-lg border border-pink-100">
+                                                                <div className="flex items-center justify-between mb-1">
+                                                                    <span className="text-xs text-pink-600">索引大小</span>
+                                                                    <FileText size={14} className="text-pink-500" />
+                                                                </div>
+                                                                <div className="text-xl font-bold text-pink-700">{detailStatistics.total_index_size_formatted || detailStatistics.totalIndexSizeFormatted || '-'}</div>
+                                                            </div>
+                                                            <div className="bg-cyan-50 p-3 rounded-lg border border-cyan-100">
+                                                                <div className="flex items-center justify-between mb-1">
+                                                                    <span className="text-xs text-cyan-600">总大小</span>
+                                                                    <Archive size={14} className="text-cyan-500" />
+                                                                </div>
+                                                                <div className="text-xl font-bold text-cyan-700">{detailStatistics.total_size_formatted || detailStatistics.totalSizeFormatted || '-'}</div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
                                                 )}
-                                            </div>
+
+                                                {/* 质量统计 */}
+                                                {((detailStatistics.tables_with_comment !== undefined) ||
+                                                  (detailStatistics.tables_with_primary_key !== undefined) ||
+                                                  (detailStatistics.total_index_count !== undefined)) && (
+                                                    <div className="mb-4">
+                                                        <h5 className="text-xs font-medium text-slate-500 mb-2">质量统计</h5>
+                                                        <div className="grid grid-cols-3 gap-3">
+                                                            {(detailStatistics.tables_with_comment !== undefined || detailStatistics.tablesWithComment !== undefined) && (
+                                                                <div className="bg-amber-50 p-3 rounded-lg border border-amber-100">
+                                                                    <div className="flex items-center justify-between mb-1">
+                                                                        <span className="text-xs text-amber-600">有注释的表</span>
+                                                                        <FileText size={14} className="text-amber-500" />
+                                                                    </div>
+                                                                    <div className="text-xl font-bold text-amber-700">{detailStatistics.tables_with_comment ?? detailStatistics.tablesWithComment ?? 0}</div>
+                                                                </div>
+                                                            )}
+                                                            {(detailStatistics.tables_with_primary_key !== undefined || detailStatistics.tablesWithPrimaryKey !== undefined) && (
+                                                                <div className="bg-rose-50 p-3 rounded-lg border border-rose-100">
+                                                                    <div className="flex items-center justify-between mb-1">
+                                                                        <span className="text-xs text-rose-600">有主键的表</span>
+                                                                        <Key size={14} className="text-rose-500" />
+                                                                    </div>
+                                                                    <div className="text-xl font-bold text-rose-700">{detailStatistics.tables_with_primary_key ?? detailStatistics.tablesWithPrimaryKey ?? 0}</div>
+                                                                </div>
+                                                            )}
+                                                            {(detailStatistics.total_index_count !== undefined || detailStatistics.totalIndexCount !== undefined) && (
+                                                                <div className="bg-teal-50 p-3 rounded-lg border border-teal-100">
+                                                                    <div className="flex items-center justify-between mb-1">
+                                                                        <span className="text-xs text-teal-600">总索引数</span>
+                                                                        <List size={14} className="text-teal-500" />
+                                                                    </div>
+                                                                    <div className="text-xl font-bold text-teal-700">{detailStatistics.total_index_count ?? detailStatistics.totalIndexCount ?? 0}</div>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* 扫描状态 */}
+                                                <div>
+                                                    <h5 className="text-xs font-medium text-slate-500 mb-2">扫描状态</h5>
+                                                    <div className="flex gap-3">
+                                                        <div className="flex-1 bg-emerald-50 p-3 rounded-lg border border-emerald-100">
+                                                            <div className="flex items-center justify-between mb-1">
+                                                                <span className="text-xs text-emerald-600">已完成</span>
+                                                                <CheckCircle size={14} className="text-emerald-500" />
+                                                            </div>
+                                                            <div className="text-xl font-bold text-emerald-700">{detailStatistics.scanned_table_count || detailStatistics.scannedTableCount || 0}</div>
+                                                        </div>
+                                                        {(detailStatistics.scanning_table_count > 0 || detailStatistics.scanningTableCount > 0) && (
+                                                            <div className="flex-1 bg-orange-50 p-3 rounded-lg border border-orange-100">
+                                                                <div className="flex items-center justify-between mb-1">
+                                                                    <span className="text-xs text-orange-600">扫描中</span>
+                                                                    <RefreshCw size={14} className="text-orange-500 animate-spin" />
+                                                                </div>
+                                                                <div className="text-xl font-bold text-orange-700">{detailStatistics.scanning_table_count || detailStatistics.scanningTableCount}</div>
+                                                            </div>
+                                                        )}
+                                                        {(detailStatistics.unscanned_table_count > 0 || detailStatistics.unscannedTableCount > 0) && (
+                                                            <div className="flex-1 bg-slate-50 p-3 rounded-lg border border-slate-200">
+                                                                <div className="flex items-center justify-between mb-1">
+                                                                    <span className="text-xs text-slate-600">未扫描</span>
+                                                                    <Clock size={14} className="text-slate-500" />
+                                                                </div>
+                                                                <div className="text-xl font-bold text-slate-700">{detailStatistics.unscanned_table_count || detailStatistics.unscannedTableCount}</div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </>
                                         ) : (
                                             <div className="text-center py-8 bg-slate-50 rounded-lg border border-slate-200">
                                                 <Activity size={32} className="text-slate-300 mx-auto mb-2" />
@@ -956,7 +1052,7 @@ const DataSourceManagementView = () => {
 
                             {/* Tables Tab */}
                             {activeDetailTab === 'tables' && (
-                                <div className="p-6 overflow-y-auto custom-scrollbar h-full">
+                                <div className="p-6">
                                     {detailTablesLoading ? (
                                         <div className="flex items-center justify-center py-12">
                                             <RefreshCw size={32} className="text-slate-400 animate-spin" />
@@ -1013,12 +1109,6 @@ const DataSourceManagementView = () => {
                                 )}
                             </div>
                             <div className="flex gap-3">
-                                <button
-                                    onClick={() => handleTestConnection(detailDS.id)}
-                                    className="px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded-md transition-colors border border-blue-200"
-                                >
-                                    测试连接
-                                </button>
                                 <button
                                     onClick={() => {
                                         setShowDetailModal(false);
