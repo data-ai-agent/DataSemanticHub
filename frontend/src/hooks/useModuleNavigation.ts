@@ -5,7 +5,7 @@ import { isAuthenticated } from '../utils/authUtils';
 // 定义合法的模块 ID 类型（根据 App.tsx 中的 case）
 export type ModuleId =
     | 'dashboard' | 'modeling_overview'
-    | 'td_goals' | 'mapping' | 'bo_mapping' | 'candidate_confirmation' | 'td_modeling' | 'resource_knowledge_network' | 'scenario_orchestration'
+    | 'td_goals' | 'mapping' | 'bo_mapping' | 'candidate_confirmation' | 'td_modeling' | 'td_modeling_v1' | 'resource_knowledge_network' | 'scenario_orchestration'
     | 'bu_connect' | 'bu_scan' | 'bu_discovery' | 'bu_semantic' | 'bu_semantic_v2' | 'bu_candidates'
     | 'governance' | 'smart_data' | 'data_supermarket' | 'term_mgmt' | 'tag_mgmt' | 'ask_data' | 'advanced_ask_data' | 'data_standard'
     | 'field_semantic' | 'data_quality' | 'quality_overview' | 'quality_rules' | 'quality_tasks'

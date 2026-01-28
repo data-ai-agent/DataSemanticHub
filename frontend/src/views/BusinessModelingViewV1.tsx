@@ -3,7 +3,7 @@ import {
     Layout, Database, Search, CheckCircle, Plus, X,
     FileText, Settings, Layers, Trash2, ChevronDown, ChevronRight,
     Folder, FolderOpen, Box, Grid, PanelLeftClose,
-    ChevronUp, History, Upload, User, Zap, Tag, Link, Sparkles, Table, MessageSquare, ArrowRight, Edit, AlertTriangle
+    ChevronUp, History, Upload, User, Zap, Tag, Link, Sparkles, Table, MessageSquare, ArrowRight, Edit
 } from 'lucide-react';
 import SemanticVersionPanel from './components/semantic-version/SemanticVersionPanel';
 import PublishVersionDialog from './components/semantic-version/PublishVersionDialog';
@@ -69,7 +69,7 @@ interface BusinessModelingViewProps {
     versionId?: string;
 }
 
-const BusinessModelingView = ({ businessObjects, setBusinessObjects, onNavigateToMapping, readOnly, versionId }: BusinessModelingViewProps) => {
+const BusinessModelingViewV1 = ({ businessObjects, setBusinessObjects, onNavigateToMapping, readOnly, versionId }: BusinessModelingViewProps) => {
     const versionContext = useVersionContext();
     const isReadOnly = readOnly ?? versionContext.readOnly;
     const effectiveVersionId = versionId ?? versionContext.versionId;
@@ -90,7 +90,6 @@ const BusinessModelingView = ({ businessObjects, setBusinessObjects, onNavigateT
     const [filterMappingStatus, setFilterMappingStatus] = useState('all');
     const [filterObjectType, setFilterObjectType] = useState('all');
     const [sortBy, setSortBy] = useState('recent');
-    const [blockReasonFilter, setBlockReasonFilter] = useState<'all' | 'publish_blockers'>('all');
 
     // Semantic Version State
     const [showVersionPanel, setShowVersionPanel] = useState(false);
@@ -230,14 +229,6 @@ const BusinessModelingView = ({ businessObjects, setBusinessObjects, onNavigateT
         return Math.min(70, 40 + bo.fields.length * 5);
     };
 
-    const hasPrimaryKey = (bo: any) => {
-        if (!bo.fields || bo.fields.length === 0) return false;
-        return bo.fields.some((field: any) => {
-            const name = (field.name || field.code || '').toString();
-            return field.primaryKey || /^id$/i.test(name) || /_id$/i.test(name);
-        });
-    };
-
     const toggleSelection = (id: string) => {
         setSelectedBoIds(prev =>
             prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
@@ -276,22 +267,6 @@ const BusinessModelingView = ({ businessObjects, setBusinessObjects, onNavigateT
         if (selectedBoIds.length === 0) return;
         if (!confirm('确认删除所选业务对象吗？此操作不可撤销。')) return;
         setBusinessObjects(prev => prev.filter(bo => !selectedBoIds.includes(bo.id)));
-        setSelectedBoIds([]);
-    };
-
-    const handleBatchAccept = (ids: string[]) => {
-        if (isReadOnly || ids.length === 0) return;
-        setBusinessObjects(prev => prev.map(bo =>
-            ids.includes(bo.id) ? { ...bo, status: 'pending' } : bo
-        ));
-        setSelectedBoIds([]);
-    };
-
-    const handleBatchReject = (ids: string[]) => {
-        if (isReadOnly || ids.length === 0) return;
-        setBusinessObjects(prev => prev.map(bo =>
-            ids.includes(bo.id) ? { ...bo, status: 'deprecated' } : bo
-        ));
         setSelectedBoIds([]);
     };
 
@@ -374,12 +349,7 @@ const BusinessModelingView = ({ businessObjects, setBusinessObjects, onNavigateT
         let matchesObjectType = true;
         if (filterObjectType !== 'all') matchesObjectType = objType === filterObjectType;
 
-        let matchesBlockReason = true;
-        if (activeTab === 'pending' && blockReasonFilter === 'publish_blockers') {
-            matchesBlockReason = bo.status === 'pending' && !isPublishReadyObject(bo);
-        }
-
-        return matchesSearch && matchesDomain && matchesStatus && matchesOwner && matchesMappingStatus && matchesObjectType && matchesBlockReason;
+        return matchesSearch && matchesDomain && matchesStatus && matchesOwner && matchesMappingStatus && matchesObjectType;
     }).sort((a, b) => {
         if (sortBy === 'fields') {
             return (b.fields?.length || 0) - (a.fields?.length || 0);
@@ -393,30 +363,6 @@ const BusinessModelingView = ({ businessObjects, setBusinessObjects, onNavigateT
     const boCards = filteredBOs.map(bo => {
         const typeConfig = getObjectTypeConfig(bo.objectType || bo.type);
         const TypeIcon = typeConfig.icon;
-        const mappingProgress = getMappingProgress(bo);
-        const primaryKeyReady = hasPrimaryKey(bo);
-        const pendingReasons: { key: string; label: string; action: () => void }[] = [];
-        if (bo.conflictFlag) {
-            pendingReasons.push({
-                key: 'conflict',
-                label: '存在未解决冲突',
-                action: () => handleOpenConflict(bo)
-            });
-        }
-        if (!primaryKeyReady) {
-            pendingReasons.push({
-                key: 'primaryKey',
-                label: '缺少主键属性',
-                action: () => onNavigateToMapping(bo)
-            });
-        }
-        if (mappingProgress < 80) {
-            pendingReasons.push({
-                key: 'mapping',
-                label: '映射完成度不足 80%',
-                action: () => onNavigateToMapping(bo)
-            });
-        }
 
         // Status Configurations
         const isCandidate = bo.status === 'candidate';
@@ -478,7 +424,7 @@ const BusinessModelingView = ({ businessObjects, setBusinessObjects, onNavigateT
                         )}
 
                         {/* Conflict Badge */}
-                        {hasConflict && !isPublished && (
+                        {hasConflict && (
                             <div className="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase bg-red-100 text-red-600 flex items-center gap-0.5 animate-pulse">
                                 <span className="scale-75">⚠️</span> 冲突
                             </div>
@@ -499,75 +445,38 @@ const BusinessModelingView = ({ businessObjects, setBusinessObjects, onNavigateT
                     <span className="flex items-center gap-1"><CheckCircle size={12} /> {bo.fields?.length || 0} 字段</span>
                 </div>
 
-                {/* Mapping Progress */}
-                <div className="mb-3">
-                    <div className="group/mapping relative">
-                        <div className="flex items-center justify-between text-xs mb-1.5">
-                            <span className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full ${mappingProgress > 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
-                                <Link size={12} />
-                                {mappingProgress > 0 ? '已映射' : '未映射'}
+                {/* Content based on Status */}
+                {isCandidate ? (
+                    // Candidate: Show Source/Evidence
+                    <div className="mb-3 bg-slate-50 rounded-lg p-2 border border-slate-100 text-xs">
+                        <div className="flex items-center justify-between mb-1.5">
+                            <span className="text-slate-500">来源: {bo.source || 'AI 识别'}</span>
+                            <span className="font-medium text-slate-700 flex items-center gap-1">
+                                <Database size={10} /> {bo.evidence?.sourceTables?.[0] || 'Unknown'}
                             </span>
-                            <span className="text-slate-400 text-[10px]">{mappingProgress}%</span>
                         </div>
-                        <div className="h-1 bg-slate-100 rounded-full overflow-hidden">
-                            <div className="h-full bg-emerald-500 transition-all duration-500" style={{ width: `${mappingProgress}%` }} />
+                        <div className="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
+                            <div
+                                className={`h-full rounded-full ${bo.confidence > 80 ? 'bg-emerald-500' : 'bg-amber-500'}`}
+                                style={{ width: `${bo.confidence || 0}%` }}
+                            />
                         </div>
                     </div>
-                </div>
-
-                {/* Governance Info Area */}
-                {isCandidate && (
-                    <div className="mb-3 bg-purple-50/60 rounded-lg p-2 border border-purple-100 text-xs">
-                        <div className="flex items-center justify-between">
-                            <span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 font-semibold">
-                                {bo.confidence || 0}% 置信度
-                            </span>
-                            <span className="text-slate-500">
-                                来源 {bo.source || 'AI'} · {bo.evidence?.sourceTables?.[0] || '未知来源'}
-                            </span>
+                ) : (
+                    // Pending/Published: Show Mapping Progress
+                    <div className="mb-3">
+                        <div className="group/mapping relative">
+                            <div className="flex items-center justify-between text-xs mb-1.5">
+                                <span className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full ${getMappingProgress(bo) > 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
+                                    <Link size={12} />
+                                    {getMappingProgress(bo) > 0 ? '已映射' : '未映射'}
+                                </span>
+                                <span className="text-slate-400 text-[10px]">{getMappingProgress(bo)}%</span>
+                            </div>
+                            <div className="h-1 bg-slate-100 rounded-full overflow-hidden">
+                                <div className="h-full bg-emerald-500 transition-all duration-500" style={{ width: `${getMappingProgress(bo)}%` }} />
+                            </div>
                         </div>
-                        <button
-                            onClick={(e) => { e.stopPropagation(); handleOpenSuggestion(bo); }}
-                            className="mt-2 text-purple-600 hover:text-purple-700 font-medium flex items-center gap-1"
-                        >
-                            裁决建议 ✨
-                        </button>
-                    </div>
-                )}
-
-                {isPending && (
-                    <div className="mb-3 bg-amber-50 rounded-lg p-3 border border-amber-200 text-xs">
-                        <div className="flex items-center gap-2 text-amber-700 font-semibold mb-2">
-                            <AlertTriangle size={12} />
-                            阻塞原因
-                        </div>
-                        <ul className="text-amber-800 space-y-1">
-                            {pendingReasons.length > 0 ? pendingReasons.map(reason => (
-                                <li key={reason.key}>
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            reason.action();
-                                        }}
-                                        className="text-left hover:text-amber-900 underline-offset-2 hover:underline"
-                                    >
-                                        - {reason.label}
-                                    </button>
-                                </li>
-                            )) : (
-                                <li>- 暂无阻塞项</li>
-                            )}
-                        </ul>
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                if (bo.conflictFlag) handleOpenConflict(bo);
-                                else onNavigateToMapping(bo);
-                            }}
-                            className="mt-2 text-amber-700 hover:text-amber-800 font-medium flex items-center gap-1"
-                        >
-                            去解决问题 <ArrowRight size={12} />
-                        </button>
                     </div>
                 )}
 
@@ -584,14 +493,14 @@ const BusinessModelingView = ({ businessObjects, setBusinessObjects, onNavigateT
                         }}
                         disabled={isReadOnly}
                         className={`text-xs flex items-center gap-1 font-medium px-2 py-1 -ml-2 rounded transition-colors ${isCandidate ? 'text-purple-600 hover:bg-purple-50' :
-                            isPending ? 'text-amber-700 hover:bg-amber-50' :
+                            (isPending && hasConflict) ? 'text-red-600 hover:bg-red-50' :
                                 'text-blue-600 hover:bg-blue-50'
                             } ${isReadOnly ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
                         {isCandidate ? (
-                            <>裁决建议 <Sparkles size={12} /></>
-                        ) : isPending ? (
-                            <>去解决问题 <ArrowRight size={12} /></>
+                            <>查看建议 <Sparkles size={12} /></>
+                        ) : (isPending && hasConflict) ? (
+                            <>解决冲突 <ArrowRight size={12} /></>
                         ) : (
                             <>查看详情 <ChevronRight size={12} /></>
                         )}
@@ -631,63 +540,19 @@ const BusinessModelingView = ({ businessObjects, setBusinessObjects, onNavigateT
         );
     });
 
-    const requiredAttributesReady = (bo: any) => {
-        const requiredAttributes = bo.requiredAttributes || [];
-        if (!Array.isArray(requiredAttributes) || requiredAttributes.length === 0) return true;
-        return requiredAttributes.every((attr: any) => attr?.ready === true || attr?.completed === true);
-    };
-
-    const isPublishReadyObject = (bo: any) => {
-        if (bo.status !== 'pending') return false;
-        if (bo.conflictFlag) return false;
-        if (!requiredAttributesReady(bo)) return false;
-        if (getMappingProgress(bo) < 80) return false;
-        if (!hasPrimaryKey(bo)) return false;
-        return true;
-    };
-
-    const pendingCount = businessObjects.filter(bo => bo.status === 'pending').length;
-    const conflictCount = businessObjects.filter(bo => bo.status === 'pending' && bo.conflictFlag).length;
-    const lowMappingCount = businessObjects.filter(bo => bo.status === 'pending' && getMappingProgress(bo) < 80).length;
-    const primaryKeyMissingCount = businessObjects.filter(bo => bo.status === 'pending' && !hasPrimaryKey(bo)).length;
-    const publishBlockedCount = businessObjects.filter(bo => bo.status === 'pending' && !isPublishReadyObject(bo)).length;
-    const publishDisabled = businessObjects.length === 0 || publishBlockedCount > 0;
-    const publishDisabledReason = [
-        businessObjects.length === 0 ? '暂无可发布对象' : null,
-        pendingCount > 0 ? `待确认对象 ${pendingCount}` : null,
-        conflictCount > 0 ? `冲突未解决 ${conflictCount}` : null,
-        lowMappingCount > 0 ? `映射完成度 < 80% ${lowMappingCount}` : null,
-        primaryKeyMissingCount > 0 ? `缺少主键属性 ${primaryKeyMissingCount}` : null
-    ].filter(Boolean).join('，');
-
-    const candidateObjects = businessObjects.filter(bo => bo.status === 'candidate');
-    const publishedObjects = businessObjects.filter(bo => bo.status === 'published');
-    const publishedNameSet = new Set(publishedObjects.map(bo => bo.name));
-    const publishedCodeSet = new Set(publishedObjects.map(bo => bo.code));
-    const candidateLowConfidenceCount = candidateObjects.filter(bo => (bo.confidence ?? 100) < 70).length;
-    const candidateNamingConflictCount = candidateObjects.filter(bo =>
-        bo.conflictFlag || publishedNameSet.has(bo.name) || publishedCodeSet.has(bo.code)
-    ).length;
-
     return (
         <div className={`animate-fade-in relative flex flex-col ${isReadOnly ? 'space-y-4' : 'space-y-6 h-[calc(100vh-theme(spacing.24))]'}`}>
             {/* Header Row - Title & Action Buttons */}
             <div className="flex items-center justify-between flex-shrink-0">
                 <div>
-                    <div className="flex items-center gap-2 text-xs text-slate-400 mb-2">
-                        <span>数据语义治理</span>
-                        <ChevronRight size={12} />
-                        <span>语义建模</span>
-                        <ChevronRight size={12} />
-                        <span>业务对象建模</span>
-                    </div>
                     <div className="flex items-center gap-3">
-                        <h2 className="text-2xl font-bold text-slate-800 tracking-tight">业务对象建模</h2>
+                        <h2 className="text-2xl font-bold text-slate-800 tracking-tight">业务对象建模V1</h2>
+                        <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700 border border-amber-200">V1 备份</span>
                         {isReadOnly && (
                             <ReadOnlyBadge versionId={effectiveVersionId} />
                         )}
                     </div>
-                    <p className="text-slate-500 mt-0.5 text-sm">定义核心业务实体、属性及其数据标准</p>
+                    <p className="text-slate-500 mt-0.5 text-sm">定义核心业务实体、属性及其数据标准（V1 版本副本）</p>
                 </div>
                 <div className="flex items-center gap-2">
                     {/* Split Button: New Object with AI Options */}
@@ -778,13 +643,9 @@ const BusinessModelingView = ({ businessObjects, setBusinessObjects, onNavigateT
                     </button>
                     {!isReadOnly ? (
                         <button
-                            onClick={() => {
-                                if (publishDisabled) return;
-                                setShowPublishDialog(true);
-                            }}
-                            disabled={publishDisabled}
-                            title={publishDisabled ? publishDisabledReason : ''}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium ${publishDisabled
+                            onClick={() => setShowPublishDialog(true)}
+                            disabled={businessObjects.length === 0}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all font-medium ${businessObjects.length === 0
                                 ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
                                 : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm shadow-indigo-200'
                                 }`}
@@ -800,73 +661,31 @@ const BusinessModelingView = ({ businessObjects, setBusinessObjects, onNavigateT
                 </div>
             </div>
 
-            <div className="sticky top-0 z-20 bg-slate-50/95 backdrop-blur -mx-6 px-6 pt-2 pb-1">
-                {/* Governance Readiness Bar */}
-                <div className={`rounded-lg border px-4 py-2.5 flex items-center justify-between ${publishDisabled ? 'bg-amber-50 border-amber-200' : 'bg-emerald-50 border-emerald-200'}`}>
-                    <div className="flex items-start gap-3">
-                        <div className={`w-7 h-7 rounded-md flex items-center justify-center ${publishDisabled ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
-                            {publishDisabled ? '🚫' : '✅'}
-                        </div>
-                        <div>
-                            <div className={`font-semibold ${publishDisabled ? 'text-amber-800' : 'text-emerald-800'}`}>
-                                当前语义版本：{publishDisabled ? '不可发布' : '可发布'}
-                            </div>
-                            {publishDisabled ? (
-                                <ul className="text-xs text-amber-700 mt-1 space-y-0.5">
-                                    {businessObjects.length === 0 && <li>- 暂无可发布对象</li>}
-                                    {pendingCount > 0 && <li>- 待确认对象：{pendingCount}</li>}
-                                    {conflictCount > 0 && <li>- 冲突未解决：{conflictCount}</li>}
-                                    {lowMappingCount > 0 && <li>- 映射完成度 &lt; 80%：{lowMappingCount}</li>}
-                                    {primaryKeyMissingCount > 0 && <li>- 缺少主键属性：{primaryKeyMissingCount}</li>}
-                                </ul>
-                            ) : (
-                                <div className="text-xs text-emerald-700 mt-1">所有对象满足发布条件</div>
-                            )}
-                        </div>
-                    </div>
-                    {publishDisabled && businessObjects.length > 0 && publishBlockedCount > 0 && (
-                        <button
-                            onClick={() => {
-                                setActiveTab('pending');
-                                setBlockReasonFilter('publish_blockers');
-                            }}
-                            className="text-sm text-amber-700 hover:text-amber-800 font-medium"
-                            title={publishDisabledReason}
-                        >
-                            查看阻塞对象 →
-                        </button>
-                    )}
-                </div>
-
-                {/* Merger Tabs */}
-                <div className="px-2 border-b border-slate-200 bg-white mt-2 rounded-t-lg">
-                    <div className="flex items-center gap-6">
-                        {TABS.map(tab => {
-                            const count = businessObjects.filter(bo =>
-                                tab.id === 'all' ? true : bo.status === tab.id
-                            ).length;
-                            return (
-                                <button
-                                    key={tab.id}
-                                    onClick={() => {
-                                        setActiveTab(tab.id);
-                                        setBlockReasonFilter('all');
-                                    }}
-                                    className={`relative py-2 text-sm font-medium transition-colors ${activeTab === tab.id
-                                        ? 'text-blue-600'
-                                        : 'text-slate-500 hover:text-slate-700'
-                                        }`}
-                                >
-                                    {tab.label}
-                                    <span className={`ml-2 text-xs px-1.5 py-0.5 rounded-full ${activeTab === tab.id ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-500'
-                                        }`}>{count}</span>
-                                    {activeTab === tab.id && (
-                                        <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 rounded-t-full" />
-                                    )}
-                                </button>
-                            );
-                        })}
-                    </div>
+            {/* Merger Tabs */}
+            <div className="px-6 border-b border-slate-200 bg-white sticky top-0 z-10">
+                <div className="flex items-center gap-8">
+                    {TABS.map(tab => {
+                        const count = businessObjects.filter(bo =>
+                            tab.id === 'all' ? true : bo.status === tab.id
+                        ).length;
+                        return (
+                            <button
+                                key={tab.id}
+                                onClick={() => setActiveTab(tab.id)}
+                                className={`relative py-3 text-sm font-medium transition-colors ${activeTab === tab.id
+                                    ? 'text-blue-600'
+                                    : 'text-slate-500 hover:text-slate-700'
+                                    }`}
+                            >
+                                {tab.label}
+                                <span className={`ml-2 text-xs px-1.5 py-0.5 rounded-full ${activeTab === tab.id ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-500'
+                                    }`}>{count}</span>
+                                {activeTab === tab.id && (
+                                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 rounded-t-full" />
+                                )}
+                            </button>
+                        );
+                    })}
                 </div>
             </div>
 
@@ -878,29 +697,8 @@ const BusinessModelingView = ({ businessObjects, setBusinessObjects, onNavigateT
                 />
             )}
 
-            {activeTab === 'candidate' && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 text-sm text-blue-700 flex items-start gap-2">
-                    <span>💡</span>
-                    <div>
-                        <span className="font-semibold">建议优先处理：</span>
-                        <span className="ml-1">置信度 &lt; 70% 的候选对象（{candidateLowConfidenceCount}）</span>
-                        <span className="mx-2 text-blue-300">|</span>
-                        <span>与已发布对象命名冲突的候选（{candidateNamingConflictCount}）</span>
-                    </div>
-                </div>
-            )}
-
-            {activeTab === 'pending' && (
-                <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-2 text-sm text-amber-800">
-                    <div className="font-semibold mb-1">🚧 当前阻塞发布的对象：{pendingCount} 个</div>
-                    <div className="text-xs text-amber-700">
-                        你需要完成以下操作之一：接受 / 拒绝对象、解决冲突、补全关键属性
-                    </div>
-                </div>
-            )}
-
             {/* Filter Row */}
-            <div className="flex items-center gap-3 flex-shrink-0 bg-slate-50/50 -mx-6 px-6 py-2 border-b border-slate-100">
+            <div className="flex items-center gap-3 flex-shrink-0 bg-slate-50/50 -mx-6 px-6 py-3 border-b border-slate-100">
                 {/* Search */}
                 <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
@@ -918,20 +716,19 @@ const BusinessModelingView = ({ businessObjects, setBusinessObjects, onNavigateT
                 {/* Status Filters */}
                 <div className="flex items-center gap-2">
                     <span className="text-xs text-slate-500 font-medium">筛选:</span>
-                    {activeTab === 'all' && (
-                        <select
-                            value={filterStatus}
-                            onChange={(e) => setFilterStatus(e.target.value)}
-                            className="px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 bg-white"
-                        >
-                            <option value="all">全部状态</option>
-                            <option value="candidate">候选中</option>
-                            <option value="pending">待确认</option>
-                            <option value="published">已发布</option>
-                            <option value="draft">草稿</option>
-                            <option value="archived">归档</option>
-                        </select>
-                    )}
+                    <select
+                        value={filterStatus}
+                        onChange={(e) => setFilterStatus(e.target.value)}
+                        disabled={activeTab !== 'all'}
+                        className={`px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 bg-white ${activeTab !== 'all' ? 'opacity-50 cursor-not-allowed bg-slate-100' : ''}`}
+                    >
+                        <option value="all">全部状态</option>
+                        <option value="candidate">候选中</option>
+                        <option value="pending">待确认</option>
+                        <option value="published">已发布</option>
+                        <option value="draft">草稿</option>
+                        <option value="archived">归档</option>
+                    </select>
                     <select
                         value={filterMappingStatus}
                         onChange={(e) => setFilterMappingStatus(e.target.value)}
@@ -985,22 +782,40 @@ const BusinessModelingView = ({ businessObjects, setBusinessObjects, onNavigateT
                 </div>
 
                 {/* Results Count */}
-                <div className="ml-auto flex items-center gap-2 text-xs text-slate-500">
-                    {activeTab === 'pending' && blockReasonFilter === 'publish_blockers' && (
-                        <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200">
-                            已应用阻塞原因筛选
-                        </span>
-                    )}
+                <div className="ml-auto text-xs text-slate-500">
                     共 <span className="font-semibold text-slate-700">{filteredBOs.length}</span> 个对象
                 </div>
             </div>
 
-            <BatchOperationBar
-                selectedObjects={businessObjects.filter(bo => selectedBoIds.includes(bo.id))}
-                onClearSelection={() => setSelectedBoIds([])}
-                onBatchAccept={handleBatchAccept}
-                onBatchReject={handleBatchReject}
-            />
+            {!isReadOnly && selectedBoIds.length > 0 && (
+                <div className="flex items-center justify-between bg-white border border-slate-200 rounded-lg px-4 py-3 shadow-sm">
+                    <div className="text-sm text-slate-600">
+                        已选 <span className="font-semibold text-slate-800">{selectedBoIds.length}</span> 个对象
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={handleBatchPublish}
+                            className="flex items-center gap-2 px-3 py-2 text-sm bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
+                        >
+                            <CheckCircle size={16} />
+                            发布
+                        </button>
+                        <button
+                            onClick={handleBatchArchive}
+                            className="flex items-center gap-2 px-3 py-2 text-sm bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-colors"
+                        >
+                            归档
+                        </button>
+                        <button
+                            onClick={handleBatchDelete}
+                            className="flex items-center gap-2 px-3 py-2 text-sm bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-100 transition-colors"
+                        >
+                            <Trash2 size={16} />
+                            删除
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* Main Content Area with Sidebar */}
             <div className="flex gap-6 flex-1 min-h-0">
@@ -1908,4 +1723,4 @@ const BusinessModelingView = ({ businessObjects, setBusinessObjects, onNavigateT
     );
 };
 
-export default BusinessModelingView;
+export default BusinessModelingViewV1;

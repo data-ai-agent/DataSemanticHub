@@ -19,8 +19,8 @@ const CandidateSummaryBar = ({ objects, onRefresh }: CandidateSummaryBarProps) =
     };
 
     return (
-        <div className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between shadow-sm animate-fade-in">
-            <div className="flex items-center gap-6 text-sm">
+        <div className="bg-white border-b border-slate-200 px-4 py-2 flex items-center justify-between shadow-sm animate-fade-in">
+            <div className="flex items-center gap-5 text-sm">
                 <div className="flex items-center gap-2">
                     <span className="text-slate-500">总对象数</span>
                     <span className="font-bold text-slate-800 text-lg">{stats.total}</span>
@@ -54,7 +54,7 @@ const CandidateSummaryBar = ({ objects, onRefresh }: CandidateSummaryBarProps) =
 
             <button
                 onClick={onRefresh}
-                className="flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:text-blue-600 transition-colors bg-slate-50 hover:bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200"
+                className="flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:text-blue-600 transition-colors bg-slate-50 hover:bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200"
             >
                 <RefreshCw size={14} />
                 刷新识别建议

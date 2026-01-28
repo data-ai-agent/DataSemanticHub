@@ -89,7 +89,8 @@ export const GOVERNANCE_MENUS: MenuGroup[] = [
                     { id: 'bu_semantic', label: '逻辑视图', icon: FileText },
                     { id: 'bu_semantic_v2', label: '逻辑视图2', icon: FileText },
                     { id: 'field_semantic', label: '字段语义理解', icon: Search },
-                    { id: 'td_modeling', label: '业务对象建模', icon: Layout }
+                    { id: 'td_modeling', label: '业务对象建模', icon: Layout },
+                    { id: 'td_modeling_v1', label: '业务对象建模V1', icon: Layout }
                 ]
             },
             {
@@ -158,7 +159,9 @@ export const AGENT_FACTORY_MENUS: MenuGroup[] = [
             { id: 'agent_templates', label: '模板库', icon: Bookmark },
             { id: 'agent_validation_center', label: '验证中心', icon: CheckSquare },
             { id: 'agent_release', label: '发布与灰度', icon: Upload },
-            { id: 'agent_operation_center', label: '运行中心', icon: Cpu }
+            { id: 'agent_operation_center', label: '运行中心', icon: Cpu },
+            { id: 'agent_observability', label: '可观测性', icon: TrendingUp },
+            { id: 'agent_integrations', label: '集成中心', icon: Link }
         ]
     },
     {

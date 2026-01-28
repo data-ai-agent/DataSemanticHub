@@ -36,9 +36,11 @@ export const SemanticFieldDetail: React.FC<SemanticFieldDetailProps> = ({
     onUpdate,
     onViewDetails
 }) => {
+    const safeField = field || {};
+
     // Generate AI suggestions based on field characteristics
     const generateAISuggestion = () => {
-        const fieldName = (field.fieldName || field.name || '').toLowerCase();
+        const fieldName = (safeField.fieldName || safeField.name || '').toLowerCase();
 
         // Rule-based role inference
         if (fieldName.endsWith('_id') || fieldName.endsWith('id') || fieldName === 'id') {
@@ -108,14 +110,14 @@ export const SemanticFieldDetail: React.FC<SemanticFieldDetailProps> = ({
                     </div>
                     <div>
                         <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                            {field.fieldName || field.name || 'Unknown Field'}
+                            {safeField.fieldName || safeField.name || 'Unknown Field'}
                             <span className="px-2 py-0.5 rounded text-xs bg-slate-100 text-slate-500 font-normal font-mono">
-                                {field.type}
+                                {safeField.type}
                             </span>
                         </h2>
                         <div className="text-slate-500 mt-1 flex items-center gap-2">
-                            {field.comment || '暂无物理注释'}
-                            {field.primaryKey && (
+                            {safeField.comment || '暂无物理注释'}
+                            {safeField.primaryKey && (
                                 <span className="text-[10px] px-1.5 py-0.5 bg-amber-50 text-amber-600 border border-amber-100 rounded">
                                     PK
                                 </span>

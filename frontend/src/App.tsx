@@ -35,6 +35,7 @@ const CandidateConfirmationView = lazy(() => import('./views/CandidateConfirmati
 const ScenarioOrchestrationView = lazy(() => import('./views/ScenarioOrchestrationView'));
 const BusinessScenarioView = lazy(() => import('./views/BusinessScenarioView'));
 const BusinessModelingView = lazy(() => import('./views/BusinessModelingView'));
+const BusinessModelingViewV1 = lazy(() => import('./views/BusinessModelingViewV1'));
 const ResourceKnowledgeNetworkView = lazy(() => import('./views/ResourceKnowledgeNetworkView'));
 const TechDiscoveryView = lazy(() => import('./views/TechDiscoveryView'));
 const DataSemanticUnderstandingView = lazy(() => import('./views/DataSemanticUnderstandingView'));
@@ -64,8 +65,10 @@ const RuntimePacksView = lazy(() => import('./views/agent-factory/RuntimePacksVi
 const AuditLogsView = lazy(() => import('./views/agent-factory/AuditLogsView'));
 const FactorySettingsView = lazy(() => import('./views/agent-factory/FactorySettingsView'));
 const ValidationCenterView = lazy(() => import('./views/agent-factory/ValidationCenterView'));
+const IntegrationCenterView = lazy(() => import('./views/agent-factory/IntegrationCenterView'));
 const OperationCenterView = lazy(() => import('./views/agent-factory/OperationCenterView'));
 const ModelFactoryView = lazy(() => import('./views/agent-factory/ModelFactoryView'));
+const ModelFactorySettingsView = lazy(() => import('./views/agent-factory/ModelFactorySettingsView'));
 // Handling named exports for lazy loading
 const DataCatalogView = lazy(() => import('./views/DataCatalogView').then(module => ({ default: module.DataCatalogView })));
 const SemanticAssetManagerView = lazy(() => import('./views/SemanticAssetManagerView'));
@@ -240,6 +243,7 @@ export default function SemanticLayerApp() {
                 setActiveModule={setActiveModule}
             />;
             case 'td_modeling': return <BusinessModelingView businessObjects={businessObjects} setBusinessObjects={setBusinessObjects} onNavigateToMapping={handleNavigateToMapping} />;
+            case 'td_modeling_v1': return <BusinessModelingViewV1 businessObjects={businessObjects} setBusinessObjects={setBusinessObjects} onNavigateToMapping={handleNavigateToMapping} />;
             case 'resource_knowledge_network': return <ResourceKnowledgeNetworkView />;
             case 'scenario_orchestration': return <ScenarioOrchestrationView businessObjects={businessObjects} />;
             case 'bu_connect': return <DataSourceManagementView />;
@@ -324,13 +328,14 @@ export default function SemanticLayerApp() {
             case 'agent_validation_center': return <ValidationCenterView setActiveModule={setActiveModule} initialTab="debug" />;
 
             case 'agent_release': return <ReleaseCanaryView />;
+            case 'agent_integrations': return <IntegrationCenterView />;
 
             case 'agent_instances': return <OperationCenterView setActiveModule={setActiveModule} initialTab="instances" />;
             case 'agent_observability': return <OperationCenterView setActiveModule={setActiveModule} initialTab="observability" />;
             case 'agent_operation_center': return <OperationCenterView setActiveModule={setActiveModule} initialTab="instances" />;
 
             case 'agent_workbench': return <AgentWorkbenchView setActiveModule={setActiveModule} />;
-            case 'agent_model_factory': return <ModelFactoryView />;
+            case 'agent_model_factory': return <ModelFactorySettingsView />;
             case 'agent_tools': return <ToolRegistryView />;
             case 'agent_knowledge': return <KnowledgeConnectorsView />;
             case 'agent_runtime_packs': return <RuntimePacksView />;

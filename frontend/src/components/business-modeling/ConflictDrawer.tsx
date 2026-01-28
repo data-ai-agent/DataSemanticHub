@@ -132,6 +132,15 @@ const ConflictDrawer = ({ isOpen, onClose, conflictObject, allObjects, onResolve
                             </button>
                         </div>
                     </div>
+
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800">
+                        <div className="font-semibold mb-1">确认操作后将产生以下影响：</div>
+                        <ul className="space-y-1 text-xs">
+                            <li>- 原对象将合并为 1 个对象</li>
+                            <li>- 字段映射将合并</li>
+                            <li>- 需要重新确认主键</li>
+                        </ul>
+                    </div>
                 </div>
 
                 {/* Footer Actions */}

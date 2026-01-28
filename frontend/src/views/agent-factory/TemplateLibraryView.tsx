@@ -292,7 +292,7 @@ const TemplateLibraryView = ({
                         )}
 
                         <button
-                            className="px-4 py-2 rounded-lg bg-slate-900 text-white text-sm flex items-center gap-2 hover:bg-slate-800 transition-colors"
+                            className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm flex items-center gap-2 hover:bg-indigo-700 transition-all shadow-sm shadow-indigo-100 placeholder:font-medium"
                             onClick={() => {
                                 setShowCreate(true);
                             }}
@@ -447,7 +447,7 @@ const TemplateLibraryView = ({
                     {templateLibrary.categories.map(item => (
                         <button
                             key={item}
-                            className={`px-3 py-1.5 rounded-full text-xs border transition-colors ${activeCategory === item ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'}`}
+                            className={`px-3 py-1.5 rounded-full text-xs border transition-all ${activeCategory === item ? 'border-indigo-600 bg-indigo-600 text-white shadow-sm shadow-indigo-200' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'}`}
                             onClick={() => setActiveCategory(item)}
                         >
                             {item}
@@ -579,7 +579,7 @@ const TemplateLibraryView = ({
                                         去使用
                                     </button>
                                     <button
-                                        className="px-2.5 py-1.5 rounded-md bg-slate-900 text-white hover:bg-slate-800 transition-colors flex items-center gap-1"
+                                        className="px-2.5 py-1.5 rounded-md border border-slate-200 bg-white text-slate-700 hover:text-indigo-600 hover:border-indigo-200 hover:bg-indigo-50 transition-all flex items-center gap-1"
                                         onClick={() => setActiveModule?.('agent_debug')}
                                     >
                                         <Play size={12} /> 调试
@@ -692,107 +692,163 @@ const TemplateLibraryView = ({
                 </div>
             </div>
 
-            {/* Quick View Drawer (P0) */}
+            {/* Quick View Drawer (Optimized Layout) */}
             {quickViewTemplate && (
                 <>
-                    <div className="fixed inset-0 bg-black/20 z-[60]" onClick={() => setQuickViewTemplate(null)} />
-                    <div className="fixed right-0 top-0 h-full w-[480px] bg-white z-[70] shadow-2xl flex flex-col animate-in slide-in-from-right duration-200">
-                        <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+                    <div className="fixed inset-0 bg-slate-900/20 backdrop-blur-[2px] z-[60]" onClick={() => setQuickViewTemplate(null)} />
+                    <div className="fixed right-0 top-0 h-full w-[560px] bg-white z-[70] shadow-2xl flex flex-col animate-in slide-in-from-right duration-300 border-l border-slate-100">
+                        {/* Header */}
+                        <div className="px-6 py-5 border-b border-slate-100 flex items-start justify-between bg-white relative">
                             <div>
-                                <h3 className="font-semibold text-slate-800 text-lg">{quickViewTemplate.name}</h3>
-                                <div className="flex items-center gap-2 mt-1">
-                                    <span className={`px-2 py-0.5 rounded text-xs ${statusStyle[quickViewTemplate.status]}`}>{statusLabels[quickViewTemplate.status] || quickViewTemplate.status}</span>
-                                    <span className="text-xs text-slate-500">ID: {quickViewTemplate.id}</span>
+                                <h3 className="font-bold text-slate-800 text-xl tracking-tight">{quickViewTemplate.name}</h3>
+                                <div className="flex items-center gap-3 mt-2">
+                                    <span className={`px-2 py-0.5 rounded text-xs font-medium border ${quickViewTemplate.status === 'Stable' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
+                                        {statusLabels[quickViewTemplate.status] || quickViewTemplate.status}
+                                    </span>
+                                    <span className="text-xs font-mono text-slate-400">ID: {quickViewTemplate.id}</span>
                                 </div>
                             </div>
-                            <button onClick={() => setQuickViewTemplate(null)} className="text-slate-400 hover:text-slate-600">
+                            <button
+                                onClick={() => setQuickViewTemplate(null)}
+                                className="p-2 -mr-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors"
+                            >
                                 <X size={20} />
                             </button>
                         </div>
-                        <div className="flex-1 overflow-y-auto p-4 space-y-6">
+
+                        <div className="flex-1 overflow-y-auto p-6 space-y-8">
                             {/* Governance Summary */}
-                            <div>
-                                <h4 className="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider">治理与发布</h4>
-                                <div className="bg-white rounded-lg border border-slate-200 p-3 shadow-sm space-y-3">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2">
-                                            <div className="p-1.5 rounded bg-slate-100 text-slate-600"><GitBranch size={16} /></div>
-                                            <div className="text-xs">
-                                                <div className="text-slate-500">生产版本</div>
-                                                <div className="font-mono font-medium">{quickViewTemplate.prodStableVersion}</div>
+                            <section>
+                                <h4 className="text-xs font-bold text-slate-400 mb-3 uppercase tracking-wider flex items-center gap-2">
+                                    <Shield size={12} /> 治理与发布
+                                </h4>
+                                <div className="bg-slate-50/50 rounded-xl border border-slate-200 p-4 flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-600 shadow-sm">
+                                            <GitBranch size={18} />
+                                        </div>
+                                        <div>
+                                            <div className="text-xs text-slate-500 mb-0.5">生产版本</div>
+                                            <div className="font-mono font-bold text-slate-800 text-sm">{quickViewTemplate.prodStableVersion}</div>
+                                        </div>
+                                    </div>
+
+                                    <div className="h-8 w-px bg-slate-200" />
+
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-600 shadow-sm">
+                                            <Shield size={18} />
+                                        </div>
+                                        <div>
+                                            <div className="text-xs text-slate-500 mb-0.5">门禁状态</div>
+                                            <div className="font-medium text-sm">
+                                                {quickViewTemplate.releaseGateStatus === 'Pass' ? (
+                                                    <span className="text-emerald-600 flex items-center gap-1">通过 <CheckCircle size={12} /></span>
+                                                ) : (
+                                                    <span className="text-rose-600 flex items-center gap-1">失败 <XCircle size={12} /></span>
+                                                )}
                                             </div>
                                         </div>
-                                        <div className="h-8 w-px bg-slate-100" />
-                                        <div className="flex items-center gap-2">
-                                            <div className="p-1.5 rounded bg-slate-100 text-slate-600"><Shield size={16} /></div>
-                                            <div className="text-xs">
-                                                <div className="text-slate-500">门禁状态</div>
-                                                <div className="font-mono font-medium flex items-center gap-1">
-                                                    {quickViewTemplate.releaseGateStatus === 'Pass' ? <span className="text-emerald-600">通过</span> : <span className="text-rose-600">失败</span>}
-                                                </div>
-                                            </div>
+                                    </div>
+
+                                    <div className="h-8 w-px bg-slate-200" />
+
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-600 shadow-sm">
+                                            <Activity size={18} />
                                         </div>
-                                        <div className="h-8 w-px bg-slate-100" />
-                                        <div className="flex items-center gap-2">
-                                            <div className="p-1.5 rounded bg-slate-100 text-slate-600"><Activity size={16} /></div>
-                                            <div className="text-xs">
-                                                <div className="text-slate-500">灰度版本</div>
-                                                <div className="font-mono font-medium">{quickViewTemplate.prodCanaryPercent ? `${quickViewTemplate.prodCanaryPercent}%` : '未开启'}</div>
+                                        <div>
+                                            <div className="text-xs text-slate-500 mb-0.5">灰度版本</div>
+                                            <div className="font-mono font-bold text-slate-800 text-sm">
+                                                {quickViewTemplate.prodCanaryPercent ? `${quickViewTemplate.prodCanaryVersion}` : '未开启'}
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
+                            </section>
 
                             {/* Metrics */}
-                            <div>
-                                <h4 className="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider">核心指标 (7 Days)</h4>
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div className="p-3 rounded-lg border border-slate-200 bg-slate-50/50">
-                                        <div className="text-xs text-slate-400">总调用量</div>
-                                        <div className="text-lg font-semibold font-mono mt-1 text-slate-800">{quickViewTemplate.calls}</div>
-                                        <div className="flex items-center gap-1 text-xs text-emerald-600 mt-1"><TrendingUp size={12} /> +5.2%</div>
+                            <section>
+                                <h4 className="text-xs font-bold text-slate-400 mb-3 uppercase tracking-wider flex items-center gap-2">
+                                    <Activity size={12} /> 核心指标 (7 Days)
+                                </h4>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="p-5 rounded-xl border border-slate-200 bg-white hover:border-indigo-200 hover:shadow-md transition-all group">
+                                        <div className="text-xs text-slate-500 mb-2">总调用量</div>
+                                        <div className="text-3xl font-bold font-mono text-slate-800 tracking-tight group-hover:text-indigo-600 transition-colors">
+                                            {quickViewTemplate.calls}
+                                        </div>
+                                        <div className="flex items-center gap-1.5 text-xs font-medium text-emerald-600 mt-2 bg-emerald-50 w-fit px-2 py-0.5 rounded-full border border-emerald-100">
+                                            <TrendingUp size={12} /> +5.2%
+                                        </div>
                                     </div>
-                                    <div className="p-3 rounded-lg border border-slate-200 bg-slate-50/50">
-                                        <div className="text-xs text-slate-400">成功率</div>
-                                        <div className="text-lg font-semibold font-mono mt-1 text-emerald-700">{quickViewTemplate.successRate}</div>
-                                        <div className="flex items-center gap-1 text-xs text-emerald-600 mt-1"><TrendingUp size={12} /> 持平</div>
+                                    <div className="p-5 rounded-xl border border-slate-200 bg-white hover:border-indigo-200 hover:shadow-md transition-all group">
+                                        <div className="text-xs text-slate-500 mb-2">成功率</div>
+                                        <div className="text-3xl font-bold font-mono text-slate-800 tracking-tight group-hover:text-indigo-600 transition-colors">
+                                            {quickViewTemplate.successRate}
+                                        </div>
+                                        <div className="flex items-center gap-1.5 text-xs font-medium text-emerald-600 mt-2 bg-emerald-50 w-fit px-2 py-0.5 rounded-full border border-emerald-100">
+                                            <TrendingUp size={12} /> 持平
+                                        </div>
                                     </div>
-                                    <div className="p-3 rounded-lg border border-slate-200 bg-slate-50/50">
-                                        <div className="text-xs text-slate-400">P95 延迟</div>
-                                        <div className="text-lg font-semibold font-mono mt-1 text-slate-800">{quickViewTemplate.p95}</div>
-                                        <div className="flex items-center gap-1 text-xs text-rose-600 mt-1"><TrendingUp size={12} /> +20ms</div>
+                                    <div className="p-5 rounded-xl border border-slate-200 bg-white hover:border-indigo-200 hover:shadow-md transition-all group">
+                                        <div className="text-xs text-slate-500 mb-2">P95 延迟</div>
+                                        <div className="text-3xl font-bold font-mono text-slate-800 tracking-tight group-hover:text-indigo-600 transition-colors">
+                                            {quickViewTemplate.p95}
+                                        </div>
+                                        <div className="flex items-center gap-1.5 text-xs font-medium text-rose-600 mt-2 bg-rose-50 w-fit px-2 py-0.5 rounded-full border border-rose-100">
+                                            <TrendingUp size={12} /> +20ms
+                                        </div>
                                     </div>
-                                    <div className="p-3 rounded-lg border border-slate-200 bg-slate-50/50">
-                                        <div className="text-xs text-slate-400">平均成本</div>
-                                        <div className="text-lg font-semibold font-mono mt-1 text-slate-800">{quickViewTemplate.cost}</div>
-                                        <div className="flex items-center gap-1 text-xs text-emerald-600 mt-1"><TrendingDown size={12} /> -8%</div>
+                                    <div className="p-5 rounded-xl border border-slate-200 bg-white hover:border-indigo-200 hover:shadow-md transition-all group">
+                                        <div className="text-xs text-slate-500 mb-2">平均成本</div>
+                                        <div className="text-3xl font-bold font-mono text-slate-800 tracking-tight group-hover:text-indigo-600 transition-colors">
+                                            {quickViewTemplate.cost}
+                                        </div>
+                                        <div className="flex items-center gap-1.5 text-xs font-medium text-emerald-600 mt-2 bg-emerald-50 w-fit px-2 py-0.5 rounded-full border border-emerald-100">
+                                            <TrendingDown size={12} /> -8%
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
+                            </section>
 
                             {/* Recent Changes */}
-                            <div>
-                                <h4 className="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider">最近更新</h4>
-                                <div className="space-y-3">
-                                    {[1, 2].map(i => (
-                                        <div key={i} className="flex gap-3 text-sm">
-                                            <div className="mt-1"><div className="w-2 h-2 rounded-full bg-slate-300 ring-4 ring-slate-100" /></div>
-                                            <div className="flex-1 pb-4 border-l border-slate-100 pl-4 -ml-4">
-                                                <div className="flex items-center justify-between">
-                                                    <span className="font-medium text-slate-700">v{parseInt(quickViewTemplate.prodStableVersion!.split('.')[1]) + i}.2.0 已发布</span>
-                                                    <span className="text-xs text-slate-400">2 天前</span>
+                            <section>
+                                <h4 className="text-xs font-bold text-slate-400 mb-4 uppercase tracking-wider flex items-center gap-2">
+                                    <Clock size={12} /> 最近更新
+                                </h4>
+                                <div className="space-y-0 relative">
+                                    <div className="absolute left-2.5 top-2 bottom-6 w-px bg-slate-200" />
+
+                                    {[1, 2].map((i, idx) => (
+                                        <div key={i} className="flex gap-4 group relative pb-6 last:pb-0">
+                                            <div className="relative z-10 mt-1.5">
+                                                <div className={`w-5 h-5 rounded-full border-2 border-white shadow-sm flex items-center justify-center ${idx === 0 ? 'bg-indigo-600' : 'bg-slate-300'}`}>
+                                                    {idx === 0 && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
                                                 </div>
-                                                <div className="text-xs text-slate-500 mt-1">优化了 Semantic Search 的召回策略，提升准确率。</div>
+                                            </div>
+                                            <div className="flex-1 bg-slate-50 rounded-xl p-3 border border-slate-100 group-hover:bg-white group-hover:border-indigo-100 group-hover:shadow-sm transition-all">
+                                                <div className="flex items-center justify-between mb-1">
+                                                    <span className="font-bold text-slate-800 text-sm">
+                                                        v{parseInt(quickViewTemplate.prodStableVersion!.split('.')[1]) + (2 - idx)}.0.0 已发布
+                                                    </span>
+                                                    <span className="text-xs text-slate-400 font-mono">2 天前</span>
+                                                </div>
+                                                <p className="text-xs text-slate-600 leading-relaxed">
+                                                    优化了 Semantic Search 的召回策略，提升准确率。
+                                                    {idx === 0 && " 新增了 query rewriting 模块。"}
+                                                </p>
                                             </div>
                                         </div>
                                     ))}
                                 </div>
-                            </div>
+                            </section>
                         </div>
-                        <div className="p-4 border-t border-slate-200 bg-slate-50 flex gap-2">
+
+                        {/* Footer */}
+                        <div className="p-6 border-t border-slate-100 bg-white flex gap-3">
                             <button
-                                className="flex-1 py-2 rounded-lg bg-slate-900 text-white text-sm"
+                                className="flex-[2] py-2.5 rounded-lg bg-slate-900 text-white text-sm font-medium hover:bg-slate-800 shadow-md shadow-slate-200 transition-all flex items-center justify-center gap-2"
                                 onClick={() => {
                                     if (onNavigateWithParams) {
                                         onNavigateWithParams('agent_designer', { template: quickViewTemplate, source: 'library' });
@@ -804,7 +860,7 @@ const TemplateLibraryView = ({
                                 进入详情 / 编辑
                             </button>
                             <button
-                                className="flex-1 py-2 rounded-lg border border-slate-200 bg-white text-slate-700 text-sm hover:bg-slate-50"
+                                className="flex-1 py-2.5 rounded-lg border border-slate-200 bg-white text-slate-700 text-sm font-medium hover:bg-slate-50 hover:border-slate-300 transition-all"
                                 onClick={() => setActiveModule?.('agent_debug')}
                             >
                                 仅调试

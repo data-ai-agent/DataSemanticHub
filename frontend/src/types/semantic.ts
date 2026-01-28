@@ -34,7 +34,8 @@ export type TableSemanticStage =
     | 'NOT_STARTED'        // 未开始语义建模
     | 'FIELD_PENDING'      // 字段语义待确认
     | 'MODELING_IN_PROGRESS' // 语义建模进行中
-    | 'READY_FOR_OBJECT';  // 可进入对象建模
+    | 'READY_FOR_OBJECT'   // 可进入对象建模
+    | 'DONE';              // 已完成
 
 // V2.4: Field Semantic Status
 export type FieldSemanticStatus =

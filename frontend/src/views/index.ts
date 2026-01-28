@@ -3,6 +3,7 @@ export { default as DashboardView } from './DashboardView';
 export { default as MappingStudioView } from './MappingStudioView';
 export { default as BusinessGoalsView } from './BusinessGoalsView';
 export { default as BusinessModelingView } from './BusinessModelingView';
+export { default as BusinessModelingViewV1 } from './BusinessModelingViewV1';
 export { default as TechDiscoveryView } from './TechDiscoveryView';
 export { default as ScenarioOrchestrationView } from './ScenarioOrchestrationView';
 export { default as DataSemanticUnderstandingView } from './DataSemanticUnderstandingView';

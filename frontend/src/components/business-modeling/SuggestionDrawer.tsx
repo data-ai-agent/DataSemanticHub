@@ -216,6 +216,24 @@ const SuggestionDrawer = ({ isOpen, onClose, suggestion, onDecision }: Suggestio
                             </table>
                         </div>
                     </section>
+
+                    {/* 4. Impact Warning */}
+                    <section>
+                        <h3 className="text-sm font-bold text-slate-900 mb-4 flex items-center gap-2">
+                            <div className="w-1 h-4 bg-amber-500 rounded-full" />
+                            影响提示
+                        </h3>
+                        <div className="text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-sm">
+                            <div className="flex items-center gap-2 font-semibold mb-1">
+                                <AlertTriangle size={16} />
+                                接受该对象将：
+                            </div>
+                            <ul className="text-xs space-y-1">
+                                <li>- 新增 1 个待确认对象</li>
+                                <li>- 阻塞语义版本发布，直到完成映射</li>
+                            </ul>
+                        </div>
+                    </section>
                 </div>
 
                 {/* Footer Actions */}

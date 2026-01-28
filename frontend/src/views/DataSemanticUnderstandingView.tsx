@@ -10,11 +10,11 @@ import { GovernanceFieldList } from './semantic/components/GovernanceFieldList';
 import { SemanticDecisionPanel } from './semantic/components/SemanticDecisionPanel';
 import { GovernanceTopBar } from './semantic/components/GovernanceTopBar';
 import { SemanticContextPanel } from './semantic/components/SemanticContextPanel';
-import { typeConfig, getGovernanceDisplay, GovernanceDisplay, runStatusLabelMap, runStatusToneMap, semanticStageLabelMap, semanticStageToneMap } from './semantic/utils';
+import { typeConfig, getGovernanceDisplay, GovernanceDisplay, semanticStageLabelMap, semanticStageToneMap } from './semantic/utils';
 import { UpgradeSuggestionCard, generateUpgradeSuggestion } from './semantic/UpgradeSuggestionCard';
 import { RelationshipGraphTab } from './semantic/tabs/RelationshipGraphTab';
 import { QualityOverviewTab } from './semantic/tabs/QualityOverviewTab';
-import { BatchOperationBar } from './semantic/components/BatchOperationBar';
+import { LogsTab } from './semantic/tabs/LogsTab';
 import { AnalysisProgressPanel } from './semantic/AnalysisProgressPanel';
 import { StreamingProgressPanel } from './semantic/StreamingProgressPanel';
 import { mockBOTableMappings } from '../data/mockData';
@@ -104,12 +104,10 @@ const DataSemanticUnderstandingView = ({
     const [searchTerm, setSearchTerm] = useState('');
     const [isListHeaderCollapsed, setIsListHeaderCollapsed] = useState(false);
     const [listFilters, setListFilters] = useState({
-        review: false,
-        gate: false,
-        risk: false,
-        stage: null as string | null // New: null means no filter, otherwise filter by specific stage
+        risk: 'all' as 'all' | 'gate' | 'high' | 'none',
+        stage: null as string | null
     });
-    const [sortField, setSortField] = useState<'pendingReviewFields' | 'gateFailedItems' | 'riskItems' | 'updateTime' | null>(null);
+    const [sortField, setSortField] = useState<'gateFailedItems' | 'riskItems' | 'updateTime' | null>(null);
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
     // Direct Generation State
     const [showDirectGenModal, setShowDirectGenModal] = useState(false);
@@ -171,8 +169,11 @@ const DataSemanticUnderstandingView = ({
     const [focusField, setFocusField] = useState<string | null>(null);
     const [expandedFieldRows, setExpandedFieldRows] = useState<string[]>([]);
     const [selectedRelationIndex, setSelectedRelationIndex] = useState(0);
+    const [candidateView, setCandidateView] = useState<'structure' | 'relation'>('structure');
+    const [semanticConfirmMode, setSemanticConfirmMode] = useState(false);
+    const [confirmTab, setConfirmTab] = useState<'structure' | 'relation' | 'quality' | 'security' | 'logs'>('structure');
 
-    const [resultTab, setResultTab] = useState<'business' | 'fields' | 'graph' | 'governance'>('business');
+    const [resultTab, setResultTab] = useState<'business' | 'fields' | 'candidate' | 'graph' | 'governance'>('business');
     const [showAllKeyEvidence, setShowAllKeyEvidence] = useState(false);
     const [fieldRoleOverrides, setFieldRoleOverrides] = useState<Record<string, { role: string; source: 'rule' | 'ai' }>>({});
     const [openConflictPopover, setOpenConflictPopover] = useState<string | null>(null);
@@ -225,7 +226,7 @@ const DataSemanticUnderstandingView = ({
             // V2.4: Derive Semantic Stage
             let semanticStage: TableSemanticStage = 'NOT_STARTED';
             if (governanceStatus === 'S3') {
-                semanticStage = 'READY_FOR_OBJECT';
+                semanticStage = asset.semanticAnalysis?.confirmedAt ? 'DONE' : 'READY_FOR_OBJECT';
             } else if (governanceStatus === 'S2') {
                 semanticStage = 'MODELING_IN_PROGRESS';
             } else if (governanceStatus === 'S1') {
@@ -249,11 +250,14 @@ const DataSemanticUnderstandingView = ({
                 (asset.comment || '').toLowerCase().includes(keyword) ||
                 (asset.semanticAnalysis?.businessName || '').toLowerCase().includes(keyword);
             const stats = asset.reviewStats as ReviewStats | null;
-            const matchesReview = !listFilters.review || (stats?.pendingReviewFields || 0) > 0;
-            const matchesGate = !listFilters.gate || (stats?.gateFailedItems || 0) > 0;
-            const matchesRisk = !listFilters.risk || (stats?.riskItems || 0) > 0;
+            const gateFailedItems = stats?.gateFailedItems || 0;
+            const riskItems = stats?.riskItems || 0;
+            const matchesRisk = listFilters.risk === 'all'
+                || (listFilters.risk === 'gate' && gateFailedItems > 0)
+                || (listFilters.risk === 'high' && riskItems > 0)
+                || (listFilters.risk === 'none' && gateFailedItems === 0 && riskItems === 0);
             const matchesStage = !listFilters.stage || asset.semanticStage === listFilters.stage;
-            return matchesSource && matchesSearch && matchesReview && matchesGate && matchesRisk && matchesStage;
+            return matchesSource && matchesSearch && matchesRisk && matchesStage;
         });
 
         if (!sortField) return filtered;
@@ -283,10 +287,6 @@ const DataSemanticUnderstandingView = ({
     const {
         selectedTables,
         setSelectedTables,
-        batchAnalyzing,
-        batchProgress,
-        currentAnalyzing,
-        completedResults,
         batchResults,
         showBatchReview,
         setShowBatchReview,
@@ -528,6 +528,7 @@ const DataSemanticUnderstandingView = ({
         setSelectedFieldNames([]);
         setFieldReviewStatus({});
         setResultTab('business');
+        setSemanticConfirmMode(false);
 
         // Prepare semantic profile for detail view
         const asset = assets.find(a => a.table === tableId);
@@ -568,6 +569,7 @@ const DataSemanticUnderstandingView = ({
         setViewMode('list');
         setSelectedTableId(null);
         setPageMode('BROWSE'); // 重置为浏览模式，确保左侧树可见
+        setSemanticConfirmMode(false);
     };
 
     const handleFocusField = (fieldName: string) => {
@@ -905,9 +907,7 @@ const DataSemanticUnderstandingView = ({
                             </div>
                             {!isListHeaderCollapsed && (
                                 <p className="text-xs text-slate-500 mt-1">
-                                    {selectedDataSourceId
-                                        ? `当前筛选: ${(dataSources.find((d: any) => d.id === selectedDataSourceId) as any)?.name}`
-                                        : '显示所有已扫描的逻辑视图'}
+                                    语义治理入口 · 从字段语义理解到业务对象建模
                                 </p>
                             )}
                         </div>
@@ -921,7 +921,12 @@ const DataSemanticUnderstandingView = ({
                                     }`}
                             >
                                 <Sparkles size={14} />
-                                批量语义理解
+                                批量开始字段语义理解
+                            </button>
+                            <button
+                                className="px-3 py-2 text-sm rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors"
+                            >
+                                语义治理指南
                             </button>
                             <button
                                 onClick={() => setIsListHeaderCollapsed(prev => !prev)}
@@ -934,25 +939,7 @@ const DataSemanticUnderstandingView = ({
                     {!isListHeaderCollapsed && (
                         <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
                             <div className="flex flex-wrap items-center gap-2 text-xs">
-                                <span className="text-slate-400">快速筛选:</span>
-                                {([
-                                    { key: 'review', label: '待Review' },
-                                    { key: 'gate', label: 'Gate 未通过' },
-                                    { key: 'risk', label: '高风险' }
-                                ] as const).map(item => (
-                                    <button
-                                        key={item.key}
-                                        onClick={() => setListFilters(prev => ({ ...prev, [item.key]: !prev[item.key] }))}
-                                        className={`px-2 py-1 rounded-full border transition-colors ${listFilters[item.key]
-                                            ? 'bg-blue-50 text-blue-700 border-blue-200'
-                                            : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}
-                                    >
-                                        {item.label}
-                                    </button>
-                                ))}
-
-                                <div className="h-4 w-px bg-slate-200 mx-1"></div>
-
+                                <span className="text-slate-400">语义建模状态:</span>
                                 <select
                                     value={listFilters.stage || ''}
                                     onChange={(e) => setListFilters(prev => ({ ...prev, stage: e.target.value || null }))}
@@ -961,16 +948,32 @@ const DataSemanticUnderstandingView = ({
                                         : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
                                         }`}
                                 >
-                                    <option value="">状态：全部</option>
-                                    <option value="NOT_STARTED">未开始</option>
-                                    <option value="FIELD_PENDING">语义待确认</option>
+                                    <option value="">全部</option>
+                                    <option value="NOT_STARTED">未开始语义理解</option>
+                                    <option value="FIELD_PENDING">字段语义待确认</option>
                                     <option value="MODELING_IN_PROGRESS">语义建模进行中</option>
-                                    <option value="READY_FOR_OBJECT">可对象建模</option>
+                                    <option value="READY_FOR_OBJECT">可进入对象建模</option>
+                                    <option value="DONE">已完成</option>
                                 </select>
 
-                                {(listFilters.review || listFilters.gate || listFilters.risk || listFilters.stage) && (
+                                <span className="text-slate-400 ml-2">风险筛选:</span>
+                                <select
+                                    value={listFilters.risk}
+                                    onChange={(e) => setListFilters(prev => ({ ...prev, risk: e.target.value as any }))}
+                                    className={`px-2 py-1 rounded-full border text-xs transition-colors ${listFilters.risk !== 'all'
+                                        ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                        : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'
+                                        }`}
+                                >
+                                    <option value="all">全部</option>
+                                    <option value="gate">Gate 未通过</option>
+                                    <option value="high">高风险</option>
+                                    <option value="none">无风险</option>
+                                </select>
+
+                                {(listFilters.risk !== 'all' || listFilters.stage) && (
                                     <button
-                                        onClick={() => setListFilters({ review: false, gate: false, risk: false, stage: null })}
+                                        onClick={() => setListFilters({ risk: 'all', stage: null })}
                                         className="px-2 py-1 rounded-full border border-slate-200 text-slate-400 hover:text-slate-600 hover:bg-slate-50"
                                     >
                                         清除筛选
@@ -1118,12 +1121,39 @@ const DataSemanticUnderstandingView = ({
                 <div className="flex-1 bg-white border border-slate-200 rounded-xl shadow-sm flex flex-col overflow-hidden">
                     {viewMode === 'list' && (
                         <div className="flex flex-col h-full">
+                            {/* List Summary Bar */}
+                            <div className="px-4 py-3 border-b border-slate-100 bg-white">
+                                {(() => {
+                                    const stageCounts = filteredAssets.reduce((acc: Record<string, number>, item: any) => {
+                                        const stage = item.semanticStage || 'NOT_STARTED';
+                                        acc[stage] = (acc[stage] || 0) + 1;
+                                        return acc;
+                                    }, {});
+                                    const summaryItems = [
+                                        { key: 'NOT_STARTED', label: '未开始', count: stageCounts.NOT_STARTED || 0 },
+                                        { key: 'FIELD_PENDING', label: '待确认', count: stageCounts.FIELD_PENDING || 0 },
+                                        { key: 'MODELING_IN_PROGRESS', label: '建模中', count: stageCounts.MODELING_IN_PROGRESS || 0 },
+                                        { key: 'READY_FOR_OBJECT', label: '可建模', count: stageCounts.READY_FOR_OBJECT || 0 },
+                                        { key: 'DONE', label: '已完成', count: stageCounts.DONE || 0 }
+                                    ];
+                                    return (
+                                        <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                                            {summaryItems.map((item, idx) => (
+                                                <div key={item.key} className="flex items-center gap-1">
+                                                    <span className="text-slate-400">{item.label}</span>
+                                                    <span className="font-semibold text-slate-700">{item.count}</span>
+                                                    {idx < summaryItems.length - 1 && <span className="mx-1 text-slate-300">|</span>}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    );
+                                })()}
+                            </div>
                             {/* Data Grid */}
                             <div className="flex-1 overflow-auto">
                                 {/* Batch Action Toolbar */}
                                 <div className="flex items-center justify-between py-2 bg-slate-50 border-b border-slate-100 sticky top-0 z-20">
                                     <div className="flex items-center">
-                                        {/* Checkbox container - same width as table column */}
                                         <div className="w-10 px-3 flex items-center justify-center">
                                             <input
                                                 type="checkbox"
@@ -1144,64 +1174,54 @@ const DataSemanticUnderstandingView = ({
                                         <span className="text-sm text-slate-600 px-6">全选</span>
                                         {selectedTables.length > 0 && (
                                             <span className="text-sm text-blue-600 font-medium">
-                                                已选 {selectedTables.length} 张
+                                                已选 {selectedTables.length} 个逻辑视图
                                             </span>
                                         )}
                                     </div>
-                                    <div className="flex items-center gap-2 pr-4">
-                                        {!isReadOnly && (
-                                            <BatchOperationBar
-                                                selectedCount={selectedTables.length}
-                                                isAnalyzing={batchAnalyzing}
-                                                runConfig={runConfig}
-                                                onOpenRunModal={handleShowRunModal}
-                                                onBatchSemanticGen={() => {
-                                                    setShowBatchSemanticModal(true);
-                                                    setBatchSemanticStep('config');
-                                                }}
-                                                progressProps={{
-                                                    currentAnalyzing,
-                                                    completedResults,
-                                                    progress: batchProgress,
-                                                    onResultClick: (tableId) => {
-                                                        setViewMode('detail');
-                                                        setSelectedTableId(tableId);
-                                                    }
-                                                }}
-                                            />
-                                        )}
-                                    </div>
+                                    {selectedTables.length > 0 && (
+                                        <div className="flex items-center gap-2 pr-4">
+                                            {(() => {
+                                                const selectedAssets = filteredAssets.filter(item => selectedTables.includes(item.table));
+                                                const selectedStages = Array.from(new Set(selectedAssets.map(item => item.semanticStage || 'NOT_STARTED')));
+                                                const isSingleStage = selectedStages.length === 1;
+                                                const stage = selectedStages[0] || 'NOT_STARTED';
+                                                const stageCtaMap: Record<string, string> = {
+                                                    NOT_STARTED: '批量开始字段语义理解',
+                                                    FIELD_PENDING: '批量继续字段语义确认',
+                                                    MODELING_IN_PROGRESS: '批量查看语义进展',
+                                                    READY_FOR_OBJECT: '批量进入对象建模',
+                                                    DONE: '批量查看语义结果'
+                                                };
+                                                const canBatchAction = isSingleStage && stage === 'NOT_STARTED';
+                                                return (
+                                                    <button
+                                                        onClick={() => {
+                                                            if (!canBatchAction) return;
+                                                            handleShowRunModal();
+                                                        }}
+                                                        disabled={isReadOnly || !canBatchAction}
+                                                        title={!isSingleStage ? '仅支持同语义阶段批量操作' : stage !== 'NOT_STARTED' ? '当前阶段暂无批量操作' : ''}
+                                                        className={`px-4 py-2 text-sm rounded-lg transition-colors ${isReadOnly || !canBatchAction
+                                                            ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                                                            : 'bg-blue-600 text-white hover:bg-blue-700'
+                                                            }`}
+                                                    >
+                                                        {stageCtaMap[stage] || '批量操作'}
+                                                    </button>
+                                                );
+                                            })()}
+                                        </div>
+                                    )}
                                 </div>
                                 <table className="w-full text-sm">
                                     <thead className="bg-gradient-to-r from-slate-50 to-slate-100/50 text-slate-600 border-b-2 border-slate-200 sticky top-0 z-20 backdrop-blur-sm bg-white/95">
                                         <tr>
                                             <th className="px-3 py-4 w-12 align-middle"></th>
-                                            <th className="px-4 py-4 font-semibold text-left min-w-[160px] align-middle">视图名称</th>
-                                            <th className="px-4 py-4 font-semibold text-left min-w-[120px] align-middle">业务名称</th>
-                                            <th className="px-4 py-4 font-semibold text-center w-28 align-middle">建模状态</th>
-                                            <th className="px-4 py-4 font-semibold text-left min-w-[120px] align-middle">数据源</th>
+                                            <th className="px-4 py-4 font-semibold text-left min-w-[200px] align-middle">逻辑视图</th>
+                                            <th className="px-4 py-4 font-semibold text-left min-w-[160px] align-middle">数据源</th>
                                             <th className="px-4 py-4 font-semibold text-right w-24 align-middle">行数</th>
-                                            <th className="px-4 py-4 font-semibold text-center w-24 align-middle">
-                                                <button
-                                                    onClick={() => {
-                                                        setSortField(prev => {
-                                                            if (prev === 'pendingReviewFields') {
-                                                                setSortOrder(o => (o === 'asc' ? 'desc' : 'asc'));
-                                                                return prev;
-                                                            }
-                                                            setSortOrder('desc');
-                                                            return 'pendingReviewFields';
-                                                        });
-                                                    }}
-                                                    className="inline-flex items-center gap-1 text-xs text-slate-600 hover:text-slate-800 font-semibold"
-                                                >
-                                                    待Review
-                                                    <ChevronDown
-                                                        size={12}
-                                                        className={`transition-transform ${sortField === 'pendingReviewFields' && sortOrder === 'asc' ? 'rotate-180' : ''} ${sortField === 'pendingReviewFields' ? 'text-slate-700' : 'text-slate-400'}`}
-                                                    />
-                                                </button>
-                                            </th>
+                                            <th className="px-4 py-4 font-semibold text-center w-32 align-middle">语义建模状态</th>
+                                            <th className="px-4 py-4 font-semibold text-center w-28 align-middle">字段进度</th>
                                             <th className="px-4 py-4 font-semibold text-center w-20 align-middle">
                                                 <button
                                                     onClick={() => {
@@ -1216,7 +1236,7 @@ const DataSemanticUnderstandingView = ({
                                                     }}
                                                     className="inline-flex items-center gap-1 text-xs text-slate-600 hover:text-slate-800 font-semibold"
                                                 >
-                                                    Gate未过
+                                                    Gate 状态
                                                     <ChevronDown
                                                         size={12}
                                                         className={`transition-transform ${sortField === 'gateFailedItems' && sortOrder === 'asc' ? 'rotate-180' : ''} ${sortField === 'gateFailedItems' ? 'text-slate-700' : 'text-slate-400'}`}
@@ -1284,63 +1304,15 @@ const DataSemanticUnderstandingView = ({
                                                             </div>
                                                             <div className="min-w-0">
                                                                 <div className="font-mono text-blue-600 font-semibold text-sm truncate group-hover:text-blue-700">{asset.table || asset.name || 'Unknown Table'}</div>
-                                                                {asset.comment && <div className="text-xs text-slate-400 truncate max-w-[180px]">{asset.comment}</div>}
+                                                                <div className="text-xs text-slate-500 truncate max-w-[200px]">
+                                                                    {asset.semanticAnalysis?.businessName || '—'}
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     </td>
                                                     <td className="px-4 py-4">
-                                                        {asset.semanticAnalysis?.businessName ? (
-                                                            <div className="flex flex-col items-start gap-1">
-                                                                <span className="text-slate-800 font-medium">{asset.semanticAnalysis.businessName}</span>
-                                                                {(() => {
-                                                                    // Check if mapped
-                                                                    const mappedEntry = Object.entries(mockBOTableMappings).find(([_, config]) => config.tableName === asset.table);
-                                                                    if (mappedEntry) {
-                                                                        const [boId, config] = mappedEntry;
-                                                                        const boName = businessObjects?.find(b => b.id === boId)?.name || boId;
-                                                                        return (
-                                                                            <span
-                                                                                onClick={(e) => {
-                                                                                    e.stopPropagation();
-                                                                                    setViewMappingBO(boId);
-                                                                                }}
-                                                                                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-600 border border-blue-100 cursor-pointer hover:bg-blue-100 transition-colors"
-                                                                            >
-                                                                                <Share2 size={10} />
-                                                                                已关联: {boName}
-                                                                            </span>
-                                                                        );
-                                                                    }
-                                                                    return null;
-                                                                })()}
-                                                            </div>
-                                                        ) : (
-                                                            <span className="text-slate-300">—</span>
-                                                        )}
-                                                    </td>
-                                                    <td className="px-4 py-4 text-center">
-                                                        {(() => {
-                                                            const semanticStage = asset.semanticStage || 'NOT_STARTED';
-                                                            const runSummary = asset.lastRun as RunSummary | null;
-                                                            return (
-                                                                <div className="flex flex-col items-center gap-1">
-                                                                    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap ${semanticStageToneMap[semanticStage]}`}>
-                                                                        {semanticStageLabelMap[semanticStage]}
-                                                                    </span>
-                                                                    {runSummary && (
-                                                                        <span className={`text-[10px] ${runStatusToneMap[runSummary.status]}`}>
-                                                                            Run {runSummary.runId} · {runStatusLabelMap[runSummary.status]}
-                                                                        </span>
-                                                                    )}
-                                                                </div>
-                                                            );
-                                                        })()}
-                                                    </td>
-                                                    <td className="px-4 py-4">
                                                         <div className="flex items-center gap-2">
-                                                            <span className="px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-700">
-                                                                {asset.sourceType}
-                                                            </span>
+                                                            <span className="px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-700">{asset.sourceType}</span>
                                                         </div>
                                                         <div className="text-xs text-slate-500 mt-0.5 truncate max-w-[140px]">{asset.sourceName}</div>
                                                     </td>
@@ -1355,13 +1327,30 @@ const DataSemanticUnderstandingView = ({
                                                     </td>
                                                     <td className="px-4 py-4 text-center">
                                                         {(() => {
+                                                            const semanticStage = asset.semanticStage || 'NOT_STARTED';
+                                                            return (
+                                                                <div className="flex flex-col items-center gap-1">
+                                                                    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap ${semanticStageToneMap[semanticStage]}`}>
+                                                                        {semanticStageLabelMap[semanticStage]}
+                                                                    </span>
+                                                                </div>
+                                                            );
+                                                        })()}
+                                                    </td>
+                                                    <td className="px-4 py-4 text-center">
+                                                        {(() => {
                                                             const governanceStatus = asset.governanceStatus as GovernanceStatus;
                                                             const stats = asset.reviewStats as ReviewStats | null;
-                                                            if (governanceStatus === 'S0') return <span className="text-slate-300">-</span>;
-                                                            const value = stats?.pendingReviewFields || 0;
+                                                            const totalFields = Array.isArray(asset.fields) ? asset.fields.length : 0;
+                                                            const pending = stats?.pendingReviewFields || 0;
+                                                            const confirmed = Math.max(totalFields - pending, 0);
+                                                            if (governanceStatus === 'S0' && totalFields === 0) return <span className="text-slate-300">-</span>;
                                                             return (
-                                                                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${value > 0 ? 'bg-amber-50 text-amber-700 border border-amber-100' : 'bg-slate-100 text-slate-500'}`}>
-                                                                    {value}
+                                                                <span
+                                                                    className="text-xs text-slate-600 font-medium"
+                                                                    title={`已确认：${confirmed}｜待确认：${Math.max(totalFields - confirmed, 0)}`}
+                                                                >
+                                                                    {confirmed}/{totalFields || '-'}
                                                                 </span>
                                                             );
                                                         })()}
@@ -1373,8 +1362,8 @@ const DataSemanticUnderstandingView = ({
                                                             if (governanceStatus === 'S0') return <span className="text-slate-300">-</span>;
                                                             const value = stats?.gateFailedItems || 0;
                                                             return (
-                                                                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${value > 0 ? 'bg-red-50 text-red-600 border border-red-100' : 'bg-slate-100 text-slate-500'}`}>
-                                                                    {value}
+                                                                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${value > 0 ? 'bg-red-50 text-red-600 border border-red-100' : 'bg-emerald-50 text-emerald-600 border border-emerald-100'}`}>
+                                                                    {value > 0 ? '未通过' : '通过'}
                                                                 </span>
                                                             );
                                                         })()}
@@ -1399,32 +1388,34 @@ const DataSemanticUnderstandingView = ({
                                                         </div>
                                                     </td>
                                                     <td className="px-4 py-4 text-center">
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                // Handle both traditional table ID and internal ID
-                                                                handleTableClick(asset.table || asset.name || asset.id);
-                                                                // CTA 统一进入语义理解模式
-                                                                setPageMode('SEMANTIC');
-                                                                setGovernanceMode('SEMANTIC');
-                                                            }}
-                                                            className={`px-2 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1 mx-auto ${asset.semanticStage === 'READY_FOR_OBJECT'
-                                                                ? 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                                                                : 'bg-blue-50 text-blue-600 hover:bg-blue-100'
-                                                                }`}
-                                                        >
-                                                            {asset.semanticStage === 'READY_FOR_OBJECT' ? (
-                                                                <>
-                                                                    <Share2 size={12} />
-                                                                    查看结果
-                                                                </>
-                                                            ) : (
-                                                                <>
-                                                                    {asset.semanticStage === 'NOT_STARTED' && <Sparkles size={12} />}
-                                                                    {asset.semanticStage === 'NOT_STARTED' ? '开始理解' : '继续理解'}
-                                                                </>
-                                                            )}
-                                                        </button>
+                                                        {(() => {
+                                                            const stage = asset.semanticStage || 'NOT_STARTED';
+                                                            const ctaLabelMap: Record<string, string> = {
+                                                                NOT_STARTED: '开始字段语义理解',
+                                                                FIELD_PENDING: '继续字段语义确认',
+                                                                MODELING_IN_PROGRESS: '查看语义进展',
+                                                                READY_FOR_OBJECT: '进入对象建模',
+                                                                DONE: '查看语义结果'
+                                                            };
+                                                            return (
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        handleTableClick(asset.table || asset.name || asset.id);
+                                                                        if (stage === 'NOT_STARTED' || stage === 'FIELD_PENDING') {
+                                                                            setPageMode('SEMANTIC');
+                                                                            setGovernanceMode('SEMANTIC');
+                                                                        } else {
+                                                                            setPageMode('BROWSE');
+                                                                            setGovernanceMode('BROWSE');
+                                                                        }
+                                                                    }}
+                                                                    className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1 mx-auto bg-blue-50 text-blue-600 hover:bg-blue-100"
+                                                                >
+                                                                    {ctaLabelMap[stage] || '查看语义结果'}
+                                                                </button>
+                                                            );
+                                                        })()}
                                                     </td>
                                                 </tr>
                                             ));
@@ -1977,6 +1968,60 @@ const DataSemanticUnderstandingView = ({
                                                             ];
 
                                                             const relations = semanticProfile.relationships || [];
+                                                            const candidateMappings = Object.entries(mockBOTableMappings)
+                                                                .filter(([, config]) => config.tableName === selectedTable.table);
+                                                            const candidateObjects = candidateMappings.map(([boId, config]) => {
+                                                                const bo = (businessObjects || []).find(obj => obj.id === boId);
+                                                                const attributeMap = config.mappings.reduce((acc: Record<string, string[]>, mapping) => {
+                                                                    if (!acc[mapping.boField]) acc[mapping.boField] = [];
+                                                                    acc[mapping.boField].push(mapping.tblField);
+                                                                    return acc;
+                                                                }, {});
+                                                                const attributes = Object.entries(attributeMap).map(([attributeName, fieldNames]) => {
+                                                                    const fieldProfilesForAttr = fieldNames
+                                                                        .map(name => fieldProfileMap.get(name))
+                                                                        .filter(Boolean) as FieldSemanticProfile[];
+                                                                    const roleScoreMap: Record<string, number> = {
+                                                                        Identifier: 4,
+                                                                        ForeignKey: 2,
+                                                                        Status: 3,
+                                                                        Time: 3
+                                                                    };
+                                                                    const bestRole = fieldProfilesForAttr.reduce((current, profile) => {
+                                                                        const candidateRole = profile.role || 'Attribute';
+                                                                        return (roleScoreMap[candidateRole] || 1) > (roleScoreMap[current] || 1)
+                                                                            ? candidateRole
+                                                                            : current;
+                                                                    }, 'Attribute');
+                                                                    const roleLabelMap: Record<string, string> = {
+                                                                        Identifier: '主键',
+                                                                        ForeignKey: '属性',
+                                                                        Status: '状态',
+                                                                        Time: '时间',
+                                                                        Measure: '属性',
+                                                                        Attribute: '属性',
+                                                                        BusAttr: '属性'
+                                                                    };
+                                                                    const avgConfidence = fieldProfilesForAttr.length
+                                                                        ? Math.round(fieldProfilesForAttr.reduce((sum, profile) => sum + (profile.roleConfidence || 0), 0) / fieldProfilesForAttr.length)
+                                                                        : scorePercent;
+                                                                    return {
+                                                                        name: attributeName,
+                                                                        role: roleLabelMap[bestRole] || '属性',
+                                                                        confidence: avgConfidence,
+                                                                        fields: fieldNames
+                                                                    };
+                                                                });
+                                                                return {
+                                                                    id: boId,
+                                                                    name: bo?.name || semanticProfile.businessName || boId,
+                                                                    confidence: scorePercent,
+                                                                    objectType: semanticProfile.objectType || 'entity',
+                                                                    source: config.tableName,
+                                                                    fieldCount: config.fields.length,
+                                                                    attributes
+                                                                };
+                                                            });
                                                             const safeRelationIndex = relations.length === 0
                                                                 ? 0
                                                                 : Math.min(selectedRelationIndex, relations.length - 1);
@@ -1988,38 +2033,264 @@ const DataSemanticUnderstandingView = ({
                                                                 sensitiveCount > 0 ? `高敏字段 ${sensitiveCount} 个` : null,
                                                                 gateResult === 'REJECT' ? 'Gate 未通过' : gateResult === 'REVIEW' ? 'Gate 需复核' : null
                                                             ].filter(Boolean) as string[];
+                                                            const objectTypeTagMap: Record<string, string> = {
+                                                                entity: '主体',
+                                                                event: '过程',
+                                                                state: '状态',
+                                                                attribute: '清单'
+                                                            };
+                                                            const primaryKeyFields = selectedTableFields.filter((field: any) =>
+                                                                field.primaryKey || field.key === 'PK' || field.fieldName === 'id' || field.fieldName?.endsWith('_id')
+                                                            );
+                                                            const coreFieldsConfirmed = primaryKeyFields.length === 0
+                                                                ? false
+                                                                : primaryKeyFields.every((field: any) => {
+                                                                    const profile = fieldProfileMap.get(field.fieldName);
+                                                                    return profile?.semanticStatus === 'DECIDED' || fieldReviewStatus[field.fieldName] === 'confirmed';
+                                                                });
+                                                            const hasCandidateObjects = candidateObjects.length > 0;
+                                                            const noGateBlock = gateResult !== 'REJECT' && gateFailedCount === 0;
+                                                            const canConfirmSemantic = coreFieldsConfirmed && hasCandidateObjects && noGateBlock;
 
                                                             return (
                                                                 <div className="mt-6 grid grid-cols-1 gap-6">
                                                                     <div className="bg-white rounded-xl border border-slate-200 overflow-hidden relative min-h-[600px]">
-                                                                        <div className="flex items-center gap-1 border-b border-slate-100 bg-slate-50 px-2 justify-between">
-                                                                            <div className="flex items-center gap-1">
-                                                                                {([
-                                                                                    { key: 'business', label: '业务理解', count: undefined },
-                                                                                    { key: 'fields', label: '字段与属性', count: selectedTableFields.length },
-                                                                                    { key: 'graph', label: '对象关系', count: relations.length },
-                                                                                    { key: 'governance', label: '治理与风险', count: riskItemsCount }
-                                                                                ] as const).map(tab => (
-                                                                                    <button
-                                                                                        key={tab.key}
-                                                                                        onClick={() => setResultTab(tab.key)}
-                                                                                        className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${resultTab === tab.key ? 'border-blue-500 text-blue-600 bg-white' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-white/60'}`}
-                                                                                    >
-                                                                                        <span className="flex items-center gap-2">
-                                                                                            <span>{tab.label}</span>
-                                                                                            {typeof tab.count === 'number' && (
-                                                                                                <span className="px-2 py-0.5 rounded-full text-[11px] bg-slate-100 text-slate-500">
-                                                                                                    {tab.count}
-                                                                                                </span>
-                                                                                            )}
-                                                                                        </span>
-                                                                                    </button>
-                                                                                ))}
+                                                                        {!semanticConfirmMode && (
+                                                                            <div className="flex items-center gap-1 border-b border-slate-100 bg-slate-50 px-2 justify-between">
+                                                                                <div className="flex items-center gap-1">
+                                                                                    {([
+                                                                                        { key: 'business', label: '业务理解', count: undefined },
+                                                                                        { key: 'fields', label: '字段与属性', count: selectedTableFields.length },
+                                                                                        { key: 'candidate', label: '候选业务对象', count: candidateObjects.length },
+                                                                                        { key: 'graph', label: '对象关系', count: relations.length },
+                                                                                        { key: 'governance', label: '治理与风险', count: riskItemsCount }
+                                                                                    ] as const).map(tab => (
+                                                                                        <button
+                                                                                            key={tab.key}
+                                                                                            onClick={() => setResultTab(tab.key)}
+                                                                                            className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${resultTab === tab.key ? 'border-blue-500 text-blue-600 bg-white' : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-white/60'}`}
+                                                                                        >
+                                                                                            <span className="flex items-center gap-2">
+                                                                                                <span>{tab.label}</span>
+                                                                                                {typeof tab.count === 'number' && (
+                                                                                                    <span className="px-2 py-0.5 rounded-full text-[11px] bg-slate-100 text-slate-500">
+                                                                                                        {tab.count}
+                                                                                                    </span>
+                                                                                                )}
+                                                                                            </span>
+                                                                                        </button>
+                                                                                    ))}
+                                                                                </div>
                                                                             </div>
-                                                                        </div>
+                                                                        )}
                                                                         <div className="p-4 space-y-6">
-                                                                            {resultTab === 'business' && (
-                                                                                <div className="space-y-4">
+                                                                            {semanticConfirmMode && (
+                                                                                <div className="space-y-6">
+                                                                                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                                                                                        <div className="flex items-center justify-between gap-4">
+                                                                                            <div>
+                                                                                                <div className="text-sm font-semibold text-slate-700">语义建模进行中（待确认）</div>
+                                                                                                <div className="text-xs text-slate-500 mt-1">
+                                                                                                    字段语义理解与候选业务对象已生成。请确认当前语义理解结果，确认后将进入业务对象建模阶段。
+                                                                                                </div>
+                                                                                            </div>
+                                                                                            <div className="flex items-center gap-2">
+                                                                                                <button
+                                                                                                    onClick={() => setSemanticConfirmMode(false)}
+                                                                                                    className="px-3 py-1.5 text-xs text-slate-600 border border-slate-200 rounded-lg hover:bg-white"
+                                                                                                >
+                                                                                                    继续语义理解
+                                                                                                </button>
+                                                                                                <button
+                                                                                                    onClick={() => {
+                                                                                                        if (!canConfirmSemantic || isReadOnly) return;
+                                                                                                        guardAction(handleConfirmEffective)();
+                                                                                                        setSemanticConfirmMode(false);
+                                                                                                    }}
+                                                                                                    disabled={!canConfirmSemantic || isReadOnly}
+                                                                                                    title={
+                                                                                                        !coreFieldsConfirmed
+                                                                                                            ? '核心字段未确认'
+                                                                                                            : !hasCandidateObjects
+                                                                                                                ? '尚未识别候选业务对象'
+                                                                                                                : !noGateBlock
+                                                                                                                    ? 'Gate 未通过'
+                                                                                                                    : ''
+                                                                                                    }
+                                                                                                    className={`px-4 py-2 text-xs font-medium rounded-lg ${canConfirmSemantic && !isReadOnly
+                                                                                                        ? 'bg-blue-600 text-white hover:bg-blue-700'
+                                                                                                        : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                                                                                                        }`}
+                                                                                                >
+                                                                                                    确认语义理解结果
+                                                                                                </button>
+                                                                                            </div>
+                                                                                        </div>
+                                                                                        <div className="mt-3 flex items-center gap-2 text-xs text-slate-500">
+                                                                                            <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100">字段语义理解 ✔</span>
+                                                                                            <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100">业务对象识别 ✔</span>
+                                                                                            <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-100">确认语义理解 ●</span>
+                                                                                        </div>
+                                                                                    </div>
+
+                                                                                    <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-4">
+                                                                                        <div className="flex items-center justify-between">
+                                                                                            <div className="text-sm font-semibold text-slate-700">业务对象理解结果</div>
+                                                                                            <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-50 text-amber-600 border border-amber-100">
+                                                                                                系统识别（待确认）
+                                                                                            </span>
+                                                                                        </div>
+                                                                                        <div className="space-y-4">
+                                                                                            {candidateObjects.length > 0 ? candidateObjects.map(candidate => (
+                                                                                                <div key={candidate.id} className="rounded-lg border border-slate-200 bg-slate-50/40 p-4 space-y-3">
+                                                                                                    <div className="flex items-center justify-between">
+                                                                                                        <div className="flex items-center gap-2">
+                                                                                                            <div className="text-base font-semibold text-slate-800">{candidate.name}</div>
+                                                                                                            <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-blue-50 text-blue-600 border border-blue-100">
+                                                                                                                {objectTypeTagMap[candidate.objectType] || '主体'}
+                                                                                                            </span>
+                                                                                                            <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-slate-100 text-slate-600 border border-slate-200">
+                                                                                                                系统识别
+                                                                                                            </span>
+                                                                                                        </div>
+                                                                                                        <span className="text-xs text-slate-500">对象置信度 {candidate.confidence}%</span>
+                                                                                                    </div>
+                                                                                                    <div className="space-y-2 text-xs text-slate-600">
+                                                                                                        {candidate.attributes.map(attribute => (
+                                                                                                            <div key={attribute.name} className="border border-slate-200 rounded-md bg-white p-3">
+                                                                                                                <div className="flex items-center justify-between">
+                                                                                                                    <div className="font-medium text-slate-700">{attribute.name}</div>
+                                                                                                                    <span className="text-[11px] px-2 py-0.5 rounded-full border bg-slate-50 text-slate-500 border-slate-200">
+                                                                                                                        {attribute.role}
+                                                                                                                    </span>
+                                                                                                                </div>
+                                                                                                                <div className="mt-2 text-[11px] text-slate-500">来源字段：</div>
+                                                                                                                <div className="mt-1 flex flex-wrap gap-2">
+                                                                                                                    {attribute.fields.map((fieldName: string) => (
+                                                                                                                        <span key={fieldName} className="px-2 py-0.5 rounded-full text-[11px] bg-slate-100 text-slate-600 border border-slate-200">
+                                                                                                                            {fieldName}
+                                                                                                                        </span>
+                                                                                                                    ))}
+                                                                                                                </div>
+                                                                                                            </div>
+                                                                                                        ))}
+                                                                                                    </div>
+                                                                                                    <div className="text-[11px] text-slate-400">基于字段角色与数据特征综合计算</div>
+                                                                                                </div>
+                                                                                            )) : (
+                                                                                                <div className="rounded-lg border border-slate-200 bg-slate-50 p-6 text-center text-sm text-slate-400">
+                                                                                                    尚未识别候选业务对象
+                                                                                                </div>
+                                                                                            )}
+                                                                                        </div>
+                                                                                        <div className="text-xs text-slate-500">
+                                                                                            当前确认仅锁定语义理解结果，业务对象与属性的最终调整将在对象建模阶段完成。
+                                                                                        </div>
+                                                                                    </div>
+
+                                                                                    <div className="rounded-xl border border-slate-200 bg-white">
+                                                                                        <div className="border-b border-slate-100 px-3 py-2 flex items-center gap-2 text-xs text-slate-500">
+                                                                                            {([
+                                                                                                { key: 'structure', label: '字段结构' },
+                                                                                                { key: 'relation', label: '对象关系' },
+                                                                                                { key: 'quality', label: '质量概览' },
+                                                                                                { key: 'security', label: '安全合规' },
+                                                                                                { key: 'logs', label: '日志' }
+                                                                                            ] as const).map(tab => (
+                                                                                                <button
+                                                                                                    key={tab.key}
+                                                                                                    onClick={() => setConfirmTab(tab.key)}
+                                                                                                    className={`px-3 py-2 text-xs rounded-md transition-colors ${confirmTab === tab.key ? 'bg-blue-50 text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
+                                                                                                >
+                                                                                                    {tab.label}
+                                                                                                </button>
+                                                                                            ))}
+                                                                                        </div>
+                                                                                        <div className="p-4">
+                                                                                            {confirmTab === 'structure' && (
+                                                                                                <div className="rounded-lg border border-slate-200 overflow-hidden">
+                                                                                                    <table className="w-full text-xs">
+                                                                                                        <thead className="bg-slate-50 text-slate-500">
+                                                                                                            <tr>
+                                                                                                                <th className="px-3 py-2 text-left">字段名</th>
+                                                                                                                <th className="px-3 py-2 text-left">类型</th>
+                                                                                                                <th className="px-3 py-2 text-left">角色</th>
+                                                                                                            </tr>
+                                                                                                        </thead>
+                                                                                                        <tbody className="divide-y divide-slate-100">
+                                                                                                            {selectedTableFields.map((field: any) => {
+                                                                                                                const profile = fieldProfileMap.get(field.fieldName);
+                                                                                                                return (
+                                                                                                                    <tr key={field.fieldName}>
+                                                                                                                        <td className="px-3 py-2 font-mono text-slate-700">{field.fieldName}</td>
+                                                                                                                        <td className="px-3 py-2 text-slate-500">{field.type}</td>
+                                                                                                                        <td className="px-3 py-2 text-slate-500">{profile?.role || '-'}</td>
+                                                                                                                    </tr>
+                                                                                                                );
+                                                                                                            })}
+                                                                                                        </tbody>
+                                                                                                    </table>
+                                                                                                </div>
+                                                                                            )}
+                                                                                            {confirmTab === 'relation' && (
+                                                                                                <div className="space-y-2 text-xs text-slate-600">
+                                                                                                    {relations.length > 0 ? relations.map((relation, idx) => (
+                                                                                                        <div key={`${relation.targetTable}-${idx}`} className="rounded-md border border-slate-200 bg-slate-50 p-3">
+                                                                                                            <div>关系类型：{relation.type || '关联（系统识别）'}</div>
+                                                                                                            <div>来源属性：{relation.key}</div>
+                                                                                                        </div>
+                                                                                                    )) : (
+                                                                                                        <div className="text-slate-400">暂无对象关系</div>
+                                                                                                    )}
+                                                                                                </div>
+                                                                                            )}
+                                                                                            {confirmTab === 'quality' && (
+                                                                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs text-slate-600">
+                                                                                                    <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
+                                                                                                        <div className="text-slate-500">完整度</div>
+                                                                                                        <div className="text-base font-semibold text-slate-800">{Math.round((semanticProfile.ruleScore?.comment || 0) * 100)}%</div>
+                                                                                                    </div>
+                                                                                                    <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
+                                                                                                        <div className="text-slate-500">Gate 状态</div>
+                                                                                                        <div className="text-base font-semibold text-slate-800">{gateResult || '-'}</div>
+                                                                                                    </div>
+                                                                                                    <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
+                                                                                                        <div className="text-slate-500">风险项</div>
+                                                                                                        <div className="text-base font-semibold text-slate-800">{riskItemsCount}</div>
+                                                                                                    </div>
+                                                                                                </div>
+                                                                                            )}
+                                                                                            {confirmTab === 'security' && (
+                                                                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs text-slate-600">
+                                                                                                    <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
+                                                                                                        <div className="text-slate-500">敏感等级</div>
+                                                                                                        <div className="text-base font-semibold text-slate-800">{semanticProfile.securityLevel || '-'}</div>
+                                                                                                    </div>
+                                                                                                    <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
+                                                                                                        <div className="text-slate-500">高敏字段</div>
+                                                                                                        <div className="text-base font-semibold text-slate-800">{sensitiveCount}</div>
+                                                                                                    </div>
+                                                                                                    <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
+                                                                                                        <div className="text-slate-500">访问建议</div>
+                                                                                                        <div className="text-base font-semibold text-slate-800">{sensitiveCount > 0 ? '建议限制访问' : '常规访问'}</div>
+                                                                                                    </div>
+                                                                                                </div>
+                                                                                            )}
+                                                                                            {confirmTab === 'logs' && (
+                                                                                                <LogsTab
+                                                                                                    auditLogs={auditLogs.filter(entry => entry.tableId === selectedTable.table)}
+                                                                                                    upgradeHistory={upgradeHistory.filter(entry => entry.tableId === selectedTable.table)}
+                                                                                                    onRollback={rollbackUpgrade}
+                                                                                                />
+                                                                                            )}
+                                                                                        </div>
+                                                                                    </div>
+                                                                                </div>
+                                                                            )}
+                                                                            {!semanticConfirmMode && (
+                                                                                <>
+                                                                                    {resultTab === 'business' && (
+                                                                                        <div className="space-y-4">
                                                                                     <div className="rounded-lg border border-slate-200 bg-white p-4">
                                                                                         <div className="flex items-center justify-between gap-4">
                                                                                             <div>
@@ -2161,7 +2432,11 @@ const DataSemanticUnderstandingView = ({
                                                                                         <div className="text-xs text-slate-500">系统建议，需人工确认</div>
                                                                                         <div className="flex items-center gap-2">
                                                                                             <button
-                                                                                                onClick={guardAction(handleConfirmEffective)}
+                                                                                                onClick={() => {
+                                                                                                    if (isReadOnly) return;
+                                                                                                    setSemanticConfirmMode(true);
+                                                                                                    setConfirmTab('structure');
+                                                                                                }}
                                                                                                 disabled={isReadOnly}
                                                                                                 className="px-4 py-2 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-slate-200 disabled:text-slate-400"
                                                                                             >
@@ -2177,10 +2452,10 @@ const DataSemanticUnderstandingView = ({
                                                                                         </div>
                                                                                     </div>
                                                                                 </div>
-                                                                            )}
+                                                                                    )}
 
-                                                                            {resultTab === 'fields' && (
-                                                                                <div className="space-y-4">
+                                                                                    {resultTab === 'fields' && (
+                                                                                        <div className="space-y-4">
                                                                                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                                                                                         <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
                                                                                             <div className="text-xs text-slate-500">字段总数</div>
@@ -2300,10 +2575,189 @@ const DataSemanticUnderstandingView = ({
                                                                                         </table>
                                                                                     </div>
                                                                                 </div>
-                                                                            )}
+                                                                                    )}
 
-                                                                            {resultTab === 'graph' && (
-                                                                                <div className="space-y-4">
+                                                                                    {resultTab === 'candidate' && (
+                                                                                        <div className="space-y-5">
+                                                                                    <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 flex items-start justify-between">
+                                                                                        <div>
+                                                                                            <div className="text-sm font-semibold text-slate-700">候选业务对象 · 解释视图</div>
+                                                                                            <div className="text-xs text-slate-500 mt-1">
+                                                                                                对象是一级概念，字段仅作为属性来源；所有确认/调整将在业务对象建模页完成
+                                                                                            </div>
+                                                                                        </div>
+                                                                                        <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-lg">
+                                                                                            <button
+                                                                                                onClick={() => setCandidateView('structure')}
+                                                                                                className={`px-3 py-1 text-xs rounded-md transition-colors ${candidateView === 'structure'
+                                                                                                    ? 'bg-white text-slate-700 shadow-sm'
+                                                                                                    : 'text-slate-500 hover:text-slate-700'
+                                                                                                    }`}
+                                                                                            >
+                                                                                                对象结构视角
+                                                                                            </button>
+                                                                                            <button
+                                                                                                onClick={() => setCandidateView('relation')}
+                                                                                                className={`px-3 py-1 text-xs rounded-md transition-colors ${candidateView === 'relation'
+                                                                                                    ? 'bg-white text-slate-700 shadow-sm'
+                                                                                                    : 'text-slate-500 hover:text-slate-700'
+                                                                                                    }`}
+                                                                                            >
+                                                                                                对象关系视角
+                                                                                            </button>
+                                                                                        </div>
+                                                                                    </div>
+
+                                                                                    {candidateView === 'structure' && (
+                                                                                        <div className="space-y-4">
+                                                                                            {candidateObjects.length > 0 ? candidateObjects.map(candidate => (
+                                                                                                <div key={candidate.id} className="rounded-xl border border-slate-200 bg-white p-4 space-y-4">
+                                                                                                    <div className="flex items-start justify-between">
+                                                                                                        <div>
+                                                                                                            <div className="flex items-center gap-2">
+                                                                                                                <div className="text-base font-semibold text-slate-800">{candidate.name}</div>
+                                                                                                                <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-blue-50 text-blue-600 border border-blue-100">
+                                                                                                                    候选对象
+                                                                                                                </span>
+                                                                                                            </div>
+                                                                                                            <div className="text-xs text-slate-500 mt-1" title="该业务对象由系统基于字段语义理解自动识别，将在业务对象建模阶段进行确认或调整。">
+                                                                                                                该业务对象由系统基于字段语义理解自动识别，将在业务对象建模阶段进行确认或调整。
+                                                                                                            </div>
+                                                                                                        </div>
+                                                                                                        <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200">
+                                                                                                            置信度 {candidate.confidence}%
+                                                                                                        </span>
+                                                                                                    </div>
+
+                                                                                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs text-slate-600">
+                                                                                                        <div className="rounded-md border border-slate-100 bg-slate-50 p-3">
+                                                                                                            <div className="text-slate-500">来源逻辑视图</div>
+                                                                                                            <div className="font-medium text-slate-700 mt-1">{candidate.source}</div>
+                                                                                                        </div>
+                                                                                                        <div className="rounded-md border border-slate-100 bg-slate-50 p-3">
+                                                                                                            <div className="text-slate-500">识别方式</div>
+                                                                                                            <div className="font-medium text-slate-700 mt-1">字段语义聚合</div>
+                                                                                                        </div>
+                                                                                                        <div className="rounded-md border border-slate-100 bg-slate-50 p-3">
+                                                                                                            <div className="text-slate-500">涉及字段数</div>
+                                                                                                            <div className="font-medium text-slate-700 mt-1">{candidate.fieldCount}</div>
+                                                                                                        </div>
+                                                                                                    </div>
+
+                                                                                                    <div className="space-y-3">
+                                                                                                        <div className="text-sm font-semibold text-slate-700">业务属性列表</div>
+                                                                                                        <div className="space-y-3">
+                                                                                                            {candidate.attributes.map(attribute => (
+                                                                                                                <div key={attribute.name} className="rounded-lg border border-slate-200 bg-slate-50/40 p-3">
+                                                                                                                    <div className="flex items-center justify-between">
+                                                                                                                        <div>
+                                                                                                                            <div className="text-sm font-medium text-slate-800">{attribute.name}</div>
+                                                                                                                            <div className="text-xs text-slate-500 mt-0.5">属性业务说明</div>
+                                                                                                                        </div>
+                                                                                                                        <div className="flex items-center gap-2">
+                                                                                                                            <span className="px-2 py-0.5 rounded-full text-[11px] border bg-white text-slate-600 border-slate-200">
+                                                                                                                                {attribute.role}
+                                                                                                                            </span>
+                                                                                                                            <span className="px-2 py-0.5 rounded-full text-[11px] border bg-white text-slate-500 border-slate-200">
+                                                                                                                                置信度 {attribute.confidence}%
+                                                                                                                            </span>
+                                                                                                                        </div>
+                                                                                                                    </div>
+                                                                                                                    <div className="mt-3 text-xs text-slate-600">
+                                                                                                                        <div className="text-slate-500 mb-2">字段来源</div>
+                                                                                                                        <div className="space-y-1">
+                                                                                                                            {attribute.fields.map((fieldName: string) => {
+                                                                                                                                const fieldProfile = fieldProfileMap.get(fieldName);
+                                                                                                                                const fieldRoleLabelMap: Record<string, string> = {
+                                                                                                                                    Identifier: '业务主键',
+                                                                                                                                    ForeignKey: '对象关联',
+                                                                                                                                    Status: '状态字段',
+                                                                                                                                    Time: '时间字段',
+                                                                                                                                    Measure: '业务属性',
+                                                                                                                                    Attribute: '业务属性',
+                                                                                                                                    BusAttr: '业务属性'
+                                                                                                                                };
+                                                                                                                                const fieldRoleLabel = fieldProfile?.role ? fieldRoleLabelMap[fieldProfile.role] || '业务属性' : '业务属性';
+                                                                                                                                return (
+                                                                                                                                    <div key={fieldName} className="flex items-center justify-between bg-white border border-slate-200 rounded-md px-2 py-1">
+                                                                                                                                        <div className="flex flex-col">
+                                                                                                                                            <span className="font-mono text-slate-700">{fieldName}</span>
+                                                                                                                                            <span className="text-[11px] text-slate-400">{selectedTable.table} / {fieldName}</span>
+                                                                                                                                        </div>
+                                                                                                                                        <span className="text-[11px] text-slate-500 bg-slate-50 border border-slate-200 rounded-full px-2 py-0.5">
+                                                                                                                                            {fieldRoleLabel}
+                                                                                                                                        </span>
+                                                                                                                                    </div>
+                                                                                                                                );
+                                                                                                                            })}
+                                                                                                                        </div>
+                                                                                                                    </div>
+                                                                                                                </div>
+                                                                                                            ))}
+                                                                                                        </div>
+                                                                                                    </div>
+
+                                                                                                    <div className="flex items-center justify-between text-xs text-slate-500 bg-slate-50 border border-slate-100 rounded-lg px-3 py-2">
+                                                                                                        <span>对象置信度 {candidate.confidence}%</span>
+                                                                                                        <span>基于属性完整度、字段一致性综合计算</span>
+                                                                                                    </div>
+                                                                                                </div>
+                                                                                            )) : (
+                                                                                                <div className="rounded-lg border border-slate-200 bg-slate-50 p-6 text-center text-sm text-slate-400">
+                                                                                                    暂无候选业务对象
+                                                                                                </div>
+                                                                                            )}
+                                                                                        </div>
+                                                                                    )}
+
+                                                                                    {candidateView === 'relation' && (
+                                                                                        <div className="space-y-4">
+                                                                                            <div className="flex items-center gap-3 text-xs text-slate-500">
+                                                                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-blue-100 text-blue-600 bg-blue-50">候选对象</span>
+                                                                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-slate-200 text-slate-500 bg-white">系统识别关系</span>
+                                                                                            </div>
+                                                                                            <div className="rounded-xl border border-slate-200 bg-white p-4">
+                                                                                                <div className="flex flex-wrap gap-3">
+                                                                                                    {candidateObjects.map(candidate => (
+                                                                                                        <div key={candidate.id} className="px-3 py-2 rounded-lg border border-slate-200 bg-slate-50 text-xs text-slate-700 flex items-center gap-2">
+                                                                                                            <span className="font-medium">{candidate.name}</span>
+                                                                                                            <span className="px-2 py-0.5 rounded-full border border-blue-100 bg-blue-50 text-blue-600 text-[10px]">候选对象</span>
+                                                                                                        </div>
+                                                                                                    ))}
+                                                                                                </div>
+                                                                                            </div>
+                                                                                            <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-3">
+                                                                                                <div className="text-sm font-semibold text-slate-700">关系说明</div>
+                                                                                                {relations.length > 0 ? relations.map((relation, index) => {
+                                                                                                    const attributeName = candidateObjects
+                                                                                                        .flatMap(obj => obj.attributes)
+                                                                                                        .find(attr => attr.fields.includes(relation.key))?.name || relation.key;
+                                                                                                    return (
+                                                                                                        <div key={`${relation.targetTable}-${index}`} className="border border-slate-100 rounded-lg p-3 text-xs text-slate-600">
+                                                                                                            <div className="flex items-center justify-between">
+                                                                                                                <span className="font-medium text-slate-700">关系类型：{relation.type || '关联（系统识别）'}</span>
+                                                                                                                <span className="text-slate-400">系统识别</span>
+                                                                                                            </div>
+                                                                                                            <div className="mt-2 space-y-1">
+                                                                                                                <div>来源属性：{attributeName}</div>
+                                                                                                                <div>来源字段：{relation.key}</div>
+                                                                                                            </div>
+                                                                                                        </div>
+                                                                                                    );
+                                                                                                }) : (
+                                                                                                    <div className="text-xs text-slate-400">暂无对象关系</div>
+                                                                                                )}
+                                                                                            </div>
+                                                                                            <div className="text-xs text-slate-500">
+                                                                                                对象关系为系统基于字段语义理解推断结果，最终关系将在业务对象建模阶段确认。
+                                                                                            </div>
+                                                                                        </div>
+                                                                                    )}
+                                                                                </div>
+                                                                                    )}
+
+                                                                                    {resultTab === 'graph' && (
+                                                                                        <div className="space-y-4">
                                                                                     <div className="flex items-center gap-3 text-xs text-slate-500">
                                                                                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-blue-100 text-blue-600 bg-blue-50">建议</span>
                                                                                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-emerald-100 text-emerald-600 bg-emerald-50">已确认</span>
@@ -2347,10 +2801,10 @@ const DataSemanticUnderstandingView = ({
                                                                                         </div>
                                                                                     </div>
                                                                                 </div>
-                                                                            )}
+                                                                                    )}
 
-                                                                            {resultTab === 'governance' && (
-                                                                                <div className="space-y-4">
+                                                                                    {resultTab === 'governance' && (
+                                                                                        <div className="space-y-4">
                                                                                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                                                                                         <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
                                                                                             <div className="text-xs text-slate-500">治理状态</div>
@@ -2434,6 +2888,8 @@ const DataSemanticUnderstandingView = ({
                                                                                         </div>
                                                                                     </div>
                                                                                 </div>
+                                                                                    )}
+                                                                                </>
                                                                             )}
                                                                         </div>
                                                                     </div>
